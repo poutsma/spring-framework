@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -152,8 +153,15 @@ public class ServletServerHttpRequest implements ServerHttpRequest {
 	}
 
 	@Override
-	public String getRemoteAddress() {
-		return this.servletRequest.getRemoteAddr();
+	public InetSocketAddress getRemoteAddress() {
+		return InetSocketAddress.createUnresolved(this.servletRequest.getRemoteAddr(),
+				this.servletRequest.getRemotePort());
+	}
+
+	@Override
+	public InetSocketAddress getLocalAddress() {
+		return InetSocketAddress.createUnresolved(this.servletRequest.getLocalAddr(),
+				this.servletRequest.getLocalPort());
 	}
 
 	@Override

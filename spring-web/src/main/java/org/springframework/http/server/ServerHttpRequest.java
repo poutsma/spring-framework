@@ -16,6 +16,7 @@
 
 package org.springframework.http.server;
 
+import java.net.InetSocketAddress;
 import java.security.Principal;
 import java.util.Map;
 
@@ -34,11 +35,15 @@ import org.springframework.util.MultiValueMap;
 public interface ServerHttpRequest extends HttpRequest, HttpInputMessage {
 
 	/**
+	 * TODO: Remove because not portable across all servers
+	 *
 	 * Returns the map of query parameters. Empty if no query has been set.
 	 */
 	MultiValueMap<String, String> getQueryParams();
 
 	/**
+	 * TODO: Remove because not portable across all servers
+	 *
 	 * Return the cookie values parsed from the "Cookie" request header.
 	 */
 	Map<String, Cookie> getCookies();
@@ -51,14 +56,21 @@ public interface ServerHttpRequest extends HttpRequest, HttpInputMessage {
 	Principal getPrincipal();
 
 	/**
+	 * TODO: Remove because not portable across all servers
+	 *
 	 * Return the host name of the endpoint on the other end.
 	 */
 	String getRemoteHostName();
 
 	/**
-	 * Return the IP address of the endpoint on the other end.
+	 * Returns the address of the remote entity invoking this request.
 	 */
-	String getRemoteAddress();
+	InetSocketAddress getRemoteAddress();
+
+	/**
+	 * Returns the local address on which the request was received.
+	 */
+	InetSocketAddress getLocalAddress();
 
 	/**
 	 * Return a control that allows putting the request in asynchronous mode so the
