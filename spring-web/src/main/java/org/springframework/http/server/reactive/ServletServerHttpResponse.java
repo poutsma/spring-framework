@@ -18,6 +18,7 @@ package org.springframework.http.server.reactive;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import javax.servlet.WriteListener;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
@@ -44,6 +46,8 @@ import org.springframework.util.Assert;
  */
 public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
+	private final WriteListener writeListener = new ResponseBodyWriteListener();
+
 	private final Object bodyProcessorMonitor = new Object();
 
 	private volatile ResponseBodyProcessor bodyProcessor;
@@ -51,6 +55,8 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 	private final HttpServletResponse response;
 
 	private final int bufferSize;
+
+	private volatile boolean flushOnNext;
 
 	public ServletServerHttpResponse(HttpServletResponse response,
 			DataBufferFactory dataBufferFactory, int bufferSize) throws IOException {
@@ -61,6 +67,7 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
 		this.response = response;
 		this.bufferSize = bufferSize;
+		response.getOutputStream().setWriteListener(writeListener);
 	}
 
 	public HttpServletResponse getServletResponse() {
@@ -99,12 +106,19 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		}
 	}
 
+	@Override
+	protected Mono<Void> writeAndFlushWithInternal(
+			Publisher<Publisher<DataBuffer>> body) {
+		return Mono.from(subscriber -> {
+			ResponseBodyFlushProcessor processor = new ResponseBodyFlushProcessor();
+			body.subscribe(processor);
+			processor.subscribe(subscriber);
+		});
+	}
+
 	private ResponseBodyProcessor createBodyProcessor() throws IOException {
-		ResponseBodyProcessor bodyProcessor =
-				new ResponseBodyProcessor(this.response.getOutputStream(),
-						this.bufferSize);
-		bodyProcessor.registerListener();
-		return bodyProcessor;
+		return new ResponseBodyProcessor(this.response.getOutputStream(),
+				this.bufferSize);
 	}
 
 	@Override
@@ -142,24 +156,33 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		}
 	}
 
-	private static class ResponseBodyProcessor extends AbstractResponseBodyProcessor {
+	private void flush() throws IOException {
+		ServletOutputStream outputStream = this.response.getOutputStream();
+		if (outputStream.isReady()) {
+			try {
+				outputStream.flush();
+				this.flushOnNext = false;
+			}
+			catch (IOException ex) {
+				this.flushOnNext = true;
+				throw ex;
+			}
+		}
+		else {
+			this.flushOnNext = true;
+		}
+	}
 
-		private final ResponseBodyWriteListener writeListener =
-				new ResponseBodyWriteListener();
+
+	private class ResponseBodyProcessor extends AbstractResponseBodyProcessor {
 
 		private final ServletOutputStream outputStream;
 
 		private final int bufferSize;
 
-		private volatile boolean flushOnNext;
-
 		public ResponseBodyProcessor(ServletOutputStream outputStream, int bufferSize) {
 			this.outputStream = outputStream;
 			this.bufferSize = bufferSize;
-		}
-
-		public void registerListener() throws IOException {
-			this.outputStream.setWriteListener(this.writeListener);
 		}
 
 		@Override
@@ -169,7 +192,10 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
 		@Override
 		protected boolean write(DataBuffer dataBuffer) throws IOException {
-			if (this.flushOnNext) {
+			if (ServletServerHttpResponse.this.flushOnNext) {
+				if (logger.isTraceEnabled()) {
+					logger.trace("flush");
+				}
 				flush();
 			}
 
@@ -193,20 +219,6 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 			}
 		}
 
-		@Override
-		protected void flush() throws IOException {
-			if (this.outputStream.isReady()) {
-				if (logger.isTraceEnabled()) {
-					logger.trace("flush");
-				}
-				this.outputStream.flush();
-				this.flushOnNext = false;
-				return;
-			}
-			this.flushOnNext = true;
-
-		}
-
 		private int writeDataBuffer(DataBuffer dataBuffer) throws IOException {
 			InputStream input = dataBuffer.asInputStream();
 
@@ -223,17 +235,46 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 			return bytesWritten;
 		}
 
-		private class ResponseBodyWriteListener implements WriteListener {
+	}
 
-			@Override
-			public void onWritePossible() throws IOException {
-				ResponseBodyProcessor.this.onWritePossible();
+	private class ResponseBodyWriteListener implements WriteListener {
+
+		@Override
+		public void onWritePossible() throws IOException {
+			if (bodyProcessor != null) {
+				bodyProcessor.onWritePossible();
 			}
+		}
 
-			@Override
-			public void onError(Throwable ex) {
-				ResponseBodyProcessor.this.onError(ex);
+		@Override
+		public void onError(Throwable ex) {
+			if (bodyProcessor != null) {
+				bodyProcessor.onError(ex);
 			}
 		}
 	}
+
+
+	private class ResponseBodyFlushProcessor extends AbstractResponseBodyFlushProcessor {
+
+		@Override
+		protected Processor<DataBuffer, Void> createBodyProcessor() {
+			try {
+				return ServletServerHttpResponse.this.createBodyProcessor();
+			}
+			catch (IOException ex) {
+				throw new UncheckedIOException(ex);
+			}
+		}
+
+		@Override
+		protected void flush() throws IOException {
+			if (logger.isTraceEnabled()) {
+				logger.trace("flush");
+			}
+			ServletServerHttpResponse.this.flush();
+		}
+
+	}
+
 }

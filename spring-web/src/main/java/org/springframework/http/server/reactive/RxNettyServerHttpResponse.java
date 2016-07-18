@@ -17,21 +17,18 @@
 package org.springframework.http.server.reactive;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.reactivex.netty.protocol.http.server.HttpServerResponse;
-import io.reactivex.netty.protocol.http.server.ResponseContentWriter;
 import org.reactivestreams.Publisher;
 import reactor.adapter.RxJava1Adapter;
 import reactor.core.publisher.Mono;
 import rx.Observable;
+import rx.Subscriber;
+import rx.functions.Func1;
 
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.FlushingDataBuffer;
-import org.springframework.core.io.buffer.NettyDataBuffer;
 import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -73,23 +70,33 @@ public class RxNettyServerHttpResponse extends AbstractServerHttpResponse {
 
 	@Override
 	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> body) {
-		Observable<ByteBuf> content = RxJava1Adapter.publisherToObservable(body).map(this::toByteBuf);
-		ResponseContentWriter<ByteBuf> writer = this.response.write(content, bb -> bb instanceof FlushingByteBuf);
-		return RxJava1Adapter.observableToFlux(writer).then();
+		Observable<ByteBuf> content = toByteBufs(body);
+		return RxJava1Adapter.observableToFlux(this.response.write(content))
+				.then();
 	}
 
-	private ByteBuf toByteBuf(DataBuffer buffer) {
-		ByteBuf byteBuf = (buffer instanceof NettyDataBuffer ?
-				((NettyDataBuffer) buffer).getNativeBuffer() :
-				Unpooled.wrappedBuffer(buffer.asByteBuffer()));
-		return (buffer instanceof FlushingDataBuffer ? new FlushingByteBuf(byteBuf) : byteBuf);
+	@Override
+	protected Mono<Void> writeAndFlushWithInternal(
+			Publisher<Publisher<DataBuffer>> body) {
+		Observable<Observable<ByteBuf>> content =
+				RxJava1Adapter.publisherToObservable(body)
+						.map(RxNettyServerHttpResponse::toByteBufs);
+
+		WriteAndFlushOperator operator = new WriteAndFlushOperator(content);
+		Func1<ByteBuf, Boolean> flushSelector = operator.flushSelector();
+
+		return RxJava1Adapter.
+				observableToFlux(
+						this.response.write(Observable.create(operator), flushSelector)).
+				then();
 	}
 
 	@Override
 	protected void writeHeaders() {
 		for (String name : getHeaders().keySet()) {
-			for (String value : getHeaders().get(name))
+			for (String value : getHeaders().get(name)) {
 				this.response.addHeader(name, value);
+			}
 		}
 	}
 
@@ -110,13 +117,76 @@ public class RxNettyServerHttpResponse extends AbstractServerHttpResponse {
 		}
 	}
 
-	private class FlushingByteBuf extends CompositeByteBuf {
-
-		public FlushingByteBuf(ByteBuf byteBuf) {
-			super(byteBuf.alloc(), byteBuf.isDirect(), 1);
-			this.addComponent(true, byteBuf);
-		}
+	private static Observable<ByteBuf> toByteBufs(Publisher<DataBuffer> publisher) {
+		return RxJava1Adapter.publisherToObservable(publisher)
+				.map(NettyDataBufferFactory::toByteBuf);
 	}
+
+	static class WriteAndFlushOperator implements Observable.OnSubscribe<ByteBuf> {
+
+		private final Observable<Observable<ByteBuf>> delegate;
+
+		private volatile boolean flush;
+
+		public WriteAndFlushOperator(Observable<Observable<ByteBuf>> delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public void call(rx.Subscriber<? super ByteBuf> subscriber) {
+			this.delegate.subscribe(new rx.Subscriber<Observable<ByteBuf>>() {
+				@Override
+				public void onNext(Observable<ByteBuf> chunk) {
+					flush = false;
+					chunk.subscribe(new Subscriber<ByteBuf>() {
+						private volatile ByteBuf previous;
+
+						@Override
+						public void onNext(ByteBuf buf) {
+							if (this.previous != null) {
+								subscriber.onNext(this.previous);
+							}
+							this.previous = buf;
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							subscriber.onError(e);
+						}
+
+						@Override
+						public void onCompleted() {
+							flush = true;
+							if (this.previous != null) {
+								subscriber.onNext(this.previous);
+							}
+						}
+					});
+
+				}
+
+				@Override
+				public void onError(Throwable e) {
+					subscriber.onError(e);
+
+				}
+
+				@Override
+				public void onCompleted() {
+					subscriber.onCompleted();
+				}
+			});
+
+
+		}
+
+		public Func1<ByteBuf, Boolean> flushSelector() {
+			return buf -> this.flush;
+		}
+
+
+	}
+
 
 /*
 	While the underlying implementation of {@link ZeroCopyHttpOutputMessage} seems to

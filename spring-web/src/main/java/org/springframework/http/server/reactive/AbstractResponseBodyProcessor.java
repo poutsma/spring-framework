@@ -29,7 +29,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.FlushingDataBuffer;
 import org.springframework.core.io.buffer.support.DataBufferUtils;
 import org.springframework.util.Assert;
 
@@ -158,11 +157,6 @@ abstract class AbstractResponseBodyProcessor implements Processor<DataBuffer, Vo
 	 */
 	protected abstract boolean write(DataBuffer dataBuffer) throws IOException;
 
-	/**
-	 * Flushes the output.
-	 */
-	protected abstract void flush() throws IOException;
-
 	private boolean changeState(State oldState, State newState) {
 		return this.state.compareAndSet(oldState, newState);
 	}
@@ -246,9 +240,6 @@ abstract class AbstractResponseBodyProcessor implements Processor<DataBuffer, Vo
 					try {
 						boolean writeCompleted = processor.write(dataBuffer);
 						if (writeCompleted) {
-							if (dataBuffer instanceof FlushingDataBuffer) {
-								processor.flush();
-							}
 							processor.releaseBuffer();
 							if (!processor.subscriberCompleted) {
 								processor.changeState(WRITING, REQUESTED);
