@@ -29,8 +29,6 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -41,15 +39,12 @@ import org.springframework.util.Assert;
 
 /**
  * Adapt {@link ServerHttpResponse} to the Servlet {@link HttpServletResponse}.
- *
  * @author Rossen Stoyanchev
  * @since 5.0
  */
-public class ServletServerHttpResponse extends AbstractServerHttpResponse {
+public class ServletServerHttpResponse extends AbstractListenerServerHttpResponse {
 
 	private final AtomicBoolean listenerRegistered = new AtomicBoolean();
-
-	private final Object bodyProcessorMonitor = new Object();
 
 	private volatile ResponseBodyProcessor bodyProcessor;
 
@@ -80,52 +75,6 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		if (statusCode != null) {
 			getServletResponse().setStatus(statusCode.value());
 		}
-	}
-
-	@Override
-	protected Mono<Void> writeWithInternal(Publisher<DataBuffer> publisher) {
-		Assert.state(this.bodyProcessor == null,
-				"Response body publisher is already provided");
-		try {
-			registerListener();
-			synchronized (this.bodyProcessorMonitor) {
-				if (this.bodyProcessor == null) {
-					this.bodyProcessor = createBodyProcessor();
-				}
-				else {
-					throw new IllegalStateException(
-							"Response body publisher is already provided");
-				}
-			}
-			return Mono.from(subscriber -> {
-				publisher.subscribe(this.bodyProcessor);
-				this.bodyProcessor.subscribe(subscriber);
-			});
-		}
-		catch (IOException ex) {
-			return Mono.error(ex);
-		}
-	}
-
-	@Override
-	protected Mono<Void> writeAndFlushWithInternal(
-			Publisher<Publisher<DataBuffer>> body) {
-		try {
-			registerListener();
-			return Mono.from(subscriber -> {
-				ResponseBodyFlushProcessor processor = new ResponseBodyFlushProcessor();
-				body.subscribe(processor);
-				processor.subscribe(subscriber);
-			});
-		}
-		catch (IOException ex) {
-			return Mono.error(ex);
-		}
-	}
-
-	private ResponseBodyProcessor createBodyProcessor() throws IOException {
-		return new ResponseBodyProcessor(this.response.getOutputStream(),
-				this.bufferSize);
 	}
 
 	@Override
@@ -187,6 +136,23 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		}
 	}
 
+	@Override
+	protected ResponseBodyProcessor createBodyProcessor() {
+		try {
+			registerListener();
+			this.bodyProcessor = new ResponseBodyProcessor(this.response.getOutputStream(),
+					this.bufferSize);
+			return this.bodyProcessor;
+		}
+		catch (IOException ex) {
+			throw new UncheckedIOException(ex);
+		}
+	}
+
+	@Override
+	protected AbstractResponseBodyFlushProcessor createBodyFlushProcessor() {
+		return new ResponseBodyFlushProcessor();
+	}
 
 	private class ResponseBodyProcessor extends AbstractResponseBodyProcessor {
 
@@ -268,17 +234,11 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		}
 	}
 
-
 	private class ResponseBodyFlushProcessor extends AbstractResponseBodyFlushProcessor {
 
 		@Override
 		protected Processor<DataBuffer, Void> createBodyProcessor() {
-			try {
-				return ServletServerHttpResponse.this.createBodyProcessor();
-			}
-			catch (IOException ex) {
-				throw new UncheckedIOException(ex);
-			}
+			return ServletServerHttpResponse.this.createBodyProcessor();
 		}
 
 		@Override

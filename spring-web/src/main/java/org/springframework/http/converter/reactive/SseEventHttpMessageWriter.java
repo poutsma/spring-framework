@@ -73,8 +73,11 @@ public class SseEventHttpMessageWriter implements HttpMessageWriter<Object> {
 		outputMessage.getHeaders().setContentType(TEXT_EVENT_STREAM);
 
 		DataBufferFactory bufferFactory = outputMessage.bufferFactory();
-		Flux<Publisher<DataBuffer>> body = encode(inputStream, bufferFactory, type).
-				concatWith(Flux.never());
+		Flux<Publisher<DataBuffer>> body = encode(inputStream, bufferFactory, type);
+
+		//  Keep the SSE connection open even for cold stream in order to avoid
+		// unexpected browser reconnection
+		body = body.concatWith(Flux.never());
 
 		return outputMessage.writeAndFlushWith(body);
 	}
@@ -127,8 +130,6 @@ public class SseEventHttpMessageWriter implements HttpMessageWriter<Object> {
 				}
 			}
 
-			// Keep the SSE connection open even for cold stream in order to avoid
-			// unexpected browser reconnection
 			return Flux.concat(encodeString(sb.toString(), bufferFactory), dataBuffer,
 					encodeString("\n", bufferFactory));
 		});

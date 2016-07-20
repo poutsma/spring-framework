@@ -18,7 +18,6 @@ package org.springframework.http.server.reactive;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -48,8 +47,6 @@ import org.springframework.util.MultiValueMap;
 public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 
 	private Log logger = LogFactory.getLog(getClass());
-
-	private final AtomicBoolean writeInvoked = new AtomicBoolean();
 
 	private static final int STATE_NEW = 1;
 
@@ -132,26 +129,14 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 
 	@Override
 	public final Mono<Void> writeWith(Publisher<DataBuffer> body) {
-		if (this.writeInvoked.compareAndSet(false, true)) {
-			return new ChannelSendOperator<>(body, writePublisher -> applyBeforeCommit()
-					.then(() -> writeWithInternal(writePublisher)));
-		}
-		else {
-			return Mono.error(new IllegalStateException(
-					"writeWith() or writeAndFlushWith() already invoked"));
-		}
+		return new ChannelSendOperator<>(body, writePublisher -> applyBeforeCommit()
+				.then(() -> writeWithInternal(writePublisher)));
 	}
 
 	@Override
 	public final Mono<Void> writeAndFlushWith(Publisher<Publisher<DataBuffer>> body) {
-		if (this.writeInvoked.compareAndSet(false, true)) {
-			return new ChannelSendOperator<>(body, writePublisher -> applyBeforeCommit()
-					.then(() -> writeAndFlushWithInternal(writePublisher)));
-		}
-		else {
-			return Mono.error(new IllegalStateException(
-					"writeWith() or writeAndFlushWith() already invoked"));
-		}
+		return new ChannelSendOperator<>(body, writePublisher -> applyBeforeCommit()
+				.then(() -> writeAndFlushWithInternal(writePublisher)));
 	}
 
 	protected Mono<Void> applyBeforeCommit() {
