@@ -88,6 +88,9 @@ abstract class AbstractResponseBodyFlushProcessor
 		this.publisherDelegate.subscribe(subscriber);
 	}
 
+	/**
+	 * Creates a new processor for subscribing to a body chunk.
+	 */
 	protected abstract Processor<DataBuffer, Void> createBodyProcessor();
 
 	/**
@@ -128,26 +131,7 @@ abstract class AbstractResponseBodyFlushProcessor
 				Processor<DataBuffer, Void> chunkProcessor =
 						processor.createBodyProcessor();
 				chunk.subscribe(chunkProcessor);
-				chunkProcessor.subscribe(new Subscriber<Void>() {
-					@Override
-					public void onSubscribe(Subscription s) {
-						s.request(Long.MAX_VALUE);
-					}
-
-					@Override
-					public void onNext(Void aVoid) {
-					}
-
-					@Override
-					public void onError(Throwable t) {
-						processor.onError(t);
-					}
-
-					@Override
-					public void onComplete() {
-						processor.writeComplete();
-					}
-				});
+				chunkProcessor.subscribe(new WriteSubscriber(processor));
 			}
 
 			@Override
@@ -219,6 +203,34 @@ abstract class AbstractResponseBodyFlushProcessor
 
 		public void writeComplete(AbstractResponseBodyFlushProcessor processor) {
 			throw new IllegalStateException(toString());
+		}
+
+		private static class WriteSubscriber implements Subscriber<Void> {
+
+			private final AbstractResponseBodyFlushProcessor processor;
+
+			public WriteSubscriber(AbstractResponseBodyFlushProcessor processor) {
+				this.processor = processor;
+			}
+
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(Void aVoid) {
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				processor.onError(t);
+			}
+
+			@Override
+			public void onComplete() {
+				processor.writeComplete();
+			}
 		}
 	}
 

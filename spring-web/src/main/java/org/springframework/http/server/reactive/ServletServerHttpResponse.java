@@ -22,6 +22,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.WriteListener;
 import javax.servlet.http.Cookie;
@@ -46,7 +47,7 @@ import org.springframework.util.Assert;
  */
 public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
-	private final WriteListener writeListener = new ResponseBodyWriteListener();
+	private final AtomicBoolean listenerRegistered = new AtomicBoolean();
 
 	private final Object bodyProcessorMonitor = new Object();
 
@@ -67,7 +68,6 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 
 		this.response = response;
 		this.bufferSize = bufferSize;
-		response.getOutputStream().setWriteListener(writeListener);
 	}
 
 	public HttpServletResponse getServletResponse() {
@@ -87,6 +87,7 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 		Assert.state(this.bodyProcessor == null,
 				"Response body publisher is already provided");
 		try {
+			registerListener();
 			synchronized (this.bodyProcessorMonitor) {
 				if (this.bodyProcessor == null) {
 					this.bodyProcessor = createBodyProcessor();
@@ -109,11 +110,17 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 	@Override
 	protected Mono<Void> writeAndFlushWithInternal(
 			Publisher<Publisher<DataBuffer>> body) {
-		return Mono.from(subscriber -> {
-			ResponseBodyFlushProcessor processor = new ResponseBodyFlushProcessor();
-			body.subscribe(processor);
-			processor.subscribe(subscriber);
-		});
+		try {
+			registerListener();
+			return Mono.from(subscriber -> {
+				ResponseBodyFlushProcessor processor = new ResponseBodyFlushProcessor();
+				body.subscribe(processor);
+				processor.subscribe(subscriber);
+			});
+		}
+		catch (IOException ex) {
+			return Mono.error(ex);
+		}
 	}
 
 	private ResponseBodyProcessor createBodyProcessor() throws IOException {
@@ -153,6 +160,13 @@ public class ServletServerHttpResponse extends AbstractServerHttpResponse {
 				cookie.setHttpOnly(httpCookie.isHttpOnly());
 				this.response.addCookie(cookie);
 			}
+		}
+	}
+
+	private void registerListener() throws IOException {
+		if (this.listenerRegistered.compareAndSet(false, true)) {
+			ResponseBodyWriteListener writeListener = new ResponseBodyWriteListener();
+			this.response.getOutputStream().setWriteListener(writeListener);
 		}
 	}
 

@@ -77,9 +77,10 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 
 	@Override
 	protected Mono<Void> writeAndFlushWithInternal(
-			Publisher<Publisher<DataBuffer>> body) {
-		return Flux.from(body).
-				map(bodyElement -> this.channel.send(toByteBufs(bodyElement))).then();
+			Publisher<Publisher<DataBuffer>> publisher) {
+		Publisher<Publisher<ByteBuf>> body = Flux.from(publisher).
+				map(ReactorServerHttpResponse::toByteBufs);
+		return this.channel.sendAndFlush(body);
 	}
 
 	@Override
@@ -110,9 +111,7 @@ public class ReactorServerHttpResponse extends AbstractServerHttpResponse
 
 	@Override
 	public Mono<Void> writeWith(File file, long position, long count) {
-		return applyBeforeCommit().then(() -> {
-			return this.channel.sendFile(file, position, count);
-		});
+		return applyBeforeCommit().then(() -> this.channel.sendFile(file, position, count));
 	}
 
 	private static Publisher<ByteBuf> toByteBufs(Publisher<DataBuffer> dataBuffers) {

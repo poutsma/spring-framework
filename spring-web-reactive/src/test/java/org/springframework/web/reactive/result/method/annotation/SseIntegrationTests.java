@@ -33,7 +33,6 @@ import org.springframework.http.codec.SseEvent;
 import org.springframework.http.server.reactive.AbstractHttpHandlerIntegrationTests;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.bootstrap.JettyHttpServer;
-import org.springframework.http.server.reactive.bootstrap.ReactorHttpServer;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.reactive.WebClient;
@@ -60,8 +59,6 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 
 		// See https://github.com/eclipse/jetty.project/issues/730
 		assumeFalse(server instanceof JettyHttpServer);
-		// TODO: fix Reactor
-		assumeFalse(server instanceof ReactorHttpServer);
 
 		this.webClient = new WebClient(new ReactorClientHttpConnector());
 	}

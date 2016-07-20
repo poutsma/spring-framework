@@ -47,9 +47,6 @@ public class FlushingIntegrationTests extends AbstractHttpHandlerIntegrationTest
 
 	@Test
 	public void testFlushing() throws Exception {
-		// TODO: fix reactor
-		assumeFalse(server instanceof ReactorHttpServer);
-
 		Mono<String> result = this.webClient
 				.perform(ClientWebRequestBuilders.get("http://localhost:" + port))
 				.extract(ResponseExtractors.bodyStream(String.class)).takeUntil(s -> {
