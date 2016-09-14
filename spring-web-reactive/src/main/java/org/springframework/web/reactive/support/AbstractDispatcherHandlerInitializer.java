@@ -17,6 +17,8 @@
 package org.springframework.web.reactive.support;
 
 import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
 
@@ -25,6 +27,7 @@ import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.ServletHttpHandlerAdapter;
 import org.springframework.util.Assert;
 import org.springframework.web.context.AbstractContextLoaderInitializer;
+import org.springframework.web.context.ConfigurableWebApplicationContext;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.reactive.DispatcherHandler;
 import org.springframework.web.server.WebHandler;
@@ -84,6 +87,8 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 		Assert.notNull(servletAppContext,
 				"createServletApplicationContext() did not return an application " +
 				"context for servlet [" + servletName + "]");
+		refreshServletServletApplicationContext(servletAppContext);
+		registerCloseListener(servletContext, servletAppContext);
 
 		WebHandler dispatcherHandler = createDispatcherHandler(servletAppContext);
 		Assert.notNull(dispatcherHandler,
@@ -126,6 +131,16 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 	 */
 	protected abstract WebApplicationContext createServletApplicationContext();
 
+	protected void refreshServletServletApplicationContext(WebApplicationContext servletAppContext) {
+		if (servletAppContext instanceof ConfigurableWebApplicationContext) {
+			ConfigurableWebApplicationContext appContext =
+					(ConfigurableWebApplicationContext) servletAppContext;
+			if (!appContext.isActive()) {
+				appContext.refresh();
+			}
+		}
+	}
+
 	/**
 	 * Create a {@link DispatcherHandler} (or other kind of {@link WebHandler}-derived
 	 * dispatcher) with the specified {@link WebApplicationContext}.
@@ -158,6 +173,35 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 	 * @see #registerDispatcherHandler(ServletContext)
 	 */
 	protected void customizeRegistration(ServletRegistration.Dynamic registration) {
+	}
+
+	protected void registerCloseListener(ServletContext servletContext,
+			WebApplicationContext applicationContext) {
+
+		if (applicationContext instanceof ConfigurableWebApplicationContext) {
+			ConfigurableWebApplicationContext context =
+					(ConfigurableWebApplicationContext) applicationContext;
+			ServletContextDestroyedListener listener = new ServletContextDestroyedListener(context);
+			servletContext.addListener(listener);
+		}
+	}
+
+	private static class ServletContextDestroyedListener implements ServletContextListener {
+
+		private final ConfigurableWebApplicationContext context;
+
+		public ServletContextDestroyedListener(ConfigurableWebApplicationContext context) {
+			this.context = context;
+		}
+
+		@Override
+		public void contextInitialized(ServletContextEvent sce) {
+		}
+
+		@Override
+		public void contextDestroyed(ServletContextEvent sce) {
+			this.context.close();
+		}
 	}
 
 }
