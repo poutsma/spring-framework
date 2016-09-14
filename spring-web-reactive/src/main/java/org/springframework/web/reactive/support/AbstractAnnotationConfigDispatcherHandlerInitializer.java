@@ -16,12 +16,25 @@
 
 package org.springframework.web.reactive.support;
 
+import org.springframework.http.server.reactive.ServletHttpHandlerAdapter;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
+import org.springframework.web.reactive.DispatcherHandler;
 
 /**
+ * Base class for {@link org.springframework.web.WebApplicationInitializer}
+ * implementations that register a {@link DispatcherHandler} configured with annotated
+ * {@link org.springframework.context.annotation.Configuration @Configuration} classes in the
+ * servlet context, wrapping it in a {@link ServletHttpHandlerAdapter}.
+ *
+ * <p>Concrete implementations are required to implement {@link #getRootConfigClasses()}
+ * and {@link #getServletConfigClasses()} as well as {@link #getServletMappings()}.
+ * Further template and customization methods are provided by
+ * {@link AbstractDispatcherHandlerInitializer}.
+ *
  * @author Arjen Poutsma
+ * @since 5.0
  */
 public abstract class AbstractAnnotationConfigDispatcherHandlerInitializer
 		extends AbstractDispatcherHandlerInitializer {

@@ -20,7 +20,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRegistration;
 
-import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.ServletHttpHandlerAdapter;
 import org.springframework.util.Assert;
@@ -31,7 +31,24 @@ import org.springframework.web.server.WebHandler;
 import org.springframework.web.server.adapter.HttpWebHandlerAdapter;
 
 /**
+ * Base class for {@link org.springframework.web.WebApplicationInitializer}
+ * implementations that register a {@link DispatcherHandler} in the servlet context, wrapping it in
+ * a {@link ServletHttpHandlerAdapter}.
+ *
+ * <p>Concrete implementations are required to implement
+ * {@link #createServletApplicationContext()}, as well as {@link #getServletMappings()},
+ * both of which get invoked from {@link #registerDispatcherHandler(ServletContext)}.
+ * Further customization can be achieved by overriding
+ * {@link #customizeRegistration(ServletRegistration.Dynamic)}.
+ *
+ * <p>Because this class extends from {@link AbstractContextLoaderInitializer}, concrete
+ * implementations are also required to implement {@link #createRootApplicationContext()}
+ * to set up a parent "<strong>root</strong>" application context. If a root context is
+ * not desired, implementations can simply return {@code null} in the
+ * {@code createRootApplicationContext()} implementation.
+ *
  * @author Arjen Poutsma
+ * @since 5.0
  */
 public abstract class AbstractDispatcherHandlerInitializer extends AbstractContextLoaderInitializer {
 
@@ -44,21 +61,22 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 	@Override
 	public void onStartup(ServletContext servletContext) throws ServletException {
 		super.onStartup(servletContext);
-		registerDispatcherServlet(servletContext);
+		registerDispatcherHandler(servletContext);
 	}
 
 	/**
-	 * Register a {@link DispatcherServlet} against the given servlet context.
-	 * <p>This method will create a {@code DispatcherServlet} with the name returned by
-	 * {@link #getServletName()}, initializing it with the application context returned
-	 * from {@link #createServletApplicationContext()}, and mapping it to the patterns
+	 * Register a {@link DispatcherHandler} against the given servlet context.
+	 * <p>This method will create a {@link DispatcherHandler}, initializing it with the application
+	 * context returned from {@link #createServletApplicationContext()}. The created handler will be
+	 * wrapped in a {@link ServletHttpHandlerAdapter} servlet with the name
+     * returned by {@link #getServletName()}, mapping it to the patterns
 	 * returned from {@link #getServletMappings()}.
 	 * <p>Further customization can be achieved by overriding {@link
 	 * #customizeRegistration(ServletRegistration.Dynamic)} or
 	 * {@link #createDispatcherHandler(WebApplicationContext)}.
 	 * @param servletContext the context to register the servlet against
 	 */
-	protected void registerDispatcherServlet(ServletContext servletContext) {
+	protected void registerDispatcherHandler(ServletContext servletContext) {
 		String servletName = getServletName();
 		Assert.hasLength(servletName, "getServletName() must not return empty or null");
 
@@ -91,29 +109,26 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 	}
 
 	/**
-	 * Return the name under which the {@link DispatcherServlet} will be registered.
+	 * Return the name under which the {@link ServletHttpHandlerAdapter} will be registered.
 	 * Defaults to {@link #DEFAULT_SERVLET_NAME}.
-	 * @see #registerDispatcherServlet(ServletContext)
+	 * @see #registerDispatcherHandler(ServletContext)
 	 */
 	protected String getServletName() {
 		return DEFAULT_SERVLET_NAME;
 	}
 
 	/**
-	 * Create a servlet application context to be provided to the {@code DispatcherServlet}.
+	 * Create a servlet application context to be provided to the {@code DispatcherHandler}.
 	 * <p>The returned context is delegated to Spring's
-	 * {@link DispatcherServlet#DispatcherServlet(WebApplicationContext)}. As such,
-	 * it typically contains controllers, view resolvers, locale resolvers, and other
-	 * web-related beans.
-	 * @see #registerDispatcherServlet(ServletContext)
+	 * {@link DispatcherHandler#DispatcherHandler(ApplicationContext)}. As such,
+	 * it typically contains controllers, view resolvers, and other web-related beans.
+	 * @see #registerDispatcherHandler(ServletContext)
 	 */
 	protected abstract WebApplicationContext createServletApplicationContext();
 
 	/**
-	 * Create a {@link DispatcherServlet} (or other kind of {@link FrameworkServlet}-derived
+	 * Create a {@link DispatcherHandler} (or other kind of {@link WebHandler}-derived
 	 * dispatcher) with the specified {@link WebApplicationContext}.
-	 * <p>Note: This allows for any {@link FrameworkServlet} subclass as of 4.2.3.
-	 * Previously, it insisted on returning a {@link DispatcherServlet} or subclass thereof.
 	 */
 	protected WebHandler createDispatcherHandler(WebApplicationContext servletAppContext) {
 		return new DispatcherHandler(servletAppContext);
@@ -129,19 +144,18 @@ public abstract class AbstractDispatcherHandlerInitializer extends AbstractConte
 		return new ServletHttpHandlerAdapter(httpHandler);
 	}
 
-
 	/**
-	 * Specify the servlet mapping(s) for the {@code DispatcherServlet} &mdash;
+	 * Specify the servlet mapping(s) for the {@code ServletHttpHandlerAdapter} &mdash;
 	 * for example {@code "/"}, {@code "/app"}, etc.
-	 * @see #registerDispatcherServlet(ServletContext)
+	 * @see #registerDispatcherHandler(ServletContext)
 	 */
 	protected abstract String[] getServletMappings();
 
 	/**
 	 * Optionally perform further registration customization once
-	 * {@link #registerDispatcherServlet(ServletContext)} has completed.
-	 * @param registration the {@code DispatcherServlet} registration to be customized
-	 * @see #registerDispatcherServlet(ServletContext)
+	 * {@link #registerDispatcherHandler(ServletContext)} has completed.
+	 * @param registration the {@code ServletHttpHandlerAdapter} registration to be customized
+	 * @see #registerDispatcherHandler(ServletContext)
 	 */
 	protected void customizeRegistration(ServletRegistration.Dynamic registration) {
 	}
