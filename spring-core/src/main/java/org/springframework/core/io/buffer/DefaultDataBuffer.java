@@ -90,6 +90,35 @@ public class DefaultDataBuffer implements DataBuffer {
 	}
 
 	@Override
+	public int getReadPosition() {
+		return this.readPosition;
+	}
+
+	@Override
+	public void setReadPosition(int pos) {
+		if (pos < 0 || pos > this.writePosition) {
+			throw new IndexOutOfBoundsException(
+					"pos " + pos + " should be between 0 and " + this.writePosition);
+		}
+		this.readPosition = pos;
+	}
+
+	@Override
+	public int getWritePosition() {
+		return this.writePosition;
+	}
+
+	@Override
+	public void setWritePosition(int pos) {
+		if (pos < this.readPosition || pos > this.byteBuffer.capacity()) {
+			throw new IndexOutOfBoundsException(
+					"pos " + pos + " should be between " + this.readPosition + " and " +
+							this.byteBuffer.capacity());
+		}
+		this.writePosition = pos;
+	}
+
+	@Override
 	public int indexOf(IntPredicate predicate, int fromIndex) {
 		Assert.notNull(predicate, "'predicate' must not be null");
 

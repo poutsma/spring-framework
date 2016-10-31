@@ -36,6 +36,20 @@ public interface DataBuffer {
 	DataBufferFactory factory();
 
 	/**
+	 * Return the number of bytes that can be read from this data buffer.
+	 * @return the readable byte count
+	 */
+	int readableByteCount();
+
+	int getReadPosition();
+
+	void setReadPosition(int pos);
+
+	int getWritePosition();
+
+	void setWritePosition(int pos);
+
+	/**
 	 * Return the index of the first byte in this buffer that matches the given
 	 * predicate.
 	 * @param predicate the predicate to match
@@ -54,12 +68,6 @@ public interface DataBuffer {
 	 * if none match
 	 */
 	int lastIndexOf(IntPredicate predicate, int fromIndex);
-
-	/**
-	 * Return the number of bytes that can be read from this data buffer.
-	 * @return the readable byte count
-	 */
-	int readableByteCount();
 
 	/**
 	 * Read a single byte from the current reading position of this data buffer.

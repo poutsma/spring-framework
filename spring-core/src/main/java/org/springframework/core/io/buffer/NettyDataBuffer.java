@@ -72,6 +72,26 @@ public class NettyDataBuffer implements PooledDataBuffer {
 	}
 
 	@Override
+	public int getReadPosition() {
+		return this.byteBuf.readerIndex();
+	}
+
+	@Override
+	public void setReadPosition(int pos) {
+		this.byteBuf.readerIndex(pos);
+	}
+
+	@Override
+	public int getWritePosition() {
+		return this.byteBuf.writerIndex();
+	}
+
+	@Override
+	public void setWritePosition(int pos) {
+		this.byteBuf.writerIndex(pos);
+	}
+
+	@Override
 	public int indexOf(IntPredicate predicate, int fromIndex) {
 		Assert.notNull(predicate, "'predicate' must not be null");
 		if (fromIndex < 0) {

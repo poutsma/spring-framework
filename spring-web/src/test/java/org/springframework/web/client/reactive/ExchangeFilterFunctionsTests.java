@@ -24,12 +24,14 @@ import reactor.test.subscriber.ScriptedSubscriber;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.http.codec.BodyExtractors.toMono;
 
 /**
  * @author Arjen Poutsma
@@ -169,6 +171,24 @@ public class ExchangeFilterFunctionsTests {
 		assertFalse(request.headers().containsKey(HttpHeaders.AUTHORIZATION));
 		ClientResponse result = auth.filter(request, exchange).block();
 		assertEquals(response, result);
+
+	}
+
+
+
+	void rob() {
+		WebClient client = WebClient.create(new ReactorClientHttpConnector());
+		ExchangeFilterFunction auth2 = ExchangeFilterFunctions.basicAuthentication("foo", "bar");
+		ExchangeFunction filteredClient = auth2.apply(client::exchange);
+		ClientRequest<Void> request = ClientRequest.GET("http://example.com").build();
+
+		Mono<String> result = filteredClient
+		     .exchange(request)
+		     .then(response -> response.body(toMono(String.class)));
+
+
+
+
 	}
 
 }
