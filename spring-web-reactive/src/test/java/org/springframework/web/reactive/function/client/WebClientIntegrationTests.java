@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ public class WebClientIntegrationTests {
 		HttpUrl baseUrl = server.url("/greeting?name=Spring");
 		this.server.enqueue(new MockResponse().setHeader("Content-Type", "text/plain").setBody("Hello Spring!"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString()).build();
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri()).build();
 		Mono<HttpHeaders> result = this.webClient
 				.exchange(request)
 				.map(response -> response.headers().asHttpHeaders());
@@ -91,7 +91,7 @@ public class WebClientIntegrationTests {
 		HttpUrl baseUrl = server.url("/greeting?name=Spring");
 		this.server.enqueue(new MockResponse().setBody("Hello Spring!"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString())
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri())
 				.header("X-Test-Header", "testvalue")
 				.build();
 
@@ -118,7 +118,7 @@ public class WebClientIntegrationTests {
 		this.server.enqueue(new MockResponse().setHeader("Content-Type", "application/json")
 				.setBody(content));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString())
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri())
 				.accept(MediaType.APPLICATION_JSON)
 				.build();
 
@@ -143,7 +143,7 @@ public class WebClientIntegrationTests {
 		this.server.enqueue(new MockResponse().setHeader("Content-Type", "application/json")
 				.setBody("{\"bar\":\"barbar\",\"foo\":\"foofoo\"}"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString())
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri())
 				.accept(MediaType.APPLICATION_JSON)
 				.build();
 
@@ -168,7 +168,7 @@ public class WebClientIntegrationTests {
 		this.server.enqueue(new MockResponse().setHeader("Content-Type", "application/json")
 				.setBody("[{\"bar\":\"bar1\",\"foo\":\"foo1\"},{\"bar\":\"bar2\",\"foo\":\"foo2\"}]"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString())
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri())
 				.accept(MediaType.APPLICATION_JSON)
 				.build();
 
@@ -196,7 +196,7 @@ public class WebClientIntegrationTests {
 				.setBody("{\"bar\":\"BARBAR\",\"foo\":\"FOOFOO\"}"));
 
 		Pojo spring = new Pojo("foofoo", "barbar");
-		ClientRequest<Pojo> request = ClientRequest.POST(baseUrl.toString())
+		ClientRequest<Pojo> request = ClientRequest.POST(baseUrl.uri())
 				.accept(MediaType.APPLICATION_JSON)
 				.contentType(MediaType.APPLICATION_JSON)
 				.body(BodyInserters.fromObject(spring));
@@ -225,7 +225,7 @@ public class WebClientIntegrationTests {
 		this.server.enqueue(new MockResponse()
 				.setHeader("Content-Type", "text/plain").setBody("test"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString())
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri())
 				.cookie("testkey", "testvalue")
 				.build();
 
@@ -250,7 +250,7 @@ public class WebClientIntegrationTests {
 		this.server.enqueue(new MockResponse().setResponseCode(404)
 				.setHeader("Content-Type", "text/plain").setBody("Not Found"));
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString()).build();
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri()).build();
 
 		Mono<ClientResponse> result = this.webClient
 				.exchange(request);
@@ -281,7 +281,7 @@ public class WebClientIntegrationTests {
 		WebClient filteredClient = WebClient.builder(new ReactorClientHttpConnector())
 				.filter(filter).build();
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString()).build();
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri()).build();
 
 		Mono<String> result = filteredClient.exchange(request)
 				.then(response -> response.body(toMono(String.class)));
@@ -310,7 +310,7 @@ public class WebClientIntegrationTests {
 		WebClient client = WebClient.create(new ReactorClientHttpConnector());
 		WebClient filteredClient = client.filter(filter);
 
-		ClientRequest<Void> request = ClientRequest.GET(baseUrl.toString()).build();
+		ClientRequest<Void> request = ClientRequest.GET(baseUrl.uri()).build();
 
 		Mono<String> result = filteredClient.exchange(request)
 				.then(response -> response.body(toMono(String.class)));

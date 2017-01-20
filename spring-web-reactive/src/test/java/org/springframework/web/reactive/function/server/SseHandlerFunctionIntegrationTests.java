@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,12 @@
 
 package org.springframework.web.reactive.function.server;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import org.junit.Before;
 import org.junit.Test;
-import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
-import static org.springframework.web.reactive.function.BodyExtractors.toFlux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -34,6 +32,11 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
+import static org.springframework.web.reactive.function.BodyExtractors.toFlux;
 import static org.springframework.web.reactive.function.BodyInserters.fromServerSentEvents;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -58,10 +61,20 @@ public class SseHandlerFunctionIntegrationTests extends AbstractRouterFunctionIn
 				.and(route(RequestPredicates.GET("/event"), sseHandler::sse));
 	}
 
+	private URI uri(String path) {
+		try {
+			return new URI("http", null, "localhost", this.port, path, null, null);
+		}
+		catch (URISyntaxException e) {
+			fail(e.getMessage());
+			return null;
+		}
+	}
+
 	@Test
 	public void sseAsString() throws Exception {
 		ClientRequest<Void> request = ClientRequest
-						.GET("http://localhost:{port}/string", this.port)
+						.GET(uri("/string"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 
@@ -79,7 +92,7 @@ public class SseHandlerFunctionIntegrationTests extends AbstractRouterFunctionIn
 	public void sseAsPerson() throws Exception {
 		ClientRequest<Void> request =
 				ClientRequest
-						.GET("http://localhost:{port}/person", this.port)
+						.GET(uri("/person"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 
@@ -98,7 +111,7 @@ public class SseHandlerFunctionIntegrationTests extends AbstractRouterFunctionIn
 	public void sseAsEvent() throws Exception {
 		ClientRequest<Void> request =
 				ClientRequest
-						.GET("http://localhost:{port}/event", this.port)
+						.GET(uri("/event"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,13 +30,11 @@ import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserter;
-import org.springframework.web.util.DefaultUriTemplateHandler;
-import org.springframework.web.util.UriTemplateHandler;
 
 /**
  * Represents a typed, immutable, client-side HTTP request, as executed by the {@link WebClient}.
  * Instances of this interface are created via static builder methods:
- * {@link #method(HttpMethod, String, Object...)}, {@link #GET(String, Object...)}, etc.
+ * {@link #method(HttpMethod, URI)}, {@link #GET(URI)}, etc.
  *
  * @param <T> the type of the body that this request contains
  * @author Brian Clozel
@@ -107,86 +105,66 @@ public interface ClientRequest<T> {
 	}
 
 	/**
-	 * Create a builder with the given method and url template.
-	 * @param method the HTTP method (GET, POST, etc)
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP GET builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static BodyBuilder method(HttpMethod method, String urlTemplate, Object... uriVariables) {
-		UriTemplateHandler templateHandler = new DefaultUriTemplateHandler();
-		URI url = templateHandler.expand(urlTemplate, uriVariables);
-		return new DefaultClientRequestBuilder(method, url);
+	static HeadersBuilder<?> GET(URI url) {
+		return method(HttpMethod.GET, url);
 	}
 
 	/**
-	 * Create an HTTP GET builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP HEAD builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static HeadersBuilder<?> GET(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.GET, urlTemplate, uriVariables);
+	static HeadersBuilder<?> HEAD(URI url) {
+		return method(HttpMethod.HEAD, url);
 	}
 
 	/**
-	 * Create an HTTP HEAD builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP POST builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static HeadersBuilder<?> HEAD(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.HEAD, urlTemplate, uriVariables);
+	static BodyBuilder POST(URI url) {
+		return method(HttpMethod.POST, url);
 	}
 
 	/**
-	 * Create an HTTP POST builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP PUT builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static BodyBuilder POST(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.POST, urlTemplate, uriVariables);
+	static BodyBuilder PUT(URI url) {
+		return method(HttpMethod.PUT, url);
 	}
 
 	/**
-	 * Create an HTTP PUT builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP PATCH builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static BodyBuilder PUT(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.PUT, urlTemplate, uriVariables);
+	static BodyBuilder PATCH(URI url) {
+		return method(HttpMethod.PATCH, url);
 	}
 
 	/**
-	 * Create an HTTP PATCH builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Create an HTTP DELETE builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static BodyBuilder PATCH(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.PATCH, urlTemplate, uriVariables);
+	static HeadersBuilder<?> DELETE(URI url) {
+		return method(HttpMethod.DELETE, url);
 	}
 
 	/**
-	 * Create an HTTP DELETE builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
+	 * Creates an HTTP OPTIONS builder with the given url.
+	 * @param url the URL
 	 * @return the created builder
 	 */
-	static HeadersBuilder<?> DELETE(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.DELETE, urlTemplate, uriVariables);
-	}
-
-	/**
-	 * Creates an HTTP OPTIONS builder with the given url template.
-	 * @param urlTemplate the URL template
-	 * @param uriVariables optional variables to expand the template
-	 * @return the created builder
-	 */
-	static HeadersBuilder<?> OPTIONS(String urlTemplate, Object... uriVariables) {
-		return method(HttpMethod.OPTIONS, urlTemplate, uriVariables);
+	static HeadersBuilder<?> OPTIONS(URI url) {
+		return method(HttpMethod.OPTIONS, url);
 	}
 
 

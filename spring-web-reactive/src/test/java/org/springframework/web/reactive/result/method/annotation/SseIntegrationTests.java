@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,13 @@
 
 package org.springframework.web.reactive.result.method.annotation;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import org.junit.Before;
 import org.junit.Test;
-import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
-import static org.springframework.web.reactive.function.BodyExtractors.toFlux;
 import reactor.core.publisher.Flux;
-
 import reactor.test.StepVerifier;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -43,6 +40,12 @@ import org.springframework.web.reactive.config.EnableWebReactive;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
+import static org.springframework.web.reactive.function.BodyExtractors.toFlux;
 
 
 /**
@@ -62,6 +65,17 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		this.webClient = WebClient.create(new ReactorClientHttpConnector());
 	}
 
+	private URI uri(String path) {
+		try {
+			return new URI("http", null, "localhost", this.port, path, null, null);
+		}
+		catch (URISyntaxException e) {
+			fail(e.getMessage());
+			return null;
+		}
+	}
+
+
 
 	@Override
 	protected HttpHandler createHttpHandler() {
@@ -75,7 +89,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 	@Test
 	public void sseAsString() throws Exception {
 		ClientRequest<Void> request = ClientRequest
-						.GET("http://localhost:{port}/sse/string", this.port)
+						.GET(uri("/sse/string"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 
@@ -93,7 +107,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 	public void sseAsPerson() throws Exception {
 		ClientRequest<Void> request =
 				ClientRequest
-						.GET("http://localhost:{port}/sse/person", this.port)
+						.GET(uri("/sse/person"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 
@@ -112,7 +126,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 	public void sseAsEvent() throws Exception {
 		ClientRequest<Void> request =
 				ClientRequest
-						.GET("http://localhost:{port}/sse/event", this.port)
+						.GET(uri("/sse/event"))
 						.accept(TEXT_EVENT_STREAM)
 						.build();
 
@@ -144,7 +158,7 @@ public class SseIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 	public void sseAsEventWithoutAcceptHeader() throws Exception {
 		ClientRequest<Void> request =
 		ClientRequest
-				.GET("http://localhost:{port}/sse/event", this.port)
+				.GET(uri("/sse/event"))
 				.accept(TEXT_EVENT_STREAM)
 				.build();
 

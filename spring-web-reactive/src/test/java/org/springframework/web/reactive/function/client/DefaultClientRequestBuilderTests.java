@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,9 +51,11 @@ import static org.mockito.Mockito.when;
  */
 public class DefaultClientRequestBuilderTests {
 
+	private URI url = URI.create("http://example.com");
+
 	@Test
 	public void from() throws Exception {
-		ClientRequest<Void> other = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> other = ClientRequest.GET(this.url)
 				.header("foo", "bar")
 				.cookie("baz", "qux").build();
 		ClientRequest<Void> result = ClientRequest.from(other).build();
@@ -65,64 +67,56 @@ public class DefaultClientRequestBuilderTests {
 
 	@Test
 	public void method() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.method(HttpMethod.DELETE, url).build();
-		assertEquals(url, result.url());
+		ClientRequest<Void> result = ClientRequest.method(HttpMethod.DELETE, this.url).build();
+		assertEquals(this.url, result.url());
 		assertEquals(HttpMethod.DELETE, result.method());
 	}
 
 	@Test
 	public void GET() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.GET(url.toString()).build();
-		assertEquals(url, result.url());
+		ClientRequest<Void> result = ClientRequest.GET(this.url).build();
+		assertEquals(this.url, result.url());
 		assertEquals(HttpMethod.GET, result.method());
 	}
 
 	@Test
 	public void HEAD() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.HEAD(url.toString()).build();
-		assertEquals(url, result.url());
+		ClientRequest<Void> result = ClientRequest.HEAD(this.url).build();
+		assertEquals(this.url, result.url());
 		assertEquals(HttpMethod.HEAD, result.method());
 	}
 
 	@Test
 	public void POST() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.POST(url.toString()).build();
-		assertEquals(url, result.url());
+		ClientRequest<Void> result = ClientRequest.POST(this.url).build();
+		assertEquals(this.url, result.url());
 		assertEquals(HttpMethod.POST, result.method());
 	}
 
 	@Test
 	public void PUT() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.PUT(url.toString()).build();
+		ClientRequest<Void> result = ClientRequest.PUT(this.url).build();
 		assertEquals(url, result.url());
 		assertEquals(HttpMethod.PUT, result.method());
 	}
 
 	@Test
 	public void PATCH() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.PATCH(url.toString()).build();
+		ClientRequest<Void> result = ClientRequest.PATCH(url).build();
 		assertEquals(url, result.url());
 		assertEquals(HttpMethod.PATCH, result.method());
 	}
 
 	@Test
 	public void DELETE() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.DELETE(url.toString()).build();
+		ClientRequest<Void> result = ClientRequest.DELETE(url).build();
 		assertEquals(url, result.url());
 		assertEquals(HttpMethod.DELETE, result.method());
 	}
 
 	@Test
 	public void OPTIONS() throws Exception {
-		URI url = new URI("http://example.com");
-		ClientRequest<Void> result = ClientRequest.OPTIONS(url.toString()).build();
+		ClientRequest<Void> result = ClientRequest.OPTIONS(url).build();
 		assertEquals(url, result.url());
 		assertEquals(HttpMethod.OPTIONS, result.method());
 	}
@@ -130,14 +124,14 @@ public class DefaultClientRequestBuilderTests {
 	@Test
 	public void accept() throws Exception {
 		MediaType json = MediaType.APPLICATION_JSON;
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com").accept(json).build();
+		ClientRequest<Void> result = ClientRequest.GET(this.url).accept(json).build();
 		assertEquals(Collections.singletonList(json), result.headers().getAccept());
 	}
 
 	@Test
 	public void acceptCharset() throws Exception {
 		Charset charset = Charset.defaultCharset();
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> result = ClientRequest.GET(this.url)
 				.acceptCharset(charset).build();
 		assertEquals(Collections.singletonList(charset), result.headers().getAcceptCharset());
 	}
@@ -145,28 +139,28 @@ public class DefaultClientRequestBuilderTests {
 	@Test
 	public void ifModifiedSince() throws Exception {
 		ZonedDateTime now = ZonedDateTime.now();
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> result = ClientRequest.GET(this.url)
 				.ifModifiedSince(now).build();
 		assertEquals(now.toInstant().toEpochMilli()/1000, result.headers().getIfModifiedSince()/1000);
 	}
 
 	@Test
 	public void ifNoneMatch() throws Exception {
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> result = ClientRequest.GET(this.url)
 				.ifNoneMatch("\"v2.7\"", "\"v2.8\"").build();
 		assertEquals(Arrays.asList("\"v2.7\"", "\"v2.8\""), result.headers().getIfNoneMatch());
 	}
 
 	@Test
 	public void cookie() throws Exception {
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> result = ClientRequest.GET(this.url)
 				.cookie("foo", "bar").build();
 		assertEquals("bar", result.cookies().getFirst("foo"));
 	}
 
 	@Test
 	public void build() throws Exception {
-		ClientRequest<Void> result = ClientRequest.GET("http://example.com")
+		ClientRequest<Void> result = ClientRequest.GET(this.url)
 				.header("MyKey", "MyValue")
 				.cookie("foo", "bar")
 				.build();
@@ -193,7 +187,7 @@ public class DefaultClientRequestBuilderTests {
 					return response.writeWith(Mono.just(buffer));
 				};
 
-		ClientRequest<String> result = ClientRequest.POST("http://example.com")
+		ClientRequest<String> result = ClientRequest.POST(this.url)
 				.body(inserter);
 
 		List<HttpMessageWriter<?>> messageWriters = new ArrayList<>();
