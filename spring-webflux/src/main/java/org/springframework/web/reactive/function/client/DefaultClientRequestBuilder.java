@@ -43,7 +43,7 @@ import org.springframework.web.reactive.function.BodyInserters;
  * @author Arjen Poutsma
  * @since 5.0
  */
-class DefaultClientRequestBuilder implements ClientRequest.Builder {
+class DefaultClientRequestBuilder<T> implements ClientRequest.Builder<T> {
 
 	private final HttpMethod method;
 
@@ -53,6 +53,8 @@ class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
 	private final MultiValueMap<String, String> cookies = new LinkedMultiValueMap<>();
 
+	private BodyInserter<T, ? super ClientHttpRequest> inserter = BodyInserters.empty();
+
 
 	public DefaultClientRequestBuilder(HttpMethod method, URI url) {
 		this.method = method;
@@ -60,7 +62,7 @@ class DefaultClientRequestBuilder implements ClientRequest.Builder {
 	}
 
 	@Override
-	public ClientRequest.Builder header(String headerName, String... headerValues) {
+	public ClientRequest.Builder<T> header(String headerName, String... headerValues) {
 		for (String headerValue : headerValues) {
 			this.headers.add(headerName, headerValue);
 		}
@@ -68,7 +70,7 @@ class DefaultClientRequestBuilder implements ClientRequest.Builder {
 	}
 
 	@Override
-	public ClientRequest.Builder headers(HttpHeaders headers) {
+	public ClientRequest.Builder<T> headers(HttpHeaders headers) {
 		if (headers != null) {
 			this.headers.putAll(headers);
 		}
@@ -76,13 +78,13 @@ class DefaultClientRequestBuilder implements ClientRequest.Builder {
 	}
 
 	@Override
-	public ClientRequest.Builder cookie(String name, String value) {
+	public ClientRequest.Builder<T> cookie(String name, String value) {
 		this.cookies.add(name, value);
 		return this;
 	}
 
 	@Override
-	public ClientRequest.Builder cookies(MultiValueMap<String, String> cookies) {
+	public ClientRequest.Builder<T> cookies(MultiValueMap<String, String> cookies) {
 		if (cookies != null) {
 			this.cookies.putAll(cookies);
 		}
@@ -90,20 +92,24 @@ class DefaultClientRequestBuilder implements ClientRequest.Builder {
 	}
 
 	@Override
-	public ClientRequest<Void> build() {
-		return body(BodyInserters.empty());
+	public <S, P extends Publisher<S>> ClientRequest.Builder<P> body(P publisher,
+			Class<S> elementClass) {
+		Assert.notNull(publisher, "'publisher' must not be null");
+		Assert.notNull(elementClass, "'elementClass' must not be null");
+
+		this.inserter = BodyInserters.fromPublisher(publisher, elementClass);
 	}
 
 	@Override
-	public <T> ClientRequest<T> body(BodyInserter<T, ? super ClientHttpRequest> inserter) {
-		Assert.notNull(inserter, "'inserter' must not be null");
+	public ClientRequest.Builder<T> body(BodyInserter<T, ? super ClientHttpRequest> inserter) {
+		this.inserter = inserter != null ? inserter : BodyInserters.empty();
+		return this;
+	}
+
+	@Override
+	public ClientRequest<T> build() {
 		return new BodyInserterRequest<T>(this.method, this.url, this.headers, this.cookies,
-				inserter);
-	}
-
-	@Override
-	public <T, S extends Publisher<T>> ClientRequest<S> body(S publisher, Class<T> elementClass) {
-		return body(BodyInserters.fromPublisher(publisher, elementClass));
+				this.inserter);
 	}
 
 	private static class BodyInserterRequest<T> implements ClientRequest<T> {

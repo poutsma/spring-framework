@@ -262,24 +262,24 @@ class DefaultWebClient implements WebClient {
 
 		@Override
 		public Mono<ClientResponse> exchange() {
-			ClientRequest<Void> request = initRequestBuilder().build();
+			ClientRequest<Void> request = this.<Void>initRequestBuilder().build();
 			return getExchangeFunction().exchange(request);
 		}
 
 		@Override
 		public <T> Mono<ClientResponse> exchange(BodyInserter<T, ? super ClientHttpRequest> inserter) {
-			ClientRequest<T> request = initRequestBuilder().body(inserter);
+			ClientRequest<T> request = this.<T>initRequestBuilder().body(inserter).build();
 			return getExchangeFunction().exchange(request);
 		}
 
 		@Override
 		public <T, S extends Publisher<T>> Mono<ClientResponse> exchange(S publisher, Class<T> elementClass) {
-			ClientRequest<S> request = initRequestBuilder().headers(this.headers).body(publisher, elementClass);
+			ClientRequest<S> request = initRequestBuilder().headers(this.headers).body(publisher, elementClass).build();
 			return getExchangeFunction().exchange(request);
 		}
 
-		private ClientRequest.Builder initRequestBuilder() {
-			return ClientRequest.method(this.httpMethod, this.uri).headers(initHeaders()).cookies(initCookies());
+		private <T> ClientRequest.Builder<T> initRequestBuilder() {
+			return ClientRequest.<T>method(this.httpMethod, this.uri).headers(initHeaders()).cookies(initCookies());
 		}
 
 		private HttpHeaders initHeaders() {
