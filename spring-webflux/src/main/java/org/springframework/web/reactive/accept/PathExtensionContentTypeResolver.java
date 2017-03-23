@@ -42,6 +42,8 @@ import org.springframework.web.util.UriUtils;
  */
 public class PathExtensionContentTypeResolver extends AbstractMappingContentTypeResolver {
 
+	private boolean useDefaults = true;
+
 	private boolean ignoreUnknownExtensions = true;
 
 
@@ -62,6 +64,14 @@ public class PathExtensionContentTypeResolver extends AbstractMappingContentType
 
 
 	/**
+	 * Whether to use the default mappings to look up file extensions.
+	 * <p>By default this is set to {@code true}.
+	 */
+	public void setUseDefaults(boolean useDefaults) {
+		this.useDefaults = useDefaults;
+	}
+
+	/**
 	 * Whether to ignore requests with unknown file extension. Setting this to
 	 * {@code false} results in {@code HttpMediaTypeNotAcceptableException}.
 	 * <p>By default this is set to {@code true}.
@@ -80,14 +90,16 @@ public class PathExtensionContentTypeResolver extends AbstractMappingContentType
 
 	@Override
 	protected MediaType handleNoMatch(String key) throws NotAcceptableStatusException {
-		Optional<MediaType> mediaType = MediaTypeFactory.getMediaType("file." + key);
-		if (mediaType.isPresent()) {
-			return mediaType.get();
+		if (this.useDefaults) {
+			Optional<MediaType> mediaType = MediaTypeFactory.getMediaType("file." + key);
+			if (mediaType.isPresent()) {
+				return mediaType.get();
+			}
 		}
-		if (!this.ignoreUnknownExtensions) {
-			throw new NotAcceptableStatusException(getAllMediaTypes());
+		if (this.ignoreUnknownExtensions) {
+			return null;
 		}
-		return null;
+		throw new NotAcceptableStatusException(getAllMediaTypes());
 	}
 
 	/**

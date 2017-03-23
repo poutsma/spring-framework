@@ -100,6 +100,8 @@ public class ContentNegotiationManagerFactoryBean
 
 	private boolean ignoreUnknownPathExtensions = true;
 
+	private Boolean useDefaults;
+
 	private String parameterName = "format";
 
 	private ContentNegotiationStrategy defaultNegotiationStrategy;
@@ -175,10 +177,26 @@ public class ContentNegotiationManagerFactoryBean
 	}
 
 	/**
-	 * @deprecated as 5.0, in favor of {@link MediaTypeFactory}, which has no JAF dependency.
+	 * @deprecated as of 5.0, in favor of {@link #setUseDefaults(boolean)}.
 	 */
 	@Deprecated
 	public void setUseJaf(boolean useJaf) {
+		setUseDefaults(useJaf);
+	}
+
+	/**
+	 * When {@link #setFavorPathExtension favorPathExtension} is set, this
+	 * property determines whether to allow use of default {@code MediaType} mappings
+	 * to resolve a path extension to a specific MediaType.
+	 * <p>By default this is not set in which case
+	 * {@code PathExtensionContentNegotiationStrategy} will use defaults if available.
+	 */
+	public void setUseDefaults(boolean useDefaults) {
+		this.useDefaults = useDefaults;
+	}
+
+	private boolean isUseDefaultsTurnedOff() {
+		return (this.useDefaults != null && !this.useDefaults);
 	}
 
 	/**
@@ -244,7 +262,7 @@ public class ContentNegotiationManagerFactoryBean
 
 		if (this.favorPathExtension) {
 			PathExtensionContentNegotiationStrategy strategy;
-			if (this.servletContext != null) {
+			if (this.servletContext != null && !isUseDefaultsTurnedOff()) {
 				strategy = new ServletPathExtensionContentNegotiationStrategy(
 						this.servletContext, this.mediaTypes);
 			}
@@ -252,6 +270,9 @@ public class ContentNegotiationManagerFactoryBean
 				strategy = new PathExtensionContentNegotiationStrategy(this.mediaTypes);
 			}
 			strategy.setIgnoreUnknownExtensions(this.ignoreUnknownPathExtensions);
+			if (this.useDefaults != null) {
+				strategy.setUseDefaults(this.useDefaults);
+			}
 			strategies.add(strategy);
 		}
 

@@ -120,7 +120,7 @@ public class ContentNegotiationConfigurer {
 	 * attack protection).
 	 * <p>The path extension strategy will also try to use
 	 * {@link ServletContext#getMimeType} and {@link MediaTypeFactory} to resolve path
-	 * extensions.
+	 * extensions. To change this behavior see the {@link #useDefaults} property.
 	 * @param extension the key to look up
 	 * @param mediaType the media type
 	 * @see #mediaTypes(Map)
@@ -166,10 +166,22 @@ public class ContentNegotiationConfigurer {
 	}
 
 	/**
-	 * @deprecated as 5.0, in favor of {@link MediaTypeFactory}, which has no JAF dependency.
+	 * @deprecated as of 5.0, in favor of {@link #useDefaults(boolean)}.
 	 */
 	@Deprecated
 	public ContentNegotiationConfigurer useJaf(boolean useJaf) {
+		return this.useDefaults(useJaf);
+	}
+
+	/**
+	 * When {@link #favorPathExtension} is set, this property determines whether
+	 * to allow use of default mappings to resolve a path
+	 * extension to a specific MediaType.
+	 * <p>By default this is not set in which case
+	 * {@code PathExtensionContentNegotiationStrategy} will use default mappings.
+	 */
+	public ContentNegotiationConfigurer useDefaults(boolean useDefaults) {
+		this.factory.setUseDefaults(useDefaults);
 		return this;
 	}
 
