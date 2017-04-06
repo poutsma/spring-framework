@@ -39,6 +39,46 @@ import static org.junit.Assert.*;
 public class PathPatternMatcherTests {
 
 	@Test
+	public void pathRemainderBasicCases() {
+		// getPathRemaining: Given some pattern and some path, return the bit of the path
+		// that was left over after the pattern part was matched.
+		
+		// Cover all PathElement kinds:
+		assertEquals("/bar", parse("/foo").getPathRemaining("/foo/bar"));
+		assertEquals("/", parse("/foo").getPathRemaining("/foo/"));
+		assertEquals("/bar",parse("/foo*").getPathRemaining("/foo/bar"));
+		assertEquals("/bar", parse("/*").getPathRemaining("/foo/bar"));
+		assertEquals("/bar", parse("/{foo}").getPathRemaining("/foo/bar"));
+		assertNull(parse("/foo").getPathRemaining("/bar/baz"));
+		assertEquals("",parse("/**").getPathRemaining("/foo/bar"));
+		assertEquals("",parse("/{*bar}").getPathRemaining("/foo/bar"));
+		assertEquals("/bar",parse("/a?b/d?e").getPathRemaining("/aab/dde/bar"));
+		assertEquals("/bar",parse("/{abc}abc").getPathRemaining("/xyzabc/bar"));
+		assertEquals("/bar",parse("/*y*").getPathRemaining("/xyzxyz/bar"));
+		assertEquals("",parse("/").getPathRemaining("/"));
+		assertEquals("a",parse("/").getPathRemaining("/a"));
+		assertEquals("a/",parse("/").getPathRemaining("/a/"));
+		assertEquals("/bar",parse("/a{abc}").getPathRemaining("/a/bar"));
+	}
+		
+	@Test
+	public void pathRemainingCornerCases() {
+		// No match when the literal path element is a longer form of the segment in the pattern
+		assertNull(parse("/foo").getPathRemaining("/footastic/bar"));
+		assertNull(parse("/f?o").getPathRemaining("/footastic/bar"));
+		assertNull(parse("/f*o*p").getPathRemaining("/flooptastic/bar"));
+		assertNull(parse("/{abc}abc").getPathRemaining("/xyzabcbar/bar"));
+
+		assertNull(parse("/resource/**").getPathRemaining("/resourceX"));
+		assertEquals("",parse("/resource/**").getPathRemaining("/resource"));
+
+		assertNull(parse("/resource/{*foo}").getPathRemaining("/resourceX"));
+		assertEquals("",parse("/resource/{*foo}").getPathRemaining("/resource"));
+
+		assertEquals("/i",parse("/aaa/{bbb}/c?d/e*f/*/g").getPathRemaining("/aaa/b/ccd/ef/x/g/i"));
+	}
+
+	@Test
 	public void basicMatching() {
 		checkMatches(null, null);
 		checkMatches("", "");
