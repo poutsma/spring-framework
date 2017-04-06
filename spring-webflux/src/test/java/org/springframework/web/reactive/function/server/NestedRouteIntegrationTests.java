@@ -16,7 +16,6 @@
 
 package org.springframework.web.reactive.function.server;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import reactor.core.publisher.Mono;
 
@@ -25,9 +24,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.Assert.*;
-import static org.springframework.web.reactive.function.BodyInserters.*;
-import static org.springframework.web.reactive.function.server.RequestPredicates.*;
-import static org.springframework.web.reactive.function.server.RouterFunctions.*;
+import static org.springframework.web.reactive.function.BodyInserters.fromObject;
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
+import static org.springframework.web.reactive.function.server.RequestPredicates.path;
+import static org.springframework.web.reactive.function.server.RouterFunctions.nest;
+import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
 /**
  * @author Arjen Poutsma
@@ -40,7 +41,7 @@ public class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrati
 	@Override
 	protected RouterFunction<?> routerFunction() {
 		NestedHandler nestedHandler = new NestedHandler();
-		return nest(pathPrefix("/foo"),
+		return nest(path("/foo/"),
 				route(GET("/bar"), nestedHandler::bar)
 				.andRoute(GET("/baz"), nestedHandler::baz));
 	}
@@ -56,7 +57,6 @@ public class NestedRouteIntegrationTests extends AbstractRouterFunctionIntegrati
 	}
 
 	@Test
-	@Ignore
 	public void baz() throws Exception {
 		ResponseEntity<String> result =
 				restTemplate.getForEntity("http://localhost:" + port + "/foo/baz", String.class);
