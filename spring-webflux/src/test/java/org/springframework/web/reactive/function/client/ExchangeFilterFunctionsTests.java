@@ -20,12 +20,15 @@ import java.net.URI;
 
 import org.junit.Test;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.http.client.reactive.test.MockClientHttpResponse;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
-import static org.springframework.http.HttpMethod.*;
+import static org.springframework.http.HttpMethod.GET;
 
 /**
  * @author Arjen Poutsma
@@ -96,6 +99,38 @@ public class ExchangeFilterFunctionsTests {
 		assertFalse(request.headers().containsKey(HttpHeaders.AUTHORIZATION));
 		ClientResponse result = auth.filter(request, exchange).block();
 		assertEquals(response, result);
+	}
+
+	@Test
+	public void errorHandler() throws Exception {
+		ClientRequest request = ClientRequest.method(GET, URI.create("http://example.com")).build();
+		MockClientHttpResponse mockClientHttpResponse = new MockClientHttpResponse(HttpStatus.OK);
+		DefaultClientResponse response = new DefaultClientResponse(mockClientHttpResponse,
+				ExchangeStrategies.withDefaults());
+		ExchangeFunction exchange = r -> Mono.just(response);
+
+		ExchangeFilterFunction filterFunction = ExchangeFilterFunction.ofResponseErrorHandler(
+				clientResponse -> {
+					if (!clientResponse.headers().asHttpHeaders().containsKey("Foo")) {
+						return Mono.just(new WebClientException("Response does not contain Foo header"));
+					}
+					else {
+						return Mono.empty();
+					}
+				}
+		);
+
+		StepVerifier.create(filterFunction.filter(request, exchange))
+				.expectError(WebClientException.class)
+				.verify();
+
+		mockClientHttpResponse.getHeaders().add("Foo", "Bar");
+
+		StepVerifier.create(filterFunction.filter(request, exchange))
+				.expectNext(response)
+				.expectComplete()
+				.verify();
+
 	}
 
 }

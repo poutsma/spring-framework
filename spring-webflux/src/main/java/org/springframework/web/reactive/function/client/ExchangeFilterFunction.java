@@ -93,4 +93,22 @@ public interface ExchangeFilterFunction {
 		return (request, next) -> next.exchange(request).flatMap(responseProcessor);
 	}
 
+	/**
+	 * Adapt the given error handling function, mapping from {@link ClientResponse} to an optional
+	 * {@link Throwable}, to a filter function.
+	 * @param responseErrorHandler the response error handler
+	 * @return the filter adaptation of the response error handler
+	 */
+	static ExchangeFilterFunction ofResponseErrorHandler(Function<ClientResponse,
+			Mono<? extends Throwable>> responseErrorHandler) {
+
+		Assert.notNull(responseErrorHandler, "'responseErrorHandler' must not be null");
+		return (request, next) -> next.exchange(request)
+				.flatMap(clientResponse -> {
+					return responseErrorHandler.apply(clientResponse)
+					.<ClientResponse>flatMap(Mono::error)
+					.defaultIfEmpty(clientResponse);
+		});
+	}
+
 }
