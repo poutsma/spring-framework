@@ -47,6 +47,9 @@ import org.springframework.web.reactive.DispatcherHandler;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.accept.CompositeContentTypeResolver;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolverBuilder;
+import org.springframework.web.reactive.function.server.support.HandlerFunctionAdapter;
+import org.springframework.web.reactive.function.server.support.RouterFunctionMapping;
+import org.springframework.web.reactive.function.server.support.ServerResponseResultHandler;
 import org.springframework.web.reactive.handler.AbstractHandlerMapping;
 import org.springframework.web.reactive.result.SimpleHandlerAdapter;
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer;
@@ -201,6 +204,23 @@ public class WebFluxConfigurationSupport implements ApplicationContextAware {
 	 * Override to configure path matching options.
 	 */
 	public void configurePathMatching(PathMatchConfigurer configurer) {
+	}
+
+	@Bean
+	public RouterFunctionMapping routerFunctionMapping() {
+		RouterFunctionMapping mapping = createRouterFunctionMapping();
+		mapping.setOrder(1); // go before RequestMappingHandlerMapping
+		mapping.setMessageCodecConfigurer(serverCodecConfigurer());
+		mapping.setCorsConfigurations(getCorsConfigurations());
+
+		return mapping;
+	}
+
+	/**
+	 * Override to plug a sub-class of {@link RouterFunctionMapping}.
+	 */
+	protected RouterFunctionMapping createRouterFunctionMapping() {
+		return new RouterFunctionMapping();
 	}
 
 	/**
@@ -363,6 +383,11 @@ public class WebFluxConfigurationSupport implements ApplicationContextAware {
 	}
 
 	@Bean
+	public HandlerFunctionAdapter handlerFunctionAdapter() {
+		return new HandlerFunctionAdapter();
+	}
+
+	@Bean
 	public SimpleHandlerAdapter simpleHandlerAdapter() {
 		return new SimpleHandlerAdapter();
 	}
@@ -381,15 +406,34 @@ public class WebFluxConfigurationSupport implements ApplicationContextAware {
 
 	@Bean
 	public ViewResolutionResultHandler viewResolutionResultHandler() {
-		ViewResolverRegistry registry = new ViewResolverRegistry(getApplicationContext());
-		configureViewResolvers(registry);
+		ViewResolverRegistry registry = viewResolverRegistry();
 		List<ViewResolver> resolvers = registry.getViewResolvers();
 		ViewResolutionResultHandler handler = new ViewResolutionResultHandler(
 				resolvers, webFluxContentTypeResolver(), webFluxAdapterRegistry());
 		handler.setDefaultViews(registry.getDefaultViews());
 		handler.setOrder(registry.getOrder());
 		return handler;
+	}
 
+	@Bean
+	public ServerResponseResultHandler serverResponseResultHandler() {
+		ViewResolverRegistry registry = viewResolverRegistry();
+		List<ViewResolver> resolvers = registry.getViewResolvers();
+
+		ServerResponseResultHandler handler = new ServerResponseResultHandler();
+		handler.setMessageCodecConfigurer(serverCodecConfigurer());
+		handler.setViewResolvers(resolvers);
+		handler.setOrder(registry.getOrder() + 1);
+
+		return handler;
+	}
+
+	@Bean
+	public ViewResolverRegistry viewResolverRegistry() {
+		ViewResolverRegistry registry = new ViewResolverRegistry(getApplicationContext());
+		configureViewResolvers(registry);
+
+		return registry;
 	}
 
 	/**
