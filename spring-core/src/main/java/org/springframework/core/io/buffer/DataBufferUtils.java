@@ -550,6 +550,10 @@ public abstract class DataBufferUtils {
 		@Override
 		protected void hookOnComplete() {
 			this.completed.set(true);
+
+			if (this.dataBuffer == null) {
+				this.sink.complete();
+			}
 		}
 
 		@Override
@@ -562,11 +566,8 @@ public abstract class DataBufferUtils {
 
 			if (this.dataBuffer != null) {
 				this.sink.next(this.dataBuffer);
+				this.dataBuffer = null;
 			}
-			else {
-				System.out.println("OOPS");
-			}
-
 			if (this.completed.get()) {
 				this.sink.complete();
 			}
