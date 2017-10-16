@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,20 @@ public interface DataBuffer {
 	 * @return the readable byte count
 	 */
 	int readableByteCount();
+
+	/**
+	 * Return the number of bytes that can be written to this data buffer.
+	 * @return the writable byte count
+	 * @since 5.0.1
+	 */
+	int writableByteCount();
+
+	/**
+	 * Return the number of bytes that this buffer can contain.
+	 * @return the capacity
+	 * @since 5.0.1
+	 */
+	int capacity();
 
 	/**
 	 * Read a single byte from the current reading position of this data buffer.
@@ -145,6 +159,18 @@ public interface DataBuffer {
 	 * @return this data buffer as a byte buffer
 	 */
 	ByteBuffer asByteBuffer();
+
+	/**
+	 * Expose a subsequence of this buffer's bytes as a {@link ByteBuffer}. Data between this
+	 * {@code DataBuffer} and the returned {@code ByteBuffer} is shared; though
+	 * changes in the returned buffer's {@linkplain ByteBuffer#position() position}
+	 * will not be reflected in the reading nor writing position of this data buffer.
+	 * @param index the index at which to start the byte buffer
+	 * @param length the length of the returned byte buffer
+	 * @return this data buffer as a byte buffer
+	 * @since 5.0.1
+	 */
+	ByteBuffer asByteBuffer(int index, int length);
 
 	/**
 	 * Expose this buffer's data as an {@link InputStream}. Both data and position are

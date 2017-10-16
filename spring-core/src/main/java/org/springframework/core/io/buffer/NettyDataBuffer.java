@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,6 +100,16 @@ public class NettyDataBuffer implements PooledDataBuffer {
 	}
 
 	@Override
+	public int writableByteCount() {
+		return this.byteBuf.writableBytes();
+	}
+
+	@Override
+	public int capacity() {
+		return this.byteBuf.capacity();
+	}
+
+	@Override
 	public byte read() {
 		return this.byteBuf.readByte();
 	}
@@ -192,6 +202,11 @@ public class NettyDataBuffer implements PooledDataBuffer {
 	@Override
 	public ByteBuffer asByteBuffer() {
 		return this.byteBuf.nioBuffer();
+	}
+
+	@Override
+	public ByteBuffer asByteBuffer(int index, int length) {
+		return this.byteBuf.nioBuffer(index, length);
 	}
 
 	@Override
