@@ -133,6 +133,16 @@ public class DefaultDataBuffer implements DataBuffer {
 	}
 
 	@Override
+	public int writableByteCount() {
+		return this.byteBuffer.capacity() - this.writePosition;
+	}
+
+	@Override
+	public int capacity() {
+		return this.byteBuffer.capacity();
+	}
+
+	@Override
 	public byte read() {
 		return readInternal(ByteBuffer::get);
 	}
@@ -227,6 +237,7 @@ public class DefaultDataBuffer implements DataBuffer {
 
 	@Override
 	public DataBuffer slice(int index, int length) {
+		checkIndex(index, length);
 		int oldPosition = this.byteBuffer.position();
 		// Explicit access via Buffer base type for compatibility
 		// with covariant return type on JDK 9's ByteBuffer...
@@ -245,13 +256,20 @@ public class DefaultDataBuffer implements DataBuffer {
 
 	@Override
 	public ByteBuffer asByteBuffer() {
+		return asByteBuffer(this.readPosition, readableByteCount());
+	}
+
+	@Override
+	public ByteBuffer asByteBuffer(int index, int length) {
+		checkIndex(index, length);
+
 		ByteBuffer duplicate = this.byteBuffer.duplicate();
 		// Explicit access via Buffer base type for compatibility
 		// with covariant return type on JDK 9's ByteBuffer...
 		Buffer buffer = duplicate;
-		buffer.position(this.readPosition);
-		buffer.limit(this.writePosition);
-		return duplicate;
+		buffer.position(index);
+		buffer.limit(index + length);
+		return duplicate.slice();
 	}
 
 	@Override
@@ -265,6 +283,9 @@ public class DefaultDataBuffer implements DataBuffer {
 	}
 
 	private void ensureExtraCapacity(int extraCapacity) {
+		if (extraCapacity <= writableByteCount()) {
+			return;
+		}
 		int neededCapacity = calculateCapacity(this.writePosition + extraCapacity);
 		if (neededCapacity > this.byteBuffer.capacity()) {
 			grow(neededCapacity);
@@ -307,7 +328,7 @@ public class DefaultDataBuffer implements DataBuffer {
 
 		final int remaining = readableByteCount();
 		// Explicit cast for compatibility with covariant return type on JDK 9's ByteBuffer
-		((Buffer) oldBuffer).position(this.readPosition).limit(this.writePosition);
+		oldBuffer.position(this.readPosition).limit(this.writePosition);
 		newBuffer.put(oldBuffer);
 
 		this.byteBuffer = newBuffer;
@@ -340,6 +361,14 @@ public class DefaultDataBuffer implements DataBuffer {
 	@Override
 	public String toString() {
 		return this.byteBuffer.toString();
+	}
+
+	private void checkIndex(int index, int length) {
+		int capacity = this.byteBuffer.capacity();
+		if ((index | length | (index + length) | (capacity - (index + length))) < 0) {
+			throw new IndexOutOfBoundsException(String.format(
+           "Index: %d or length: %d out of range (expected: range(0, %d))", index, length, capacity));
+		}
 	}
 
 

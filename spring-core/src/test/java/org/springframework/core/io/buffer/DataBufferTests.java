@@ -33,8 +33,27 @@ import static org.junit.Assert.*;
 public class DataBufferTests extends AbstractDataBufferAllocatingTestCase {
 
 	@Test
-	public void writeAndRead() {
+	public void byteCounts() {
+		DataBuffer buffer = createDataBuffer(2);
+		assertEquals(0, buffer.readableByteCount());
+		assertEquals(2, buffer.writableByteCount());
+		assertEquals(2, buffer.capacity());
 
+		buffer.write((byte) 'a');
+		assertEquals(1, buffer.readableByteCount());
+		assertEquals(1, buffer.writableByteCount());
+		assertEquals(2, buffer.capacity());
+
+		buffer.write((byte) 'b');
+		assertEquals(2, buffer.readableByteCount());
+		assertEquals(0, buffer.writableByteCount());
+		assertEquals(2, buffer.capacity());
+
+		release(buffer);
+	}
+
+	@Test
+	public void writeAndRead() {
 		DataBuffer buffer = createDataBuffer(5);
 		buffer.write(new byte[]{'a', 'b', 'c'});
 
@@ -176,12 +195,56 @@ public class DataBufferTests extends AbstractDataBufferAllocatingTestCase {
 		buffer.read(); // skip a
 
 		ByteBuffer result = buffer.asByteBuffer();
+		assertEquals(2, result.capacity());
 
 		buffer.write((byte) 'd');
 		assertEquals(2, result.remaining());
+
 		byte[] resultBytes = new byte[2];
-		buffer.read(resultBytes);
+		result.get(resultBytes);
 		assertArrayEquals(new byte[]{'b', 'c'}, resultBytes);
+
+		release(buffer);
+	}
+
+	@Test
+	public void asByteBufferIndexLength() {
+		DataBuffer buffer = createDataBuffer(3);
+		buffer.write(new byte[]{'a', 'b'});
+
+		ByteBuffer result = buffer.asByteBuffer(1, 2);
+		assertEquals(2, result.capacity());
+
+		buffer.write((byte) 'c');
+		assertEquals(2, result.remaining());
+
+		byte[] resultBytes = new byte[2];
+		result.get(resultBytes);
+		assertArrayEquals(new byte[]{'b', 'c'}, resultBytes);
+
+		release(buffer);
+	}
+
+	@Test
+	public void byteBufferContainsDataBufferChanges() {
+		DataBuffer dataBuffer = createDataBuffer(1);
+		ByteBuffer byteBuffer = dataBuffer.asByteBuffer(0, 1);
+
+		dataBuffer.write((byte) 'a');
+
+		assertEquals(1, byteBuffer.limit());
+		byte b = byteBuffer.get();
+		assertEquals('a', b);
+
+		release(dataBuffer);
+	}
+
+	@Test
+	public void emptyAsByteBuffer() {
+		DataBuffer buffer = createDataBuffer(1);
+
+		ByteBuffer result = buffer.asByteBuffer();
+		assertEquals(0, result.capacity());
 
 		release(buffer);
 	}
