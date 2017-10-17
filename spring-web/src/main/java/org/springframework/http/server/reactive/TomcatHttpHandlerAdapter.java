@@ -68,30 +68,32 @@ public class TomcatHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 
 		@Override
 		protected DataBuffer readFromInputStream() throws IOException {
-			ByteBuffer byteBuffer = ByteBuffer.allocate(getBufferSize());
+			boolean release = true;
+			int capacity = getBufferSize();
+			DataBuffer dataBuffer = getDataBufferFactory().allocateBuffer(capacity);
+			try {
+				ByteBuffer byteBuffer = dataBuffer.asByteBuffer(0, capacity);
 
-			ServletRequest request = getNativeRequest();
-			int read = ((CoyoteInputStream) request.getInputStream()).read(byteBuffer);
-			if (logger.isTraceEnabled()) {
-				logger.trace("read:" + read);
-			}
+				ServletRequest request = getNativeRequest();
+				int read = ((CoyoteInputStream) request.getInputStream()).read(byteBuffer);
+				if (logger.isTraceEnabled()) {
+					logger.trace("read:" + read);
+				}
 
-			if (read > 0) {
-				boolean release = true;
-				DataBuffer dataBuffer = getDataBufferFactory().allocateBuffer(read);
-				try {
-					dataBuffer.write(byteBuffer);
+				if (read > 0) {
+					dataBuffer.writePosition(read);
 					release = false;
 					return dataBuffer;
 				}
-				finally {
-					if (release) {
-						DataBufferUtils.release(dataBuffer);
-					}
+				else {
+					return null;
 				}
 			}
-
-			return null;
+			finally {
+				if (release) {
+					DataBufferUtils.release(dataBuffer);
+				}
+			}
 		}
 	}
 
