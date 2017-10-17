@@ -414,32 +414,25 @@ public abstract class DataBufferUtils {
 
 		private final DataBufferFactory dataBufferFactory;
 
-		private final ByteBuffer byteBuffer;
+		private final int chunkSize;
 
 		public ReadableByteChannelGenerator(DataBufferFactory dataBufferFactory, int chunkSize) {
 			this.dataBufferFactory = dataBufferFactory;
-			this.byteBuffer = ByteBuffer.allocate(chunkSize);
+			this.chunkSize = chunkSize;
 		}
 
 		@Override
-		public ReadableByteChannel apply(ReadableByteChannel channel, SynchronousSink<DataBuffer> sub) {
+		public ReadableByteChannel apply(ReadableByteChannel channel,
+				SynchronousSink<DataBuffer> sub) {
+			boolean release = true;
+			DataBuffer dataBuffer = this.dataBufferFactory.allocateBuffer(this.chunkSize);
 			try {
 				int read;
-				if ((read = channel.read(this.byteBuffer)) >= 0) {
-					this.byteBuffer.flip();
-					boolean release = true;
-					DataBuffer dataBuffer = this.dataBufferFactory.allocateBuffer(read);
-					try {
-						dataBuffer.write(this.byteBuffer);
-						release = false;
-						sub.next(dataBuffer);
-					}
-					finally {
-						if (release) {
-							release(dataBuffer);
-						}
-					}
-					this.byteBuffer.clear();
+				ByteBuffer byteBuffer = dataBuffer.asByteBuffer(0, dataBuffer.capacity());
+				if ((read = channel.read(byteBuffer)) >= 0) {
+					dataBuffer.writePosition(read);
+					release = false;
+					sub.next(dataBuffer);
 				}
 				else {
 					sub.complete();
@@ -447,6 +440,11 @@ public abstract class DataBufferUtils {
 			}
 			catch (IOException ex) {
 				sub.error(ex);
+			}
+			finally {
+				if (release) {
+					release(dataBuffer);
+				}
 			}
 			return channel;
 		}

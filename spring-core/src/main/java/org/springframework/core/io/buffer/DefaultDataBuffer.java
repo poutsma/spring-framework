@@ -138,6 +138,39 @@ public class DefaultDataBuffer implements DataBuffer {
 	}
 
 	@Override
+	public int readPosition() {
+		return this.readPosition;
+	}
+
+	@Override
+	public DataBuffer readPosition(int readPosition) {
+		if (readPosition < 0 || readPosition > this.writePosition) {
+			throw new IndexOutOfBoundsException(String.format(
+					"readPosition: %d out of range (expected: range(0, %d))", readPosition,
+					this.writePosition));
+		}
+		this.readPosition = readPosition;
+		return this;
+	}
+
+	@Override
+	public int writePosition() {
+		return this.writePosition;
+	}
+
+	@Override
+	public DataBuffer writePosition(int writePosition) {
+		int capacity = capacity();
+		if (writePosition < this.readPosition || writePosition > capacity) {
+			throw new IndexOutOfBoundsException(String.format(
+					"writePosition: %d out of range (expected: range(%d, %d))", writePosition,
+					this.readPosition, this.capacity()));
+		}
+		this.writePosition = writePosition;
+		return this;
+	}
+
+	@Override
 	public int capacity() {
 		return this.byteBuffer.capacity();
 	}

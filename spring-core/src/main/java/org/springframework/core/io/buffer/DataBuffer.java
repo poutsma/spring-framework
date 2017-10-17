@@ -68,6 +68,14 @@ public interface DataBuffer {
 	 */
 	int writableByteCount();
 
+	int readPosition();
+
+	DataBuffer readPosition(int readPosition);
+
+	int writePosition();
+
+	DataBuffer writePosition(int writePosition);
+
 	/**
 	 * Return the number of bytes that this buffer can contain.
 	 * @return the capacity

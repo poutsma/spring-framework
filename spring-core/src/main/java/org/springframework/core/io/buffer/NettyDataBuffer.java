@@ -105,6 +105,28 @@ public class NettyDataBuffer implements PooledDataBuffer {
 	}
 
 	@Override
+	public int readPosition() {
+		return this.byteBuf.readerIndex();
+	}
+
+	@Override
+	public DataBuffer readPosition(int readPosition) {
+		this.byteBuf.readerIndex(readPosition);
+		return this;
+	}
+
+	@Override
+	public int writePosition() {
+		return this.byteBuf.writerIndex();
+	}
+
+	@Override
+	public DataBuffer writePosition(int writePosition) {
+		this.byteBuf.writerIndex(writePosition);
+		return this;
+	}
+
+	@Override
 	public int capacity() {
 		return this.byteBuf.capacity();
 	}
