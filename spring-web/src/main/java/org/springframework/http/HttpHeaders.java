@@ -413,6 +413,10 @@ public class HttpHeaders implements MultiValueMap<String, String>, Serializable 
 		this(new LinkedCaseInsensitiveMap<>(8, Locale.ENGLISH), false);
 	}
 
+	protected HttpHeaders(Map<String, List<String>> headers) {
+		this(headers, false);
+	}
+
 	/**
 	 * Private constructor that can create read-only {@code HttpHeader} instances.
 	 */
