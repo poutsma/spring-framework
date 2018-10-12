@@ -81,10 +81,6 @@ public class ToStringVisitorTests {
 		testPredicate(method(HttpMethod.GET).or(path("/foo")), "(GET || /foo)");
 
 		testPredicate(method(HttpMethod.GET).negate(), "!(GET)");
-
-
-
-
 	}
 
 	private void testPredicate(RequestPredicate predicate, String expected) {
