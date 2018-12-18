@@ -17,6 +17,7 @@
 package org.springframework.http.codec.json;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Map;
@@ -24,10 +25,10 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
-import com.fasterxml.jackson.databind.util.TokenBuffer;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -36,9 +37,8 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.core.codec.CodecException;
 import org.springframework.core.codec.DecodingException;
-import org.springframework.core.codec.Hints;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.log.LogFormatUtils;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.codec.HttpMessageDecoder;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -86,22 +86,22 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 	public Flux<Object> decode(Publisher<DataBuffer> input, ResolvableType elementType,
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
-		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(Flux.from(input), this.jsonFactory, true);
-		return decodeInternal(tokens, elementType, mimeType, hints);
+//		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(Flux.from(input), this.jsonFactory, true);
+		return decodeInternal(input, elementType, mimeType, hints);
 	}
 
 	@Override
 	public Mono<Object> decodeToMono(Publisher<DataBuffer> input, ResolvableType elementType,
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
-		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(Flux.from(input), this.jsonFactory, false);
-		return decodeInternal(tokens, elementType, mimeType, hints).singleOrEmpty();
+//		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(Flux.from(input), this.jsonFactory, false);
+		return decodeInternal(input, elementType, mimeType, hints).singleOrEmpty();
 	}
 
-	private Flux<Object> decodeInternal(Flux<TokenBuffer> tokens, ResolvableType elementType,
+	private Flux<Object> decodeInternal(Publisher<DataBuffer> buffers, ResolvableType elementType,
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
-		Assert.notNull(tokens, "'tokens' must not be null");
+		Assert.notNull(buffers, "'buffers' must not be null");
 		Assert.notNull(elementType, "'elementType' must not be null");
 
 		MethodParameter param = getParameter(elementType);
@@ -113,9 +113,14 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 				getObjectMapper().readerWithView(jsonView).forType(javaType) :
 				getObjectMapper().readerFor(javaType));
 
-		return tokens.map(tokenBuffer -> {
+		return DataBufferUtils.join(buffers)
+				.flatMapIterable(dataBuffer -> {
 			try {
-				Object value = reader.readValue(tokenBuffer.asParser(getObjectMapper()));
+				InputStream is = dataBuffer.asInputStream();
+				MappingIterator<Object> values = reader.readValues(is);
+				return () -> values;
+
+/*
 				if (!Hints.isLoggingSuppressed(hints)) {
 					LogFormatUtils.traceDebug(logger, traceOn -> {
 						String formatted = LogFormatUtils.formatValue(value, !traceOn);
@@ -123,6 +128,7 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 					});
 				}
 				return value;
+*/
 			}
 			catch (InvalidDefinitionException ex) {
 				throw new CodecException("Type definition error: " + ex.getType(), ex);
