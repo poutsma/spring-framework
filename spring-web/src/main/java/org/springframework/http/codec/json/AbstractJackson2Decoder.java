@@ -95,7 +95,46 @@ public abstract class AbstractJackson2Decoder extends Jackson2CodecSupport imple
 			@Nullable MimeType mimeType, @Nullable Map<String, Object> hints) {
 
 //		Flux<TokenBuffer> tokens = Jackson2Tokenizer.tokenize(Flux.from(input), this.jsonFactory, false);
-		return decodeInternal(input, elementType, mimeType, hints).singleOrEmpty();
+
+		Assert.notNull(input, "'buffers' must not be null");
+		Assert.notNull(elementType, "'elementType' must not be null");
+
+		MethodParameter param = getParameter(elementType);
+		Class<?> contextClass = (param != null ? param.getContainingClass() : null);
+		JavaType javaType = getJavaType(elementType.getType(), contextClass);
+		Class<?> jsonView = (hints != null ? (Class<?>) hints.get(Jackson2CodecSupport.JSON_VIEW_HINT) : null);
+
+		ObjectReader reader = (jsonView != null ?
+				getObjectMapper().readerWithView(jsonView).forType(javaType) :
+				getObjectMapper().readerFor(javaType));
+
+		return DataBufferUtils.join(input)
+				.map(dataBuffer -> {
+					try {
+						InputStream is = dataBuffer.asInputStream();
+						return reader.readValue(is);
+
+/*
+				if (!Hints.isLoggingSuppressed(hints)) {
+					LogFormatUtils.traceDebug(logger, traceOn -> {
+						String formatted = LogFormatUtils.formatValue(value, !traceOn);
+						return Hints.getLogPrefix(hints) + "Decoded [" + formatted + "]";
+					});
+				}
+				return value;
+*/
+					}
+					catch (InvalidDefinitionException ex) {
+						throw new CodecException("Type definition error: " + ex.getType(), ex);
+					}
+					catch (JsonProcessingException ex) {
+						throw new DecodingException(
+								"JSON decoding error: " + ex.getOriginalMessage(), ex);
+					}
+					catch (IOException ex) {
+						throw new DecodingException("I/O error while parsing input stream", ex);
+					}
+				});
 	}
 
 	private Flux<Object> decodeInternal(Publisher<DataBuffer> buffers, ResolvableType elementType,

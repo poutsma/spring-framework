@@ -72,7 +72,7 @@ public class Jackson2SmileDecoderTests extends AbstractDecoderTestCase<Jackson2S
 				.map(this::writeObject)
 				.flatMap(this::dataBuffer);
 
-		testDecodeAll(input, Pojo.class, step -> step
+		testDecode(input, Pojo.class, step -> step
 				.expectNext(pojo1)
 				.expectNext(pojo2)
 				.verifyComplete());
