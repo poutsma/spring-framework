@@ -104,6 +104,7 @@ public abstract class ExchangeFunctions {
 					.connect(httpMethod, url, httpRequest -> clientRequest.writeTo(httpRequest, this.strategies))
 					.doOnRequest(n -> logRequest(clientRequest))
 					.doOnCancel(() -> logger.debug(logPrefix + "Cancel signal (to close connection)"))
+					.onErrorResume(t -> wrapException(t, clientRequest))
 					.map(httpResponse -> {
 						logResponse(httpResponse, logPrefix);
 						return new DefaultClientResponse(
@@ -130,6 +131,10 @@ public abstract class ExchangeFunctions {
 
 		private String formatHeaders(HttpHeaders headers) {
 			return this.enableLoggingRequestDetails ? headers.toString() : headers.isEmpty() ? "{}" : "{masked}";
+		}
+
+		private <T> Mono<T> wrapException(Throwable t, ClientRequest request) {
+			return Mono.error(() -> new ConnectException("Could not " + request.method() + " " + request.url(), t));
 		}
 
 		private HttpRequest createRequest(ClientRequest request) {

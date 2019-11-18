@@ -1013,7 +1013,7 @@ class WebClientIntegrationTests {
 		Mono<ClientResponse> responseMono = WebClient.builder().build().get().uri(uri).exchange();
 
 		StepVerifier.create(responseMono)
-				.expectErrorMessage("URI is not absolute: " + uri)
+				.expectError(ConnectException.class)
 				.verify(Duration.ofSeconds(5));
 	}
 
@@ -1124,6 +1124,19 @@ class WebClientIntegrationTests {
 				.verify(Duration.ofSeconds(3));
 
 		expectRequestCount(1);
+	}
+
+	@ParameterizedWebClientTest
+	void invalidDomain(ClientHttpConnector connector) {
+		startServer(connector);
+
+		Mono<ClientResponse> result = this.webClient.get().
+				uri("http://example.invalid")
+				.exchange();
+
+		StepVerifier.create(result)
+				.expectError(ConnectException.class)
+				.verify();
 	}
 
 
