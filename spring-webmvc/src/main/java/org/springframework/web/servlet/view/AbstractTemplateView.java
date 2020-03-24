@@ -18,6 +18,7 @@ package org.springframework.web.servlet.view;
 
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.servlet.ServletContext;
@@ -27,7 +28,10 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.context.MessageSource;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.context.NoSuchMessageException;
 import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.support.RequestContext;
 
@@ -230,9 +234,13 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 	 */
 	private static class NonExposingRequestContext extends RequestContext {
 
+		private final DelegatingMessageSource messageSource;
+
+
 		public NonExposingRequestContext(HttpServletRequest request, @Nullable HttpServletResponse response,
 				@Nullable ServletContext servletContext, @Nullable Map<String, Object> model) {
 			super(request, response, servletContext, model);
+			this.messageSource = new DelegatingMessageSource(super.getMessageSource());
 		}
 
 		@Override
@@ -242,7 +250,37 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 
 		@Override
 		public MessageSource getMessageSource() {
-			throw new UnsupportedOperationException();
+			return this.messageSource;
+		}
+
+
+		private static class DelegatingMessageSource implements MessageSource {
+
+			private final MessageSource delegate;
+
+
+			public DelegatingMessageSource(MessageSource delegate) {
+				Assert.notNull(delegate, "Delegate must not be null");
+				this.delegate = delegate;
+			}
+
+			@Nullable
+			@Override
+			public String getMessage(String code, @Nullable Object[] args, @Nullable String defaultMessage,
+					Locale locale) {
+				return this.delegate.getMessage(code, args, defaultMessage, locale);
+			}
+
+			@Override
+			public String getMessage(String code, @Nullable Object[] args, Locale locale)
+					throws NoSuchMessageException {
+				return this.delegate.getMessage(code, args, locale);
+			}
+
+			@Override
+			public String getMessage(MessageSourceResolvable resolvable, Locale locale) throws NoSuchMessageException {
+				return this.delegate.getMessage(resolvable, locale);
+			}
 		}
 	}
 }
