@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,15 @@ import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import org.springframework.context.MessageSource;
+import org.springframework.lang.Nullable;
+import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.support.RequestContext;
 
 /**
@@ -61,6 +65,8 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 	private boolean allowSessionOverride = false;
 
 	private boolean exposeSpringMacroHelpers = true;
+
+	private boolean exposeApplicationContext = false;
 
 
 	/**
@@ -111,6 +117,17 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 		this.exposeSpringMacroHelpers = exposeSpringMacroHelpers;
 	}
 
+	/**
+	 * Set whether to expose the application context through the
+	 * "springMacroRequestContext" RequestContext.
+	 * Default is "false". Only applicable when
+	 * {@link #setExposeSpringMacroHelpers(boolean) exposeSpringMacroHelpers}
+	 * is true.
+	 * @see RequestContext#getWebApplicationContext()
+	 */
+	public void setExposeApplicationContext(boolean exposeApplicationContext) {
+		this.exposeApplicationContext = exposeApplicationContext;
+	}
 
 	@Override
 	protected final void renderMergedOutputModel(
@@ -166,8 +183,10 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 						"' because of an existing model object of the same name");
 			}
 			// Expose RequestContext instance for Spring macros.
-			model.put(SPRING_MACRO_REQUEST_CONTEXT_ATTRIBUTE,
-					new RequestContext(request, response, getServletContext(), model));
+			RequestContext rc = this.exposeApplicationContext ?
+					new RequestContext(request, response, getServletContext(), model) :
+					new NonExposingRequestContext(request, response, getServletContext(), model);
+			model.put(SPRING_MACRO_REQUEST_CONTEXT_ATTRIBUTE, rc);
 		}
 
 		applyContentType(response);
@@ -205,4 +224,25 @@ public abstract class AbstractTemplateView extends AbstractUrlBasedView {
 	protected abstract void renderMergedTemplateModel(
 			Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws Exception;
 
+
+	/**
+	 * Subclass of {@link RequestContext} that does not expose the application context.
+	 */
+	private static class NonExposingRequestContext extends RequestContext {
+
+		public NonExposingRequestContext(HttpServletRequest request, @Nullable HttpServletResponse response,
+				@Nullable ServletContext servletContext, @Nullable Map<String, Object> model) {
+			super(request, response, servletContext, model);
+		}
+
+		@Override
+		public WebApplicationContext getWebApplicationContext() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public MessageSource getMessageSource() {
+			throw new UnsupportedOperationException();
+		}
+	}
 }

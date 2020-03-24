@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -278,14 +278,14 @@ public class RequestContext {
 	/**
 	 * Return the current WebApplicationContext.
 	 */
-	public final WebApplicationContext getWebApplicationContext() {
+	public WebApplicationContext getWebApplicationContext() {
 		return this.webApplicationContext;
 	}
 
 	/**
 	 * Return the current WebApplicationContext as MessageSource.
 	 */
-	public final MessageSource getMessageSource() {
+	public MessageSource getMessageSource() {
 		return this.webApplicationContext;
 	}
 
