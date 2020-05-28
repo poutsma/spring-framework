@@ -50,6 +50,7 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder;
 import org.springframework.http.codec.json.Jackson2JsonEncoder;
 import org.springframework.http.codec.json.Jackson2SmileDecoder;
 import org.springframework.http.codec.json.Jackson2SmileEncoder;
+import org.springframework.http.codec.multipart.DefaultPartHttpMessageReader;
 import org.springframework.http.codec.multipart.MultipartHttpMessageReader;
 import org.springframework.http.codec.multipart.MultipartHttpMessageWriter;
 import org.springframework.http.codec.multipart.SynchronossPartHttpMessageReader;
@@ -296,6 +297,9 @@ class BaseDefaultCodecs implements CodecConfigurer.DefaultCodecs, CodecConfigure
 				((ServerSentEventHttpMessageReader) codec).setMaxInMemorySize(size);
 				initCodec(((ServerSentEventHttpMessageReader) codec).getDecoder());
 			}
+			if (codec instanceof DefaultPartHttpMessageReader) {
+				((DefaultPartHttpMessageReader) codec).setMaxInMemorySize(size);
+			}
 			if (synchronossMultipartPresent) {
 				if (codec instanceof SynchronossPartHttpMessageReader) {
 					((SynchronossPartHttpMessageReader) codec).setMaxInMemorySize(size);
@@ -310,6 +314,9 @@ class BaseDefaultCodecs implements CodecConfigurer.DefaultCodecs, CodecConfigure
 			}
 			if (codec instanceof MultipartHttpMessageReader) {
 				((MultipartHttpMessageReader) codec).setEnableLoggingRequestDetails(enable);
+			}
+			if (codec instanceof DefaultPartHttpMessageReader) {
+				((DefaultPartHttpMessageReader) codec).setEnableLoggingRequestDetails(enable);
 			}
 			if (synchronossMultipartPresent) {
 				if (codec instanceof SynchronossPartHttpMessageReader) {
