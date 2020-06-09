@@ -70,8 +70,11 @@ class ServerDefaultCodecsImpl extends BaseDefaultCodecs implements ServerCodecCo
 			return;
 		}
 		DefaultPartHttpMessageReader partReader = new DefaultPartHttpMessageReader();
+		partReader.setStreaming(true);
 		addCodec(typedReaders, partReader);
-		addCodec(typedReaders, new MultipartHttpMessageReader(partReader));
+
+		DefaultPartHttpMessageReader partReader2 = new DefaultPartHttpMessageReader();
+		addCodec(typedReaders, new MultipartHttpMessageReader(partReader2));
 	}
 
 	@Override
