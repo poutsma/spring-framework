@@ -88,8 +88,7 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 		return Flux.create(sink -> {
 			MultipartParser parser = new MultipartParser(sink, boundary, maxHeadersSize);
 			sink.onCancel(parser::onSinkCancel);
-			sink.onRequest(parser::onSinkRequest);
-			sink.onDispose(parser);
+			sink.onRequest(n -> parser.requestBuffer());
 			buffers.subscribe(parser);
 		});
 	}
@@ -101,91 +100,72 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 	@Override
 	protected void hookOnNext(DataBuffer value) {
-		if (logger.isTraceEnabled()) {
-			logger.trace("hookOnNext: " + value);
-		}
 		this.requestOutstanding.set(false);
 		this.state.get().onNext(value);
 	}
 
 	@Override
 	protected void hookOnComplete() {
-		if (logger.isTraceEnabled()) {
-			logger.trace("hookOnComplete");
-		}
 		this.state.get().onComplete();
 	}
 
 	@Override
 	protected void hookOnError(Throwable throwable) {
-		if (logger.isTraceEnabled()) {
-			logger.trace("hookOnError: " + throwable);
-		}
+		State oldState = this.state.getAndSet(DisposedState.INSTANCE);
+		oldState.dispose();
 		this.sink.error(throwable);
 	}
 
-	@Override
-	public void dispose() {
-		if (logger.isTraceEnabled()) {
-			logger.trace("dispose");
-		}
-		this.state.get().dispose();
-		changeState(DisposedState.INSTANCE, null);
+	private void onSinkCancel() {
+		State oldState = this.state.getAndSet(DisposedState.INSTANCE);
+		oldState.dispose();
 		cancel();
 	}
 
-	public void onSinkCancel() {
-		if (logger.isTraceEnabled()) {
-			logger.trace("onSinkCancel");
-		}
-		dispose();
-	}
-
-	public void onSinkRequest(long n) {
-		if (logger.isTraceEnabled()) {
-			logger.trace("Sink request: " + n);
-		}
-		requestBuffer();
-	}
-
-	void changeState(State newState, @Nullable DataBuffer remainder) {
-		if (this.state.get() == DisposedState.INSTANCE) {
-			return;
-		}
-		State oldState = this.state.getAndSet(newState);
-		if (logger.isTraceEnabled()) {
-			logger.trace("Changed state: " + oldState + " -> " + newState);
-		}
-		oldState.dispose();
-		if (remainder != null) {
-			if (remainder.readableByteCount() > 0) {
-				newState.onNext(remainder);
+	boolean changeState(State oldState, State newState, @Nullable DataBuffer remainder) {
+		if (this.state.compareAndSet(oldState, newState)) {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Changed state: " + oldState + " -> " + newState);
 			}
-			else {
-				DataBufferUtils.release(remainder);
+			oldState.dispose();
+			if (remainder != null) {
+				if (remainder.readableByteCount() > 0) {
+					newState.onNext(remainder);
+				}
+				else {
+					DataBufferUtils.release(remainder);
+					requestBuffer();
+				}
 			}
+			return true;
+		}
+		else {
+			DataBufferUtils.release(remainder);
+			return false;
 		}
 	}
 
 	void emitHeaders(HttpHeaders headers) {
 		if (logger.isTraceEnabled()) {
-			logger.trace("Emitting headers" + headers);
+			logger.trace("Emitting headers: " + headers);
 		}
 		this.sink.next(new HeadersToken(headers));
 	}
 
 	void emitBody(DataBuffer buffer) {
 		if (logger.isTraceEnabled()) {
-			logger.trace("Emitting body " + buffer);
+			logger.trace("Emitting body: " + buffer);
 		}
 		this.sink.next(new BodyToken(buffer));
 	}
 
 	void emitError(Throwable t) {
+		cancel();
 		this.sink.error(t);
 	}
 
 	void emitComplete() {
+		cancel();
 		this.sink.complete();
 	}
 
@@ -194,13 +174,10 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 				!this.sink.isCancelled() &&
 				this.sink.requestedFromDownstream() > 0 &&
 				this.requestOutstanding.compareAndSet(false, true)) {
-			logger.trace("Requesting buffer");
 			request(1);
 		}
-		else if (logger.isTraceEnabled()) {
-			logger.trace("Ignoring buffer request");
-		}
 	}
+
 
 	/**
 	 * Represents the output of {@link #parse(Flux, byte[], int)}.
@@ -271,7 +248,8 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 	 *  |      v
 	 *  +----BODY
 	 *  </pre>
-	 * For malformed messages the flow ends in DISPOSED.
+	 * For malformed messages the flow ends in DISPOSED, and also when the
+	 * sink is {@linkplain #onSinkCancel() cancelled}.
 	 */
 	private interface State {
 
@@ -295,7 +273,8 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 
 		public PreambleState() {
-			this.firstBoundary = DataBufferUtils.matcher(MultipartUtils.concat(TWO_HYPHENS, MultipartParser.this.boundary));
+			this.firstBoundary = DataBufferUtils.matcher(
+					MultipartUtils.concat(TWO_HYPHENS, MultipartParser.this.boundary));
 		}
 
 		/**
@@ -313,12 +292,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 				DataBuffer headersBuf = MultipartUtils.sliceFrom(buf, endIdx);
 				DataBufferUtils.release(buf);
 
-				changeState(new HeadersState(), headersBuf);
+				changeState(this, new HeadersState(), headersBuf);
 			}
 			else {
-				if (logger.isTraceEnabled()) {
-					logger.trace("Skipping preamble " + buf);
-				}
 				DataBufferUtils.release(buf);
 				requestBuffer();
 			}
@@ -326,8 +302,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 		@Override
 		public void onComplete() {
-			changeState(DisposedState.INSTANCE, null);
-			emitError(new DecodingException("Could not find first boundary"));
+			if (changeState(this, DisposedState.INSTANCE, null)) {
+				emitError(new DecodingException("Could not find first boundary"));
+			}
 		}
 
 		@Override
@@ -370,16 +347,18 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 					if (logger.isTraceEnabled()) {
 						logger.trace("Last boundary found in " + buf);
 					}
-					changeState(DisposedState.INSTANCE, buf);
-					cancel();
-					emitComplete();
+
+					if (changeState(this, DisposedState.INSTANCE, buf)) {
+						emitComplete();
+					}
 					return;
 				}
 			}
 			else if (count > MultipartParser.this.maxHeadersSize) {
-				changeState(DisposedState.INSTANCE, buf);
-				emitError(new DataBufferLimitException("Part headers exceeded the memory usage limit of " +
-						MultipartParser.this.maxHeadersSize + " bytes"));
+				if (changeState(this, DisposedState.INSTANCE, buf)) {
+					emitError(new DataBufferLimitException("Part headers exceeded the memory usage limit of " +
+							MultipartParser.this.maxHeadersSize + " bytes"));
+				}
 				return;
 			}
 			int endIdx = this.endHeaders.match(buf);
@@ -393,12 +372,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 				DataBufferUtils.release(buf);
 
 				emitHeaders(parseHeaders());
-				changeState(new BodyState(), bodyBuf);
+				changeState(this, new BodyState(), bodyBuf);
 			}
 			else {
-				if (logger.isTraceEnabled()) {
-					logger.trace("End of headers not found in " + buf);
-				}
 				this.buffers.add(buf);
 				requestBuffer();
 			}
@@ -451,8 +427,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 		@Override
 		public void onComplete() {
-			changeState(DisposedState.INSTANCE, null);
-			emitError(new DecodingException("Could not find end of headers"));
+			if (changeState(this, DisposedState.INSTANCE, null)) {
+				emitError(new DecodingException("Could not find end of headers"));
+			}
 		}
 
 		@Override
@@ -481,7 +458,8 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 		private final AtomicReference<DataBuffer> previous = new AtomicReference<>();
 
 		public BodyState() {
-			this.boundary = DataBufferUtils.matcher(MultipartUtils.concat(CR_LF, TWO_HYPHENS, MultipartParser.this.boundary));
+			this.boundary = DataBufferUtils.matcher(
+					MultipartUtils.concat(CR_LF, TWO_HYPHENS, MultipartParser.this.boundary));
 		}
 
 		/**
@@ -529,12 +507,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 				DataBuffer remainder = MultipartUtils.sliceFrom(buffer, endIdx);
 				DataBufferUtils.release(buffer);
 
-				changeState(new HeadersState(), remainder);
+				changeState(this, new HeadersState(), remainder);
 			}
 			else {
-				if (logger.isTraceEnabled()) {
-					logger.trace("No boundary found in " + buffer);
-				}
 				enqueue(buffer);
 				requestBuffer();
 			}
@@ -552,8 +527,9 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 		@Override
 		public void onComplete() {
-			changeState(DisposedState.INSTANCE, null);
-			emitError(new DecodingException("Could not find end of body"));
+			if (changeState(this, DisposedState.INSTANCE, null)) {
+				emitError(new DecodingException("Could not find end of body"));
+			}
 		}
 
 		@Override
@@ -584,9 +560,6 @@ final class MultipartParser extends BaseSubscriber<DataBuffer> {
 
 		@Override
 		public void onNext(DataBuffer buf) {
-			if (logger.isTraceEnabled()) {
-				logger.trace("Releasing " + buf);
-			}
 			DataBufferUtils.release(buf);
 		}
 

@@ -20,12 +20,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import org.springframework.core.ResolvableType;
@@ -40,8 +42,17 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Default {@code HttpMessageReader} for parsing {@code "multipart/form-data"} requests
- * to a stream of {@link Part}s.
+ * Default {@code HttpMessageReader} for parsing {@code "multipart/form-data"}
+ * requests to a stream of {@link Part}s.
+ *
+ * <p>In default, non-streaming mode, this message reader stores the
+ * {@linkplain Part#content() contents} of parts smaller than
+ * {@link #setMaxInMemorySize(int) maxInMemorySize} in memory, and parts larger
+ * than that to a temporary file in
+ * {@link #setFileStorageDirectory(Path) fileStorageDirectory}
+ * <p>In {@linkplain #setStreaming(boolean) streaming} mode, the contents of the
+ * part is streamed directly from the parsed input buffer stream, and not stored
+ * in memory nor file.
  *
  * <p>This reader can be provided to {@link MultipartHttpMessageReader} in order
  * to aggregate all parts into a Map.
@@ -50,6 +61,8 @@ import org.springframework.util.Assert;
  * @since 5.3
  */
 public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements HttpMessageReader<Part> {
+
+	private static final String IDENTIFIER = "spring-multipart";
 
 	private int maxInMemorySize = 256 * 1024;
 
@@ -61,10 +74,10 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 
 	private boolean streaming;
 
-	private Mono<Path> fileStorageDirectory =
-			Mono.fromCallable(() -> Files.createTempDirectory("spring-webflux-multipart"))
-					.subscribeOn(Schedulers.boundedElastic())
-					.cache();
+	private Scheduler fileCreationScheduler = Schedulers.newBoundedElastic(Schedulers.DEFAULT_BOUNDED_ELASTIC_SIZE,
+			Schedulers.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, IDENTIFIER, 60, true);
+
+	private Mono<Path> fileStorageDirectory = Mono.defer(this::defaultFileStorageDirectory).cache();
 
 
 	/**
@@ -91,18 +104,21 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 	 * <li>non-file parts are rejected with {@link DataBufferLimitException}.
 	 * </ul>
 	 * <p>By default this is set to 256K.
-	 * @param byteCount the in-memory limit in bytes; if set to -1 this limit is
-	 * not enforced, and all parts may be written to disk and are limited only
-	 * by the {@link #setMaxDiskUsagePerPart(long) maxDiskUsagePerPart} property.
+	 * <p>Note that this property is ignored when
+	 * {@linkplain #setStreaming(boolean) streaming} is enabled.
+	 * @param maxInMemorySize the in-memory limit in bytes; if set to -1 the entire
+	 * contents will be stored in memory
 	 */
-	public void setMaxInMemorySize(int byteCount) {
-		this.maxInMemorySize = byteCount;
+	public void setMaxInMemorySize(int maxInMemorySize) {
+		this.maxInMemorySize = maxInMemorySize;
 	}
 
 	/**
 	 * Configure the maximum amount of disk space allowed for file parts.
-	 * <p>By default this is set to -1.
-	 * @param maxDiskUsagePerPart the disk limit in bytes, or -1 for unlimited
+	 * <p>By default this is set to -1, meaning that there is no maximum.
+	 * <p>Note that this property is ignored when
+	 * {@linkplain #setStreaming(boolean) streaming} is enabled, , or when
+	 * {@link #setMaxInMemorySize(int) maxInMemorySize} is set to -1.
 	 */
 	public void setMaxDiskUsagePerPart(long maxDiskUsagePerPart) {
 		this.maxDiskUsagePerPart = maxDiskUsagePerPart;
@@ -110,6 +126,7 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 
 	/**
 	 * Specify the maximum number of parts allowed in a given multipart request.
+	 * <p>By default this is set to -1, meaning that there is no maximum.
 	 */
 	public void setMaxParts(int maxParts) {
 		this.maxParts = maxParts;
@@ -117,7 +134,12 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 
 	/**
 	 * Sets the directory used to store parts larger than
-	 * {@link #setMaxInMemorySize(int) maxInMemorySize}.
+	 * {@link #setMaxInMemorySize(int) maxInMemorySize}. By default, a directory
+	 * named {@code spring-webflux-multipart} is created under the system
+	 * temporary directory.
+	 * <p>Note that this property is ignored when
+	 * {@linkplain #setStreaming(boolean) streaming} is enabled, or when
+	 * {@link #setMaxInMemorySize(int) maxInMemorySize} is set to -1.
 	 */
 	public void setFileStorageDirectory(Path fileStorageDirectory) throws IOException {
 		Assert.notNull(fileStorageDirectory, "FileStorageDirectory must not be null");
@@ -128,11 +150,31 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 	}
 
 	/**
-	 * When set to {@code true}, {@link Part} implementations are backed by
-	 * the output of the parser. When {@code false}, parts are backed by
-	 * in-memory and/or file storage.
-	 * @see #setMaxInMemorySize(int)
-	 * @see #setMaxDiskUsagePerPart(long)
+	 * Sets the Reactor {@link Scheduler} to be used for creating files and
+	 * directories. By default, a separate bounded scheduler is created with
+	 * default properties.
+	 * <p>Note that this property is ignored when
+	 * {@linkplain #setStreaming(boolean) streaming} is enabled, or when
+	 * {@link #setMaxInMemorySize(int) maxInMemorySize} is set to -1.
+	 * @see Schedulers#newBoundedElastic
+	 */
+	public void setFileCreationScheduler(Scheduler fileCreationScheduler) {
+		Assert.notNull(fileCreationScheduler, "FileCreationScheduler must not be null");
+		this.fileCreationScheduler = fileCreationScheduler;
+	}
+
+	/**
+	 * When set to {@code true}, the {@linkplain Part#content() part content}
+	 * is streamed directly from the parsed input buffer stream, and not stored
+	 * in memory nor file.
+	 * When {@code false}, parts are backed by
+	 * in-memory and/or file storage. Defaults to {@code false}.
+	 *
+	 * <p>Note that enabling this property effectively ignores
+	 * {@link #setMaxInMemorySize(int) maxInMemorySize},
+	 * {@link #setMaxDiskUsagePerPart(long) maxDiskUsagePerPart},
+	 * {@link #setFileStorageDirectory(Path) fileStorageDirectory}, and
+	 * {@link #setFileCreationScheduler(Scheduler) fileCreationScheduler}.
 	 */
 	public void setStreaming(boolean streaming) {
 		this.streaming = streaming;
@@ -167,7 +209,7 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 					this.maxHeadersSize);
 
 			return PartGenerator.createParts(tokens, this.maxParts, this.maxInMemorySize, this.maxDiskUsagePerPart,
-					this.streaming, this.fileStorageDirectory);
+					this.streaming, this.fileStorageDirectory, this.fileCreationScheduler);
 		});
 	}
 
@@ -181,6 +223,17 @@ public class DefaultPartHttpMessageReader extends LoggingCodecSupport implements
 			}
 		}
 		return null;
+	}
+
+	private Mono<Path> defaultFileStorageDirectory() {
+		return Mono.fromCallable(() -> {
+			Path path = Paths.get(System.getProperty("java.io.tmpdir"), IDENTIFIER);
+			if (!Files.exists(path)) {
+				Files.createDirectory(path);
+			}
+			return path;
+		}).subscribeOn(this.fileCreationScheduler);
+
 	}
 
 }
