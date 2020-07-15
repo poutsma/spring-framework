@@ -693,7 +693,7 @@ public abstract class StringUtils {
 				tops++;
 			}
 			else {
-				if (tops > 0) {
+				if (tops > 0 && hasLength(element)) {
 					// Merging path element with element corresponding to top path.
 					tops--;
 				}
