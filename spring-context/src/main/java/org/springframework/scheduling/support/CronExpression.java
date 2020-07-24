@@ -63,10 +63,42 @@ public final class CronExpression {
 
 
 	/**
-	 * Parse the given expression string into a {@code CronExpression}.
-	 * The string has six single space-separated fields, representing
-	 * second, minute, hour, day, month, weekday. Month and weekday names can be
-	 * given as the first three letters of the English names.
+	 * Parse the given
+	 * <a href="https://www.manpagez.com/man/5/crontab/">crontab expression</a>
+	 * string into a {@code CronExpression}.
+	 * The string has six single space-separated time and date fields:
+	 * <pre>
+	 * &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; second (0-59)
+	 * &#9474; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; minute (0 - 59)
+	 * &#9474; &#9474; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; hour (0 - 23)
+	 * &#9474; &#9474; &#9474; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; day of the month (1 - 31)
+	 * &#9474; &#9474; &#9474; &#9474; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; month (1 - 12) (or JAN-DEC)
+	 * &#9474; &#9474; &#9474; &#9474; &#9474; &#9484;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; day of the week (0 - 7)
+	 * &#9474; &#9474; &#9474; &#9474; &#9474; &#9474;          (0 or 7 is Sunday, or MON-SUN)
+	 * &#9474; &#9474; &#9474; &#9474; &#9474; &#9474;
+	 * &#42; &#42; &#42; &#42; &#42; &#42;
+	 * </pre>
+	 *
+	 * <p>The following rules apply:
+	 * <ul>
+	 * <li>
+	 * A field may be an asterisk ({@code *}), which always stands for
+	 * "first-last". For the "day of the month" or "day of the week" fields, a
+	 * question mark ({@code ?}) may be used instead of an asterisk.
+	 * </li>
+	 * <li>
+	 * Ranges of numbers are expressed by two numbers separated with a hyphen
+	 * ({@code -}). The specified range is inclusive.
+	 * </li>
+	 * <li>Following a range (or {@code *}) with {@code "/n"} specifies
+	 * skips of the number's value through the range.
+	 * </li>
+	 * <li>
+	 * English names can also be used for the "month" and "day of week" fields.
+	 * Use the first three letters of the particular day or month (case does not
+	 * matter).
+	 * </li>
+	 * </ul>
 	 *
 	 * <p>Example expressions:
 	 * <ul>
