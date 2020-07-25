@@ -124,7 +124,7 @@ abstract class CronField {
 	 * @return the next or same temporal matching the pattern
 	 */
 	@Nullable
-	public abstract <T extends Temporal> T nextOrSame(T temporal);
+	public abstract <T extends Temporal & Comparable<? super T>> T nextOrSame(T temporal);
 
 
 	protected Type type() {
@@ -208,7 +208,7 @@ abstract class CronField {
 		 * @return the elapsed temporal, typically with {@code goal} as value
 		 * for this type.
 		 */
-		public <T extends Temporal> T elapseUntil(T temporal, int goal) {
+		public <T extends Temporal & Comparable<? super T>> T elapseUntil(T temporal, int goal) {
 			int current = get(temporal);
 			if (current < goal) {
 				return this.field.getBaseUnit().addTo(temporal, goal - current);
@@ -229,7 +229,7 @@ abstract class CronField {
 		 * @param <T> the type of temporal
 		 * @return the rolled forward temporal
 		 */
-		public <T extends Temporal> T rollForward(T temporal) {
+		public <T extends Temporal & Comparable<? super T>> T rollForward(T temporal) {
 			int current = get(temporal);
 			ValueRange range = temporal.range(this.field);
 			long amount = range.getMaximum() - current + 1;

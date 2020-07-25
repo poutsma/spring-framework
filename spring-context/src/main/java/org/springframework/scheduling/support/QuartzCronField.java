@@ -224,7 +224,7 @@ final class QuartzCronField extends CronField {
 			}
 			int count = 0;
 			while (count++ < CronExpression.MAX_ATTEMPTS) {
-				temporal = Type.DAY_OF_MONTH.elapseUntil(temporal, dayOfMonth);
+				temporal = Type.DAY_OF_MONTH.elapseUntil(cast(temporal), dayOfMonth);
 				current = Type.DAY_OF_MONTH.get(temporal);
 				if (current == dayOfMonth) {
 					dayOfWeek = temporal.get(ChronoField.DAY_OF_WEEK);
@@ -250,21 +250,30 @@ final class QuartzCronField extends CronField {
 		};
 	}
 
-
-	@Nullable
-	@Override
 	@SuppressWarnings("unchecked")
-	public <T extends Temporal> T nextOrSame(T temporal) {
-		T result = (T) this.adjuster.adjustInto(temporal);
-		if (result instanceof Comparable) {
-			Comparable<Temporal> comparable = (Comparable<Temporal>) result;
-			if (comparable.compareTo(temporal) < 0) {
+	private static <T extends Temporal & Comparable<? super T>> T cast(Temporal temporal) {
+		return (T) temporal;
+	}
+
+
+	@Override
+	public <T extends Temporal & Comparable<? super T>> T nextOrSame(T temporal) {
+		T result = adjust(temporal);
+		if (result != null) {
+			if (result.compareTo(temporal) < 0) {
 				// We ended up before the start, roll forward and try again
 				temporal = this.rollOverType.rollForward(temporal);
-				result = (T) this.adjuster.adjustInto(temporal);
+				result = adjust(temporal);
 			}
 		}
 		return result;
+	}
+
+
+	@Nullable
+	@SuppressWarnings("unchecked")
+	private <T extends Temporal & Comparable<? super T>> T adjust(T temporal) {
+		return (T) this.adjuster.adjustInto(temporal);
 	}
 
 

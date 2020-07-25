@@ -169,9 +169,9 @@ final class BitsCronField extends CronField {
 		}
 	}
 
-	@Override
 	@Nullable
-	public <T extends Temporal> T nextOrSame(T temporal) {
+	@Override
+	public <T extends Temporal & Comparable<? super T>> T nextOrSame(T temporal) {
 		int current = type().get(temporal);
 		int next = this.bits.nextSetBit(current);
 		if (next == -1) {

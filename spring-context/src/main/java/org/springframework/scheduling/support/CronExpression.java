@@ -193,13 +193,13 @@ public final class CronExpression {
 	 * if no such temporal can be found
 	 */
 	@Nullable
-	public <T extends Temporal> T next(T temporal) {
+	public <T extends Temporal & Comparable<? super T>> T next(T temporal) {
 		return nextOrSame(ChronoUnit.NANOS.addTo(temporal, 1));
 	}
 
 
 	@Nullable
-	private <T extends Temporal> T nextOrSame(T temporal) {
+	private <T extends Temporal & Comparable<? super T>> T nextOrSame(T temporal) {
 		for (int i = 0; i < MAX_ATTEMPTS; i++) {
 			T result = nextOrSameInternal(temporal);
 			if (result == null || result.equals(temporal)) {
@@ -211,7 +211,7 @@ public final class CronExpression {
 	}
 
 	@Nullable
-	private <T extends Temporal> T nextOrSameInternal(T temporal) {
+	private <T extends Temporal & Comparable<? super T>> T nextOrSameInternal(T temporal) {
 		for (CronField field : this.fields) {
 			temporal = field.nextOrSame(temporal);
 			if (temporal == null) {
