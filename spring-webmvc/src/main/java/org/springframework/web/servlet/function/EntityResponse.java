@@ -20,6 +20,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import javax.servlet.http.Cookie;
@@ -52,7 +53,7 @@ public interface EntityResponse<T> extends ServerResponse {
 	/**
 	 * Create a builder with the given object.
 	 * @param t the object that represents the body of the response
-	 * @param <T> the type of element contained in the publisher
+	 * @param <T> the type of element contained in the entity
 	 * @return the created builder
 	 */
 	static <T> Builder<T> fromObject(T t) {
@@ -63,11 +64,23 @@ public interface EntityResponse<T> extends ServerResponse {
 	 * Create a builder with the given object and type reference.
 	 * @param t the object that represents the body of the response
 	 * @param entityType the type of the entity, used to capture the generic type
-	 * @param <T> the type of element contained in the publisher
+	 * @param <T> the type of element contained in the entity
 	 * @return the created builder
 	 */
 	static <T> Builder<T> fromObject(T t, ParameterizedTypeReference<T> entityType) {
 		return DefaultEntityResponseBuilder.fromObject(t, entityType);
+	}
+
+	/**
+	 * Create a (completely built) response with the given future entity response.
+	 * This method allows for delayed setting of status, headers, and body.
+	 * @param future the future entity response to base the delayed response on
+	 * @param <T> the type of element contained in the entity
+	 * @return the created response
+	 * @since 5.3
+	 */
+	static <T> EntityResponse<T> fromFuture(CompletableFuture<EntityResponse<T>> future) {
+		return DefaultEntityResponseBuilder.fromFuture(future);
 	}
 
 

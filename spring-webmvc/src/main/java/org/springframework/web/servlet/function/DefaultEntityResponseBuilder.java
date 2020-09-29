@@ -25,8 +25,10 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.servlet.AsyncContext;
@@ -233,6 +235,13 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 		return new DefaultEntityResponseBuilder<>(t, bodyType.getType());
 	}
 
+	/**
+	 * Return a new {@link EntityResponse} from the given future entity response.
+	 */
+	public static <T> EntityResponse<T> fromFuture(CompletableFuture<EntityResponse<T>> future) {
+		return new DelegatingFutureEntityResponse<>(future);
+	}
+
 
 	/**
 	 * Default {@link EntityResponse} implementation for synchronous bodies.
@@ -385,6 +394,9 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 	}
 
 
+	/**
+	 * {@link EntityResponse} implementation for asynchronous {@link Publisher} bodies.
+	 */
 	private static class PublisherEntityResponse<T> extends DefaultEntityResponse<Publisher<T>> {
 
 		public PublisherEntityResponse(int statusCode, HttpHeaders headers,
@@ -485,4 +497,79 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 		}
 	}
 
+
+	/**
+	 * {@link EntityResponse} implementation that delegates to an future response.
+	 */
+	private static final class DelegatingFutureEntityResponse<T>
+			extends ErrorHandlingServerResponse
+			implements EntityResponse<T> {
+
+		private final CompletableFuture<EntityResponse<T>> futureResponse;
+
+		public DelegatingFutureEntityResponse(CompletableFuture<EntityResponse<T>> futureResponse) {
+			this.futureResponse = futureResponse;
+		}
+
+		@Override
+		public HttpStatus statusCode() {
+			return delegate(ServerResponse::statusCode);
+		}
+
+		@Override
+		public int rawStatusCode() {
+			return delegate(ServerResponse::rawStatusCode);
+		}
+
+		@Override
+		public HttpHeaders headers() {
+			return delegate(ServerResponse::headers);
+		}
+
+		@Override
+		public MultiValueMap<String, Cookie> cookies() {
+			return delegate(ServerResponse::cookies);
+		}
+
+		@Override
+		public T entity() {
+			return delegate(EntityResponse::entity);
+		}
+
+		private <R> R delegate(Function<EntityResponse<T>, R> function) {
+			EntityResponse<T> response = this.futureResponse.getNow(null);
+			if (response != null) {
+				return function.apply(response);
+			}
+			else {
+				throw new IllegalStateException("Future ServerResponse has not yet completed");
+			}
+		}
+
+		@Nullable
+		@Override
+		public ModelAndView writeTo(HttpServletRequest servletRequest, HttpServletResponse servletResponse,
+				Context context) {
+
+			AsyncContext asyncContext = servletRequest.startAsync(servletRequest, servletResponse);
+			this.futureResponse.whenComplete((futureResponse, futureThrowable) -> {
+				try {
+					if (futureResponse != null) {
+						ModelAndView mav = futureResponse.writeTo(servletRequest, servletResponse, context);
+						Assert.state(mav == null, "ModelAndView should be null");
+					}
+					else if (futureThrowable != null) {
+						handleError(futureThrowable, servletRequest, servletResponse, context);
+					}
+				}
+				catch (Throwable throwable) {
+					handleError(throwable, servletRequest, servletResponse, context);
+				}
+				finally {
+					asyncContext.complete();
+				}
+			});
+			return null;
+		}
+	}
 }
