@@ -17,15 +17,19 @@
 package org.springframework.web.reactive.function.server;
 
 import java.util.Collections;
+import java.util.Map;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import org.springframework.core.io.Resource;
 import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.testfixture.server.MockServerWebExchange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /**
  * @author Arjen Poutsma
@@ -126,9 +130,54 @@ public class RouterFunctionTests {
 				.verify();
 	}
 
+	@Test
+	public void attributes() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = request -> Mono.just(handlerFunction);
+		routerFunction = routerFunction.withAttribute("foo", "bar")
+				.withAttributes(atts -> atts.put("baz", "qux"));
+
+		AttributesTestVisitor visitor = new AttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
 
 	private Mono<ServerResponse> handlerMethod(ServerRequest request) {
 		return ServerResponse.ok().bodyValue("42");
 	}
+
+	private static class AttributesTestVisitor implements RouterFunctions.Visitor {
+
+		boolean visited;
+
+		@Override
+		public void startNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void endNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+		}
+
+		@Override
+		public void resources(Function<ServerRequest, Mono<Resource>> lookupFunction) {
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			assertThat(attributes).containsExactly(entry("foo", "bar"), entry("baz", "qux"));
+			this.visited = true;
+		}
+
+		@Override
+		public void unknown(RouterFunction<?> routerFunction) {
+
+		}
+	}
+
 
 }

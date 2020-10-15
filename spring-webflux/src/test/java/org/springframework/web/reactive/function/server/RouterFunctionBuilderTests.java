@@ -18,7 +18,9 @@ package org.springframework.web.reactive.function.server;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -32,6 +34,7 @@ import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRe
 import org.springframework.web.testfixture.server.MockServerWebExchange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.springframework.web.reactive.function.server.RequestPredicates.HEAD;
 
 /**
@@ -231,6 +234,53 @@ public class RouterFunctionBuilderTests {
 				.verifyComplete();
 
 	}
+
+	@Test
+	public void attributes() {
+		RouterFunction<ServerResponse> route = RouterFunctions.route()
+				.GET("/atts", request -> ServerResponse.ok().build())
+				.withAttribute("foo", "bar")
+				.withAttributes(atts -> atts.put("baz", "qux"))
+				.build();
+
+		AttributesTestVisitor visitor = new AttributesTestVisitor();
+		route.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+
+	private static class AttributesTestVisitor implements RouterFunctions.Visitor {
+
+		boolean visited;
+
+		@Override
+		public void startNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void endNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+		}
+
+		@Override
+		public void resources(Function<ServerRequest, Mono<Resource>> lookupFunction) {
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			assertThat(attributes).containsExactly(entry("foo", "bar"), entry("baz", "qux"));
+			this.visited = true;
+		}
+
+		@Override
+		public void unknown(RouterFunction<?> routerFunction) {
+
+		}
+	}
+
 
 
 }
