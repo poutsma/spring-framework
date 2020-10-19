@@ -30,11 +30,13 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.lang.Nullable;
 import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest;
 import org.springframework.web.testfixture.server.MockServerWebExchange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.HEAD;
 
 /**
@@ -246,6 +248,52 @@ public class RouterFunctionBuilderTests {
 		AttributesTestVisitor visitor = new AttributesTestVisitor();
 		route.accept(visitor);
 		assertThat(visitor.visited).isTrue();
+	}
+
+	@Test
+	public void attributesWithoutAndRoute() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = RouterFunctions.route()
+				.GET("/api/user", handlerFunction)
+				.withAttribute("foo", "bar")
+				.GET("/api/admin", handlerFunction)
+				.withAttribute("foo", "baz").build();
+
+		AnotherAttributesTestVisitor visitor = new AnotherAttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+	@Test
+	public void attributesWithAndRoute() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = RouterFunctions
+				.route(GET("/api/user"), handlerFunction)
+				.withAttribute("foo", "bar")
+				.and(RouterFunctions.route(GET("/api/admin"), handlerFunction)
+				.withAttribute("foo", "baz"));
+
+		AnotherAttributesTestVisitor visitor = new AnotherAttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+	private static class AnotherAttributesTestVisitor extends AttributesTestVisitor{
+
+		@Nullable
+		private Map<String, Object> attributes;
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+			assertThat(this.attributes).isNotNull();
+			this.attributes = null;
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			this.attributes = attributes;
+			this.visited = true;
+		}
 	}
 
 

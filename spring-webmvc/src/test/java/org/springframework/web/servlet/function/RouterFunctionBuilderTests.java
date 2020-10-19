@@ -17,9 +17,11 @@
 package org.springframework.web.servlet.function;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +35,8 @@ import org.springframework.web.testfixture.servlet.MockHttpServletRequest;
 
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.springframework.web.servlet.function.RequestPredicates.GET;
 import static org.springframework.web.servlet.function.RequestPredicates.HEAD;
 
 /**
@@ -213,5 +217,100 @@ class RouterFunctionBuilderTests {
 		return new DefaultServerRequest(
 				PathPatternsTestUtils.initRequest(httpMethod, null, requestUri, true, consumer), emptyList());
 	}
+
+	@Test
+	public void attributes() {
+		RouterFunction<ServerResponse> route = RouterFunctions.route()
+				.GET("/atts", request -> ServerResponse.ok().build())
+				.withAttribute("foo", "bar")
+				.withAttributes(atts -> atts.put("baz", "qux"))
+				.build();
+
+		AttributesTestVisitor visitor = new AttributesTestVisitor();
+		route.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+	@Test
+	public void attributesWithoutAndRoute() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = RouterFunctions.route()
+				.GET("/api/user", handlerFunction)
+				.withAttribute("foo", "bar")
+				.GET("/api/admin", handlerFunction)
+				.withAttribute("foo", "baz").build();
+
+		AnotherAttributesTestVisitor visitor = new AnotherAttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+	@Test
+	public void attributesWithAndRoute() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = RouterFunctions
+				.route(GET("/api/user"), handlerFunction)
+				.withAttribute("foo", "bar")
+				.and(RouterFunctions.route(GET("/api/admin"), handlerFunction)
+				.withAttribute("foo", "baz"));
+
+		AnotherAttributesTestVisitor visitor = new AnotherAttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+	private static class AnotherAttributesTestVisitor extends AttributesTestVisitor{
+
+		@Nullable
+		private Map<String, Object> attributes;
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+			assertThat(this.attributes).isNotNull();
+			this.attributes = null;
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			this.attributes = attributes;
+			this.visited = true;
+		}
+	}
+
+
+	private static class AttributesTestVisitor implements RouterFunctions.Visitor {
+
+		boolean visited;
+
+		@Override
+		public void startNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void endNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+		}
+
+		@Override
+		public void resources(
+				Function<ServerRequest, Optional<Resource>> lookupFunction) {
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			assertThat(attributes).containsExactly(entry("foo", "bar"), entry("baz", "qux"));
+			this.visited = true;
+		}
+
+		@Override
+		public void unknown(RouterFunction<?> routerFunction) {
+
+		}
+	}
+
+
 
 }

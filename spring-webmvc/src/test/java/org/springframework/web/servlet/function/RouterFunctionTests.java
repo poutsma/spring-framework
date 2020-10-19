@@ -17,13 +17,17 @@
 package org.springframework.web.servlet.function;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.io.Resource;
 import org.springframework.web.servlet.handler.PathPatternsTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /**
  * @author Arjen Poutsma
@@ -109,7 +113,55 @@ class RouterFunctionTests {
 	}
 
 
+	@Test
+	public void attributes() {
+		HandlerFunction<ServerResponse> handlerFunction = request -> ServerResponse.ok().build();
+		RouterFunction<ServerResponse> routerFunction = request -> Optional.of(handlerFunction);
+		routerFunction = routerFunction.withAttribute("foo", "bar")
+				.withAttributes(atts -> atts.put("baz", "qux"));
+
+		AttributesTestVisitor visitor = new AttributesTestVisitor();
+		routerFunction.accept(visitor);
+		assertThat(visitor.visited).isTrue();
+	}
+
+
+
 	private ServerResponse handlerMethod(ServerRequest request) {
 		return ServerResponse.ok().body("42");
 	}
+
+	private static class AttributesTestVisitor implements RouterFunctions.Visitor {
+
+		boolean visited;
+
+		@Override
+		public void startNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void endNested(RequestPredicate predicate) {
+		}
+
+		@Override
+		public void route(RequestPredicate predicate, HandlerFunction<?> handlerFunction) {
+		}
+
+		@Override
+		public void resources(Function<ServerRequest, Optional<Resource>> lookupFunction) {
+		}
+
+		@Override
+		public void attributes(Map<String, Object> attributes) {
+			assertThat(attributes).containsExactly(entry("foo", "bar"), entry("baz", "qux"));
+			this.visited = true;
+		}
+
+		@Override
+		public void unknown(RouterFunction<?> routerFunction) {
+
+		}
+	}
+
+
 }
