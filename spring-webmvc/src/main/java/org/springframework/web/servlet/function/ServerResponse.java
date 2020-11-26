@@ -230,11 +230,6 @@ public interface ServerResponse {
 	 * <p>This method can be used to set the response status code, headers, and
 	 * body based on an asynchronous result. If only the body is asynchronous,
 	 * {@link BodyBuilder#body(Object)} can be used instead.
-	 *
-	 * <p><strong>Note</strong> that
-	 * {@linkplain RenderingResponse rendering responses}, as returned by
-	 * {@link BodyBuilder#render}, are <strong>not</strong> supported as value
-	 * for {@code asyncResponse}. Use WebFlux.fn for asynchronous rendering.
 	 * @param asyncResponse a {@code CompletableFuture<ServerResponse>} or
 	 * {@code Publisher<ServerResponse>}
 	 * @return the asynchronous response
@@ -255,11 +250,6 @@ public interface ServerResponse {
 	 * <p>This method can be used to set the response status code, headers, and
 	 * body based on an asynchronous result. If only the body is asynchronous,
 	 * {@link BodyBuilder#body(Object)} can be used instead.
-	 *
-	 * <p><strong>Note</strong> that
-	 * {@linkplain RenderingResponse rendering responses}, as returned by
-	 * {@link BodyBuilder#render}, are <strong>not</strong> supported as value
-	 * for {@code asyncResponse}. Use WebFlux.fn for asynchronous rendering.
 	 * @param asyncResponse a {@code CompletableFuture<ServerResponse>} or
 	 * {@code Publisher<ServerResponse>}
 	 * @param timeout maximum time period to wait for before timing out
@@ -268,6 +258,31 @@ public interface ServerResponse {
 	 */
 	static ServerResponse async(Object asyncResponse, Duration timeout) {
 		return AsyncServerResponse.create(asyncResponse, timeout);
+	}
+
+	/**
+	 * Create a server-sent event response. The {@link SseBuilder} provided to
+	 * {@code consumer} can be used to build and send events.
+	 * @param consumer consumer that will be provided with an event builder
+	 * @return the server-side event response
+	 * @since 5.3.2
+	 * @see <a href="https://www.w3.org/TR/eventsource/">Server-Sent Events</a>
+	 */
+	static ServerResponse sse(Consumer<SseBuilder> consumer) {
+		return SseServerResponse.create(consumer, null);
+	}
+
+	/**
+	 * Create a server-sent event response. The {@link SseBuilder} provided to
+	 * {@code consumer} can be used to build and send events.
+	 * @param consumer consumer that will be provided with an event builder
+	 * @param timeout  maximum time perioud to wait before timing out
+	 * @return the server-side event response
+	 * @since 5.3.2
+	 * @see <a href="https://www.w3.org/TR/eventsource/">Server-Sent Events</a>
+	 */
+	static ServerResponse sse(Consumer<SseBuilder> consumer, Duration timeout) {
+		return SseServerResponse.create(consumer, timeout);
 	}
 
 
@@ -470,6 +485,80 @@ public interface ServerResponse {
 		 * @return the built response
 		 */
 		ServerResponse render(String name, Map<String, ?> model);
+	}
+
+
+	/**
+	 * Defines a builder for a body that sends server-sent events.
+	 *
+	 * @since 5.3.2
+	 */
+	interface SseBuilder {
+
+		/**
+		 * Sends the given object as a server-sent event.
+		 * Strings will be sent as UTF-8 encoded bytes, and other objects will
+		 * be converted into JSON using
+		 * {@linkplain HttpMessageConverter message converters}.
+		 *
+		 * <p>This convenience method has the same effect as
+		 * {@link #data(Object)}.
+		 * @param object the object to send
+		 */
+		void send(Object object);
+
+		/**
+		 * Add an SSE "id" line.
+		 * @param id the event identifier
+		 * @return this builder
+		 */
+		SseBuilder id(String id);
+
+		/**
+		 * Add an SSE "event" line.
+		 * @param eventName the event name
+		 * @return this builder
+		 */
+		SseBuilder event(String eventName);
+
+		/**
+		 * Add an SSE "retry" line.
+		 * @param duration the duration to convert into millis
+		 * @return this builder
+		 */
+		SseBuilder retry(Duration duration);
+
+		/**
+		 * Add an SSE comment.
+		 * @param comment the comment
+		 * @return this builder
+		 */
+		SseBuilder comment(String comment);
+
+		/**
+		 * Add an SSE "data" line for the given object and sends the built
+		 * server-sent event to the client.
+		 * Strings will be sent as UTF-8 encoded bytes, and other objects will
+		 * be converted into JSON using
+		 * {@linkplain HttpMessageConverter message converters}.
+		 * @param object the object to send as data
+		 */
+		void data(Object object);
+
+		/**
+		 * Completes the event stream with the given error.
+		 *
+		 * <p>The throwable is dispatched back into Spring MVC, and passed to
+		 * its exception handling mechanism. Since the response has
+		 * been committed by this point, the response status can not change.
+ 		 * @param t the throwable to dispatch
+		 */
+		void error(Throwable t);
+
+		/**
+		 * Completes the event stream.
+		 */
+		void complete();
 	}
 
 
