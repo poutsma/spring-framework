@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,7 @@ package org.springframework.web.reactive.result.method.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -200,54 +198,18 @@ public class ModelAttributeMethodArgumentResolver extends HandlerMethodArgumentR
 				.orElse(null);
 	}
 
-	private Mono<?> createAttribute(
-			String attributeName, Class<?> clazz, BindingContext context, ServerWebExchange exchange) {
+	private Mono<?> createAttribute(String attributeName, Class<?> clazz, BindingContext context,
+			ServerWebExchange exchange) {
 
 		Constructor<?> ctor = BeanUtils.getResolvableConstructor(clazz);
-		return constructAttribute(ctor, attributeName, context, exchange);
-	}
-
-	private Mono<?> constructAttribute(Constructor<?> ctor, String attributeName,
-			BindingContext context, ServerWebExchange exchange) {
 
 		if (ctor.getParameterCount() == 0) {
 			// A single default constructor -> clearly a standard JavaBeans arrangement.
 			return Mono.just(BeanUtils.instantiateClass(ctor));
 		}
 
-		// A single data class constructor -> resolve constructor arguments from request parameters.
-		WebExchangeDataBinder binder = context.createDataBinder(exchange, null, attributeName);
-		return getValuesToBind(binder, exchange).map(bindValues -> {
-			String[] paramNames = BeanUtils.getParameterNames(ctor);
-			Class<?>[] paramTypes = ctor.getParameterTypes();
-			Object[] args = new Object[paramTypes.length];
-			String fieldDefaultPrefix = binder.getFieldDefaultPrefix();
-			String fieldMarkerPrefix = binder.getFieldMarkerPrefix();
-			for (int i = 0; i < paramNames.length; i++) {
-				String paramName = paramNames[i];
-				Class<?> paramType = paramTypes[i];
-				Object value = bindValues.get(paramName);
-				if (value == null) {
-					if (fieldDefaultPrefix != null) {
-						value = bindValues.get(fieldDefaultPrefix + paramName);
-					}
-					if (value == null && fieldMarkerPrefix != null) {
-						if (bindValues.get(fieldMarkerPrefix + paramName) != null) {
-							value = binder.getEmptyValue(paramType);
-						}
-					}
-				}
-				value = (value instanceof List ? ((List<?>) value).toArray() : value);
-				MethodParameter methodParam = new MethodParameter(ctor, i);
-				if (value == null && methodParam.isOptional()) {
-					args[i] = (methodParam.getParameterType() == Optional.class ? Optional.empty() : null);
-				}
-				else {
-					args[i] = binder.convertIfNecessary(value, paramTypes[i], methodParam);
-				}
-			}
-			return BeanUtils.instantiateClass(ctor, args);
-		});
+		WebExchangeDataBinder dataBinder = context.createDataBinder(exchange, null, attributeName);
+		return dataBinder.construct(exchange, ctor, null);
 	}
 
 	/**
@@ -257,7 +219,9 @@ public class ModelAttributeMethodArgumentResolver extends HandlerMethodArgumentR
 	 * @param exchange the current exchange
 	 * @return a map of bind values
 	 * @since 5.3
+	 * @deprecated As of TODO, no longer used.
 	 */
+	@Deprecated
 	public Mono<Map<String, Object>> getValuesToBind(WebExchangeDataBinder binder, ServerWebExchange exchange) {
 		return binder.getValuesToBind(exchange);
 	}

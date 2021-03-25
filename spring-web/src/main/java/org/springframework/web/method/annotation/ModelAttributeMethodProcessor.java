@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,9 @@ package org.springframework.web.method.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.Part;
@@ -33,9 +28,7 @@ import javax.servlet.http.Part;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.springframework.beans.BeanInstantiationException;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.TypeMismatchException;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.lang.Nullable;
@@ -47,6 +40,7 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.SmartValidator;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.ServletRequestDataBinder;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -130,7 +124,7 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 			mavContainer.setBinding(name, ann.binding());
 		}
 
-		Object attribute = null;
+		Object attribute;
 		BindingResult bindingResult = null;
 
 		if (mavContainer.containsAttribute(name)) {
@@ -233,7 +227,6 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 	 * @throws Exception in case of constructor invocation failure
 	 * @since 5.1
 	 */
-	@SuppressWarnings("serial")
 	protected Object constructAttribute(Constructor<?> ctor, String attributeName, MethodParameter parameter,
 			WebDataBinderFactory binderFactory, NativeWebRequest webRequest) throws Exception {
 
@@ -242,80 +235,24 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 			return BeanUtils.instantiateClass(ctor);
 		}
 
-		// A single data class constructor -> resolve constructor arguments from request parameters.
-		String[] paramNames = BeanUtils.getParameterNames(ctor);
-		Class<?>[] paramTypes = ctor.getParameterTypes();
-		Object[] args = new Object[paramTypes.length];
 		WebDataBinder binder = binderFactory.createBinder(webRequest, null, attributeName);
-		String fieldDefaultPrefix = binder.getFieldDefaultPrefix();
-		String fieldMarkerPrefix = binder.getFieldMarkerPrefix();
-		boolean bindingFailure = false;
-		Set<String> failedParams = new HashSet<>(4);
-
-		for (int i = 0; i < paramNames.length; i++) {
-			String paramName = paramNames[i];
-			Class<?> paramType = paramTypes[i];
-			Object value = webRequest.getParameterValues(paramName);
-			if (value == null) {
-				if (fieldDefaultPrefix != null) {
-					value = webRequest.getParameter(fieldDefaultPrefix + paramName);
-				}
-				if (value == null) {
-					if (fieldMarkerPrefix != null && webRequest.getParameter(fieldMarkerPrefix + paramName) != null) {
-						value = binder.getEmptyValue(paramType);
+		if (binder instanceof ServletRequestDataBinder) {
+			ServletRequestDataBinder servletRequestDataBinder = (ServletRequestDataBinder) binder;
+			HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
+			if (servletRequest != null) {
+				return servletRequestDataBinder.construct(servletRequest, ctor, new WebDataBinder.Callback() {
+					@Override
+					public void validateValue(WebDataBinder dataBinder, MethodParameter parameter, Class<?> declaringClass,
+							String paramName, Object value) {
+						validateValueIfApplicable(dataBinder, parameter, declaringClass, paramName, value);
 					}
-					else {
-						value = resolveConstructorArgument(paramName, paramType, webRequest);
-					}
-				}
-			}
-			try {
-				MethodParameter methodParam = new FieldAwareConstructorParameter(ctor, i, paramName);
-				if (value == null && methodParam.isOptional()) {
-					args[i] = (methodParam.getParameterType() == Optional.class ? Optional.empty() : null);
-				}
-				else {
-					args[i] = binder.convertIfNecessary(value, paramType, methodParam);
-				}
-			}
-			catch (TypeMismatchException ex) {
-				ex.initPropertyName(paramName);
-				args[i] = null;
-				failedParams.add(paramName);
-				binder.getBindingResult().recordFieldValue(paramName, paramType, value);
-				binder.getBindingErrorProcessor().processPropertyAccessException(ex, binder.getBindingResult());
-				bindingFailure = true;
+				}, parameter);
 			}
 		}
-
-		if (bindingFailure) {
-			BindingResult result = binder.getBindingResult();
-			for (int i = 0; i < paramNames.length; i++) {
-				String paramName = paramNames[i];
-				if (!failedParams.contains(paramName)) {
-					Object value = args[i];
-					result.recordFieldValue(paramName, paramTypes[i], value);
-					validateValueIfApplicable(binder, parameter, ctor.getDeclaringClass(), paramName, value);
-				}
-			}
-			if (!parameter.isOptional()) {
-				try {
-					Object target = BeanUtils.instantiateClass(ctor, args);
-					throw new BindException(result) {
-						@Override
-						public Object getTarget() {
-							return target;
-						}
-					};
-				}
-				catch (BeanInstantiationException ex) {
-					// swallow and proceed without target instance
-				}
-			}
-			throw new BindException(result);
+		else if (binder instanceof WebRequestDataBinder) {
+			// TODO?
 		}
-
-		return BeanUtils.instantiateClass(ctor, args);
+		return null;
 	}
 
 	/**
@@ -328,6 +265,7 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 	}
 
 	@Nullable
+	@Deprecated
 	public Object resolveConstructorArgument(String paramName, Class<?> paramType, NativeWebRequest request)
 			throws Exception {
 
@@ -475,61 +413,5 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 		}
 	}
 
-
-	/**
-	 * {@link MethodParameter} subclass which detects field annotations as well.
-	 * @since 5.1
-	 */
-	private static class FieldAwareConstructorParameter extends MethodParameter {
-
-		private final String parameterName;
-
-		@Nullable
-		private volatile Annotation[] combinedAnnotations;
-
-		public FieldAwareConstructorParameter(Constructor<?> constructor, int parameterIndex, String parameterName) {
-			super(constructor, parameterIndex);
-			this.parameterName = parameterName;
-		}
-
-		@Override
-		public Annotation[] getParameterAnnotations() {
-			Annotation[] anns = this.combinedAnnotations;
-			if (anns == null) {
-				anns = super.getParameterAnnotations();
-				try {
-					Field field = getDeclaringClass().getDeclaredField(this.parameterName);
-					Annotation[] fieldAnns = field.getAnnotations();
-					if (fieldAnns.length > 0) {
-						List<Annotation> merged = new ArrayList<>(anns.length + fieldAnns.length);
-						merged.addAll(Arrays.asList(anns));
-						for (Annotation fieldAnn : fieldAnns) {
-							boolean existingType = false;
-							for (Annotation ann : anns) {
-								if (ann.annotationType() == fieldAnn.annotationType()) {
-									existingType = true;
-									break;
-								}
-							}
-							if (!existingType) {
-								merged.add(fieldAnn);
-							}
-						}
-						anns = merged.toArray(new Annotation[0]);
-					}
-				}
-				catch (NoSuchFieldException | SecurityException ex) {
-					// ignore
-				}
-				this.combinedAnnotations = anns;
-			}
-			return anns;
-		}
-
-		@Override
-		public String getParameterName() {
-			return this.parameterName;
-		}
-	}
 
 }

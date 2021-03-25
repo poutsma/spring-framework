@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,19 @@
 
 package org.springframework.web.bind;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
+
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Part;
 
 import org.springframework.beans.MutablePropertyValues;
+import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
 import org.springframework.web.multipart.support.StandardServletPartUtils;
 import org.springframework.web.util.WebUtils;
@@ -139,5 +145,38 @@ public class ServletRequestDataBinder extends WebDataBinder {
 					new BindException(getBindingResult()));
 		}
 	}
+
+	public <T> T construct(ServletRequest request, Constructor<T> ctor, Callback callback, @Nullable MethodParameter parameter) throws Exception {
+		return super.construct(ctor, (name, type) -> getBindValue(request, name, type), callback, parameter);
+	}
+
+	@Nullable
+	protected Object getBindValue(ServletRequest request, String name, Class<?> type) {
+		Object value = request.getParameterValues(name);
+		if (value != null) {
+			return value;
+		}
+		else {
+			MultipartRequest multipartRequest = WebUtils.getNativeRequest(request, MultipartRequest.class);
+			if (multipartRequest != null) {
+				List<MultipartFile> files = multipartRequest.getFiles(name);
+				if (!files.isEmpty()) {
+					return (files.size() == 1 ? files.get(0) : files);
+				}
+			}
+			else if (StringUtils.startsWithIgnoreCase(request.getContentType(), "multipart/")) {
+				HttpServletRequest httpServletRequest = WebUtils.getNativeRequest(request, HttpServletRequest.class);
+				if (httpServletRequest != null) {
+					List<Part> parts = StandardServletPartUtils.getParts(httpServletRequest, name);
+					if (!parts.isEmpty()) {
+						return (parts.size() == 1 ? parts.get(0) : parts);
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+
 
 }
