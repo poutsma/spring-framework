@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,4 +81,17 @@ public class ExtendedServletRequestDataBinder extends ServletRequestDataBinder {
 		}
 	}
 
+	@Override
+	protected Object getBindValue(ServletRequest request, String name, Class<?> type) {
+		Object result = super.getBindValue(request, name, type);
+		if (result != null) {
+			return result;
+		}
+		else {
+			String attr = HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE;
+			@SuppressWarnings("unchecked")
+			Map<String, String> uriVars = (Map<String, String>) request.getAttribute(attr);
+			return uriVars.get(name);
+		}
+	}
 }
