@@ -242,17 +242,12 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 			ServletRequestDataBinder servletRequestDataBinder = (ServletRequestDataBinder) binder;
 			HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
 			if (servletRequest != null) {
-				return servletRequestDataBinder.construct(servletRequest, ctor, new WebDataBinder.Callback() {
-					@Override
-					public void validateValue(WebDataBinder dataBinder, MethodParameter parameter, Class<?> declaringClass,
-							String paramName, Object value) {
-						validateValueIfApplicable(dataBinder, parameter, declaringClass, paramName, value);
-					}
-				}, parameter);
+				return servletRequestDataBinder.construct(servletRequest, ctor, parameter);
 			}
 		}
 		else if (binder instanceof WebRequestDataBinder) {
-			// TODO?
+			WebRequestDataBinder webRequestDataBinder = (WebRequestDataBinder) binder;
+			return webRequestDataBinder.construct(webRequest, ctor, parameter);
 		}
 		return null;
 	}
@@ -325,6 +320,7 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 	 * @see #validateIfApplicable(WebDataBinder, MethodParameter)
 	 * @see SmartValidator#validateValue(Class, String, Object, Errors, Object...)
 	 */
+	@Deprecated
 	protected void validateValueIfApplicable(WebDataBinder binder, MethodParameter parameter,
 			Class<?> targetType, String fieldName, @Nullable Object value) {
 

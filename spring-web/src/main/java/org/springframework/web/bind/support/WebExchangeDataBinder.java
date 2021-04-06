@@ -40,6 +40,7 @@ import org.springframework.web.server.ServerWebExchange;
  *
  * @author Rossen Stoyanchev
  * @author Juergen Hoeller
+ * @author Arjen Poutsma
  * @since 5.0
  */
 public class WebExchangeDataBinder extends WebDataBinder {
@@ -87,11 +88,10 @@ public class WebExchangeDataBinder extends WebDataBinder {
 		return extractValuesToBind(exchange);
 	}
 
-	public <T> Mono<T> construct(ServerWebExchange exchange, Constructor<T> ctor,
-			@Nullable MethodParameter parameter) {
+	public <T> Mono<T> construct(ServerWebExchange exchange, Constructor<T> ctor, @Nullable MethodParameter parameter) {
 		return getValuesToBind(exchange).flatMap(bindValues -> {
 			try {
-				return Mono.just(super.construct(ctor, (name, type) -> bindValues.get(name), null, parameter));
+				return Mono.just(super.construct(ctor, (name, type) -> bindValues.get(name), parameter));
 			}
 			catch (Exception ex) {
 				return Mono.error(ex);

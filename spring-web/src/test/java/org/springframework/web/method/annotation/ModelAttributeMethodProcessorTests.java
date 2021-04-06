@@ -286,6 +286,7 @@ public class ModelAttributeMethodProcessorTests {
 				});
 
 		Object resolved = this.processor.resolveArgument(this.beanWithConstructorArgs, this.container, requestWithParam, factory);
+		assertThat(resolved).isNotNull();
 		assertThat(resolved).isInstanceOf(TestBeanWithConstructorArgs.class);
 		assertThat(((TestBeanWithConstructorArgs) resolved).listOfStrings).containsExactly("1", "2");
 	}

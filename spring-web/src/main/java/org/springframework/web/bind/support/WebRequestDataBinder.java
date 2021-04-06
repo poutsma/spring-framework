@@ -16,9 +16,14 @@
 
 package org.springframework.web.bind.support;
 
+import java.lang.reflect.Constructor;
+import java.util.List;
+
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 
 import org.springframework.beans.MutablePropertyValues;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -28,6 +33,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartRequest;
 import org.springframework.web.multipart.support.StandardServletPartUtils;
 
@@ -126,6 +132,39 @@ public class WebRequestDataBinder extends WebDataBinder {
 		doBind(mpvs);
 	}
 
+	public <T> T construct(WebRequest request, Constructor<T> ctor, @Nullable MethodParameter parameter) throws Exception {
+		return super.construct(ctor, (name, type) -> getBindValue(request, name, type), parameter);
+	}
+
+	@Nullable
+	protected Object getBindValue(WebRequest request, String name, Class<?> type) {
+		Object value = request.getParameterValues(name);
+		if (value != null) {
+			return value;
+		}
+		else if (request instanceof NativeWebRequest) {
+			NativeWebRequest nativeRequest = (NativeWebRequest) request;
+			MultipartRequest multipartRequest = nativeRequest.getNativeRequest(MultipartRequest.class);
+			if (multipartRequest != null) {
+				List<MultipartFile> files = multipartRequest.getFiles(name);
+				if (!files.isEmpty()) {
+					return (files.size() == 1 ? files.get(0) : files);
+				}
+			}
+			else if (StringUtils.startsWithIgnoreCase(
+					request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.MULTIPART_FORM_DATA_VALUE)) {
+				HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
+				if (servletRequest != null && HttpMethod.POST.matches(servletRequest.getMethod())) {
+					List<Part> parts = StandardServletPartUtils.getParts(servletRequest, name);
+					if (!parts.isEmpty()) {
+						return (parts.size() == 1 ? parts.get(0) : parts);
+					}
+				}
+			}
+		}
+		return null;
+	}
+
 	/**
 	 * Treats errors as fatal.
 	 * <p>Use this method only if it's an error if the input isn't valid.
@@ -137,5 +176,6 @@ public class WebRequestDataBinder extends WebDataBinder {
 			throw new BindException(getBindingResult());
 		}
 	}
+
 
 }

@@ -24,9 +24,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 
 import org.springframework.beans.MutablePropertyValues;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
@@ -62,6 +62,7 @@ import org.springframework.web.util.WebUtils;
  *
  * @author Rod Johnson
  * @author Juergen Hoeller
+ * @author Arjen Poutsma
  * @see #bind(jakarta.servlet.ServletRequest)
  * @see #registerCustomEditor
  * @see #setAllowedFields
@@ -148,8 +149,8 @@ public class ServletRequestDataBinder extends WebDataBinder {
 		}
 	}
 
-	public <T> T construct(ServletRequest request, Constructor<T> ctor, Callback callback, @Nullable MethodParameter parameter) throws Exception {
-		return super.construct(ctor, (name, type) -> getBindValue(request, name, type), callback, parameter);
+	public <T> T construct(ServletRequest request, Constructor<T> ctor, @Nullable MethodParameter parameter) throws Exception {
+		return super.construct(ctor, (name, type) -> getBindValue(request, name, type), parameter);
 	}
 
 	@Nullable

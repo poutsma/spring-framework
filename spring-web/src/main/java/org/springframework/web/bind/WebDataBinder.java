@@ -37,11 +37,16 @@ import org.springframework.beans.PropertyValue;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.core.CollectionFactory;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.DataBinder;
+import org.springframework.validation.Errors;
+import org.springframework.validation.SmartValidator;
+import org.springframework.validation.Validator;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -60,6 +65,7 @@ import org.springframework.web.multipart.MultipartFile;
  * @author Juergen Hoeller
  * @author Scott Andrews
  * @author Brian Clozel
+ * @author Arjen Poutsma
  * @since 1.2
  * @see #registerCustomEditor
  * @see #setAllowedFields
@@ -368,7 +374,7 @@ public class WebDataBinder extends DataBinder {
 
 	@SuppressWarnings("serial")
 	protected <T> T construct(Constructor<T> ctor, BiFunction<String, Class<?>, Object> values,
-			@Nullable Callback callback, @Nullable MethodParameter parameter) throws Exception {
+			@Nullable MethodParameter parameter) throws Exception {
 
 		// A single data class constructor -> resolve constructor arguments from request parameters.
 		String[] paramNames = BeanUtils.getParameterNames(ctor);
@@ -399,6 +405,9 @@ public class WebDataBinder extends DataBinder {
 					}
 				}
 			}
+			if (value != null && value.getClass().isArray() && Array.getLength(value) == 1) {
+				value = Array.get(value, 0);
+			}
 			try {
 				MethodParameter methodParam = new FieldAwareConstructorParameter(ctor, i, paramName);
 				if (value == null && methodParam.isOptional()) {
@@ -425,8 +434,8 @@ public class WebDataBinder extends DataBinder {
 				if (!failedParams.contains(paramName)) {
 					Object value = args[i];
 					result.recordFieldValue(paramName, paramTypes[i], value);
-					if (parameter != null && callback != null) {
-						callback.validateValue(this, parameter, ctor.getDeclaringClass(), paramName, value);
+					if (parameter != null) {
+						validateValueIfApplicable(parameter, ctor.getDeclaringClass(), paramName, value);
 					}
 				}
 			}
@@ -450,9 +459,51 @@ public class WebDataBinder extends DataBinder {
 		return BeanUtils.instantiateClass(ctor, args);
 	}
 
-	public interface Callback {
+	/**
+	 * Validate the specified candidate value if applicable.
+	 * <p>The default implementation checks for {@code @javax.validation.Valid},
+	 * Spring's {@link org.springframework.validation.annotation.Validated},
+	 * and custom annotations whose name starts with "Valid".
+	 * @param parameter the method parameter declaration
+	 * @param targetType the target type
+	 * @param fieldName the name of the field
+	 * @param value the candidate value
+	 * @since 5.1
+	 * @see SmartValidator#validateValue(Class, String, Object, Errors, Object...)
+	 */
+	private void validateValueIfApplicable(MethodParameter parameter, Class<?> targetType, String fieldName,
+			@Nullable Object value) {
 
-		void validateValue(WebDataBinder dataBinder, MethodParameter parameter, Class<?> declaringClass, String paramName, Object value);
+		for (Annotation ann : parameter.getParameterAnnotations()) {
+			Object[] validationHints = determineValidationHints(ann);
+			if (validationHints != null) {
+				for (Validator validator : getValidators()) {
+					if (validator instanceof SmartValidator) {
+						try {
+							((SmartValidator) validator).validateValue(targetType, fieldName, value,
+									getBindingResult(), validationHints);
+						}
+						catch (IllegalArgumentException ex) {
+							// No corresponding field on the target class...
+						}
+					}
+				}
+				break;
+			}
+		}
+	}
+
+	@Nullable
+	private Object[] determineValidationHints(Annotation ann) {
+		Validated validatedAnn = AnnotationUtils.getAnnotation(ann, Validated.class);
+		if (validatedAnn != null || ann.annotationType().getSimpleName().startsWith("Valid")) {
+			Object hints = (validatedAnn != null ? validatedAnn.value() : AnnotationUtils.getValue(ann));
+			if (hints == null) {
+				return new Object[0];
+			}
+			return (hints instanceof Object[] ? (Object[]) hints : new Object[] {hints});
+		}
+		return null;
 	}
 
 
