@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import freemarker.template.SimpleHash;
 import freemarker.template.Template;
 import freemarker.template.Version;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactoryUtils;
@@ -210,6 +211,17 @@ public class FreeMarkerView extends AbstractUrlBasedView {
 		}
 	}
 
+	@Override
+	protected Mono<Boolean> checkResourceExistsAsync(Locale locale) {
+		return getTemplateAsync(locale)
+				.map(template -> Boolean.TRUE)
+				.onErrorReturn(FileNotFoundException.class, Boolean.FALSE)
+				.onErrorMap(ParseException.class, ex -> new ApplicationContextException(
+									"Failed to parse FreeMarker template for URL [" +  getUrl() + "]", ex))
+				.onErrorMap(IOException.class, ex -> new ApplicationContextException(
+									"Could not load FreeMarker template for URL [" + getUrl() + "]", ex));
+	}
+
 	/**
 	 * Prepare the model to use for rendering by potentially exposing a
 	 * {@link RequestContext} for use in Spring FreeMarker macros and then
@@ -310,6 +322,13 @@ public class FreeMarkerView extends AbstractUrlBasedView {
 		return (getEncoding() != null ?
 				obtainConfiguration().getTemplate(getUrl(), locale, getEncoding()) :
 				obtainConfiguration().getTemplate(getUrl(), locale));
+	}
+
+	protected Mono<Template> getTemplateAsync(Locale locale) {
+		return Mono.fromCallable(() -> (getEncoding() != null ?
+				obtainConfiguration().getTemplate(getUrl(), locale, getEncoding()) :
+				obtainConfiguration().getTemplate(getUrl(), locale)))
+				.subscribeOn(Schedulers.boundedElastic());
 	}
 
 }
