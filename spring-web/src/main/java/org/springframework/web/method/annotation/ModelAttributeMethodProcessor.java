@@ -41,7 +41,6 @@ import org.springframework.validation.Errors;
 import org.springframework.validation.SmartValidator;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.ValidationAnnotationUtils;
-import org.springframework.web.bind.ServletRequestDataBinder;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -233,23 +232,21 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 			WebDataBinderFactory binderFactory, NativeWebRequest webRequest) throws Exception {
 
 		if (ctor.getParameterCount() == 0) {
-			// A single default constructor -> clearly a standard JavaBeans arrangement.
 			return BeanUtils.instantiateClass(ctor);
 		}
 
 		WebDataBinder binder = binderFactory.createBinder(webRequest, null, attributeName);
-		if (binder instanceof ServletRequestDataBinder) {
-			ServletRequestDataBinder servletRequestDataBinder = (ServletRequestDataBinder) binder;
-			HttpServletRequest servletRequest = webRequest.getNativeRequest(HttpServletRequest.class);
-			if (servletRequest != null) {
-				return servletRequestDataBinder.construct(servletRequest, ctor, parameter);
-			}
+		return constructAttribute(ctor, attributeName, parameter, binder, webRequest);
+	}
+
+	public Object constructAttribute(Constructor<?> ctor, String attributeName, MethodParameter parameter,
+				WebDataBinder binder, NativeWebRequest webRequest) throws Exception {
+
+		if (ctor.getParameterCount() == 0) {
+			return BeanUtils.instantiateClass(ctor);
 		}
-		else if (binder instanceof WebRequestDataBinder) {
-			WebRequestDataBinder webRequestDataBinder = (WebRequestDataBinder) binder;
-			return webRequestDataBinder.construct(webRequest, ctor, parameter);
-		}
-		return null;
+
+		return ((WebRequestDataBinder) binder).construct(webRequest, ctor, parameter);
 	}
 
 	/**

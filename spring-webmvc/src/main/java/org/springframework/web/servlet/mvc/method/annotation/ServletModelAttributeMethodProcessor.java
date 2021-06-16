@@ -16,6 +16,7 @@
 
 package org.springframework.web.servlet.mvc.method.annotation;
 
+import java.lang.reflect.Constructor;
 import java.util.Collections;
 import java.util.Map;
 
@@ -83,6 +84,16 @@ public class ServletModelAttributeMethodProcessor extends ModelAttributeMethodPr
 		}
 
 		return super.createAttribute(attributeName, parameter, binderFactory, request);
+	}
+
+	@Override
+	public Object constructAttribute(Constructor<?> ctor, String attributeName,  MethodParameter parameter,
+			WebDataBinder binder, NativeWebRequest webRequest) throws Exception {
+
+		ServletRequest servletRequest = webRequest.getNativeRequest(ServletRequest.class);
+		Assert.state(servletRequest != null, "No ServletRequest");
+		ServletRequestDataBinder servletBinder = (ServletRequestDataBinder) binder;
+		return servletBinder.construct(servletRequest, ctor, parameter);
 	}
 
 	/**

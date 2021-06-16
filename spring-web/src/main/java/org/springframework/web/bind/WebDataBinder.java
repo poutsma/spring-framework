@@ -390,9 +390,6 @@ public class WebDataBinder extends DataBinder {
 			Class<?> paramType = paramTypes[i];
 			Object value = values.apply(paramName, paramType);
 
-			if (ObjectUtils.isArray(value) && Array.getLength(value) == 1) {
-				value = Array.get(value, 0);
-			}
 
 			if (value == null) {
 				if (fieldDefaultPrefix != null) {
@@ -405,7 +402,7 @@ public class WebDataBinder extends DataBinder {
 					}
 				}
 			}
-			if (value != null && value.getClass().isArray() && Array.getLength(value) == 1) {
+			if (ObjectUtils.isArray(value) && Array.getLength(value) == 1) {
 				value = Array.get(value, 0);
 			}
 			try {

@@ -27,6 +27,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.core.MethodParameter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
@@ -121,8 +122,7 @@ public class WebRequestDataBinder extends WebDataBinder {
 			if (multipartRequest != null) {
 				bindMultipart(multipartRequest.getMultiFileMap(), mpvs);
 			}
-			else if (StringUtils.startsWithIgnoreCase(
-					request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.MULTIPART_FORM_DATA_VALUE)) {
+			else if (isMultipart(request)) {
 				HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
 				if (servletRequest != null && HttpMethod.POST.matches(servletRequest.getMethod())) {
 					StandardServletPartUtils.bindParts(servletRequest, mpvs, isBindEmptyMultipartFiles());
@@ -133,11 +133,16 @@ public class WebRequestDataBinder extends WebDataBinder {
 	}
 
 	public <T> T construct(WebRequest request, Constructor<T> ctor, @Nullable MethodParameter parameter) throws Exception {
-		return super.construct(ctor, (name, type) -> getBindValue(request, name, type), parameter);
+		return super.construct(ctor, (name, type) -> getBindValue(request, name), parameter);
+	}
+
+	private boolean isMultipart(WebRequest request) {
+		return StringUtils.startsWithIgnoreCase(
+				request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.MULTIPART_FORM_DATA_VALUE);
 	}
 
 	@Nullable
-	protected Object getBindValue(WebRequest request, String name, Class<?> type) {
+	private Object getBindValue(WebRequest request, String name) {
 		Object value = request.getParameterValues(name);
 		if (value != null) {
 			return value;
@@ -151,10 +156,9 @@ public class WebRequestDataBinder extends WebDataBinder {
 					return (files.size() == 1 ? files.get(0) : files);
 				}
 			}
-			else if (StringUtils.startsWithIgnoreCase(
-					request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.MULTIPART_FORM_DATA_VALUE)) {
+			else if (isMultipart(request)) {
 				HttpServletRequest servletRequest = nativeRequest.getNativeRequest(HttpServletRequest.class);
-				if (servletRequest != null && HttpMethod.POST.matches(servletRequest.getMethod())) {
+				if (servletRequest != null) {
 					List<Part> parts = StandardServletPartUtils.getParts(servletRequest, name);
 					if (!parts.isEmpty()) {
 						return (parts.size() == 1 ? parts.get(0) : parts);
@@ -164,6 +168,8 @@ public class WebRequestDataBinder extends WebDataBinder {
 		}
 		return null;
 	}
+
+
 
 	/**
 	 * Treats errors as fatal.
