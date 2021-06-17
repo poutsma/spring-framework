@@ -31,6 +31,7 @@ import org.springframework.http.codec.multipart.Part;
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.server.ServerWebExchange;
 
@@ -89,12 +90,12 @@ public class WebExchangeDataBinder extends WebDataBinder {
 	}
 
 	public <T> Mono<T> construct(ServerWebExchange exchange, Constructor<T> ctor, @Nullable MethodParameter parameter) {
-		return getValuesToBind(exchange).flatMap(bindValues -> {
+		return getValuesToBind(exchange).handle((bindValues, sink) -> {
 			try {
-				return Mono.just(super.construct(ctor, (name, type) -> bindValues.get(name), parameter));
+				sink.next(super.construct(ctor, (name, type) -> bindValues.get(name), parameter));
 			}
-			catch (Exception ex) {
-				return Mono.error(ex);
+			catch (BindException ex) {
+				sink.error(ex);
 			}
 		});
 	}

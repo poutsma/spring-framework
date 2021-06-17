@@ -222,20 +222,6 @@ public class ModelAttributeMethodArgumentResolver extends HandlerMethodArgumentR
 		return dataBinder.construct(exchange, ctor, null);
 	}
 
-	/**
-	 * Protected method to obtain the values for data binding. By default this
-	 * method delegates to {@link WebExchangeDataBinder#getValuesToBind}.
-	 * @param binder the data binder in use
-	 * @param exchange the current exchange
-	 * @return a map of bind values
-	 * @since 5.3
-	 * @deprecated As of TODO, no longer used.
-	 */
-	@Deprecated
-	public Mono<Map<String, Object>> getValuesToBind(WebExchangeDataBinder binder, ServerWebExchange exchange) {
-		return binder.getValuesToBind(exchange);
-	}
-
 	private boolean hasErrorsArgument(MethodParameter parameter) {
 		int i = parameter.getParameterIndex();
 		Class<?>[] paramTypes = parameter.getExecutable().getParameterTypes();

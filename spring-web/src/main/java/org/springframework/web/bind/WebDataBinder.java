@@ -374,7 +374,7 @@ public class WebDataBinder extends DataBinder {
 
 	@SuppressWarnings("serial")
 	protected <T> T construct(Constructor<T> ctor, BiFunction<String, Class<?>, Object> values,
-			@Nullable MethodParameter parameter) throws Exception {
+			@Nullable MethodParameter parameter) throws BindException {
 
 		// A single data class constructor -> resolve constructor arguments from request parameters.
 		String[] paramNames = BeanUtils.getParameterNames(ctor);

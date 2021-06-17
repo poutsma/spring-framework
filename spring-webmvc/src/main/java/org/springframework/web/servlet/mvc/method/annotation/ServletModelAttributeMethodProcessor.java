@@ -168,25 +168,5 @@ public class ServletModelAttributeMethodProcessor extends ModelAttributeMethodPr
 		ServletRequestDataBinder servletBinder = (ServletRequestDataBinder) binder;
 		servletBinder.bind(servletRequest);
 	}
-
-	@Override
-	@Nullable
-	@Deprecated
-	public Object resolveConstructorArgument(String paramName, Class<?> paramType, NativeWebRequest request)
-			throws Exception {
-
-		Object value = super.resolveConstructorArgument(paramName, paramType, request);
-		if (value != null) {
-			return value;
-		}
-		ServletRequest servletRequest = request.getNativeRequest(ServletRequest.class);
-		if (servletRequest != null) {
-			String attr = HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE;
-			@SuppressWarnings("unchecked")
-			Map<String, String> uriVars = (Map<String, String>) servletRequest.getAttribute(attr);
-			return uriVars.get(paramName);
-		}
-		return null;
-	}
-
+	
 }

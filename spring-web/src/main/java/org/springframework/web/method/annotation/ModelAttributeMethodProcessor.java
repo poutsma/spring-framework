@@ -18,7 +18,6 @@ package org.springframework.web.method.annotation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -34,7 +33,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -49,9 +47,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.MultipartRequest;
-import org.springframework.web.multipart.support.StandardServletPartUtils;
 
 /**
  * Resolve {@code @ModelAttribute} annotated method arguments and handle
@@ -258,30 +253,6 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 		((WebRequestDataBinder) binder).bind(request);
 	}
 
-	@Nullable
-	@Deprecated
-	public Object resolveConstructorArgument(String paramName, Class<?> paramType, NativeWebRequest request)
-			throws Exception {
-
-		MultipartRequest multipartRequest = request.getNativeRequest(MultipartRequest.class);
-		if (multipartRequest != null) {
-			List<MultipartFile> files = multipartRequest.getFiles(paramName);
-			if (!files.isEmpty()) {
-				return (files.size() == 1 ? files.get(0) : files);
-			}
-		}
-		else if (StringUtils.startsWithIgnoreCase(
-				request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.MULTIPART_FORM_DATA_VALUE)) {
-			HttpServletRequest servletRequest = request.getNativeRequest(HttpServletRequest.class);
-			if (servletRequest != null && HttpMethod.POST.matches(servletRequest.getMethod())) {
-				List<Part> parts = StandardServletPartUtils.getParts(servletRequest, paramName);
-				if (!parts.isEmpty()) {
-					return (parts.size() == 1 ? parts.get(0) : parts);
-				}
-			}
-		}
-		return null;
-	}
 
 	/**
 	 * Validate the model attribute if applicable.
