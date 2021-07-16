@@ -20,6 +20,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -261,7 +262,7 @@ public abstract class Jackson2CodecSupport {
 		if (targetMimeType == null || CollectionUtils.isEmpty(this.objectMapperRegistrations)) {
 			return this.defaultObjectMapper;
 		}
-		Class<?> targetClass = targetType.toClass();
+		Class<?> targetClass = getTargetClass(targetType);
 		for (Map.Entry<Class<?>, Map<MimeType, ObjectMapper>> typeEntry : getObjectMapperRegistrations().entrySet()) {
 			if (typeEntry.getKey().isAssignableFrom(targetClass)) {
 				for (Map.Entry<MimeType, ObjectMapper> objectMapperEntry : typeEntry.getValue().entrySet()) {
@@ -275,6 +276,17 @@ public abstract class Jackson2CodecSupport {
 		}
 		// No registrations
 		return this.defaultObjectMapper;
+	}
+
+	private Class<?> getTargetClass(ResolvableType type) {
+		Class<?> clazz = type.toClass();
+		if (Collection.class.isAssignableFrom(clazz)) {
+			Class<?>[] generics = type.resolveGenerics();
+			if (generics.length == 1) {
+				return generics[0];
+			}
+		}
+		return clazz;
 	}
 
 }
