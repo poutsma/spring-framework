@@ -141,7 +141,7 @@ public class MockMultipartHttpServletRequest extends MockHttpServletRequest impl
 
 	@Override
 	public HttpMethod getRequestMethod() {
-		return HttpMethod.resolve(getMethod());
+		return HttpMethod.valueOf(getMethod());
 	}
 
 	@Override
