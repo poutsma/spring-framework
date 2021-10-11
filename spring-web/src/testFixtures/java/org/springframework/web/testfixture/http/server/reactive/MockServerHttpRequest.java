@@ -90,12 +90,12 @@ public final class MockServerHttpRequest extends AbstractServerHttpRequest {
 
 
 	@Override
-	@Nullable
 	public HttpMethod getMethod() {
-		return HttpMethod.resolve(this.httpMethod);
+		return HttpMethod.valueOf(this.httpMethod);
 	}
 
 	@Override
+	@Deprecated
 	public String getMethodValue() {
 		return this.httpMethod;
 	}
