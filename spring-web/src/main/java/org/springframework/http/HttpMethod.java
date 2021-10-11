@@ -89,6 +89,7 @@ public final class HttpMethod implements Comparable<HttpMethod>, Serializable {
 	 */
 	public static final HttpMethod TRACE = new HttpMethod("TRACE");
 
+
 	static {
 		values = new HttpMethod[]{GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, TRACE};
 		for (HttpMethod httpMethod : values) {
@@ -105,11 +106,18 @@ public final class HttpMethod implements Comparable<HttpMethod>, Serializable {
 	}
 
 	/**
-	 * Returns an array containing the methods defined in HTTP 1.1. Note that
-	 * this excludes any method defined in WebDav.
+	 * Returns an array containing the standard HTTP methods. Specifically,
+	 * this method returns an array containing {@link #GET}, {@link #HEAD},
+	 * {@link #POST}, {@link #PUT}, {@link #PATCH}, {@link #DELETE},
+	 * {@link #OPTIONS}, and {@link #TRACE}.
+	 *
+	 * <p>Note that the returned value does not include any HTTP methods defined
+	 * in WebDav.
 	 */
 	public static HttpMethod[] values() {
-		return values;
+		HttpMethod[] copy = new HttpMethod[values.length];
+		System.arraycopy(values, 0, copy, 0, values.length);
+		return copy;
 	}
 
 	/**
