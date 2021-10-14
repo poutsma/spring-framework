@@ -73,6 +73,7 @@ class HttpComponentsClientHttpResponse implements ClientHttpResponse {
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() {
 		return this.message.getHead().getCode();
 	}

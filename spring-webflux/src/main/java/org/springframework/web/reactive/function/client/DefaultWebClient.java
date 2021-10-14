@@ -518,8 +518,8 @@ class DefaultWebClient implements WebClient {
 
 		private static IntPredicate toIntPredicate(Predicate<HttpStatus> predicate) {
 			return value -> {
-				HttpStatus status = HttpStatus.resolve(value);
-				return (status != null && predicate.test(status));
+				HttpStatus status = HttpStatus.valueOf(value);
+				return predicate.test(status);
 			};
 		}
 
@@ -634,7 +634,7 @@ class DefaultWebClient implements WebClient {
 			ResponseEntity<Flux<T>> entity = new ResponseEntity<>(
 					body.onErrorResume(WebClientUtils.WRAP_EXCEPTION_PREDICATE, exceptionWrappingFunction(response)),
 					response.headers().asHttpHeaders(),
-					response.rawStatusCode());
+					response.statusCode());
 
 			Mono<ResponseEntity<Flux<T>>> result = applyStatusHandlers(response);
 			return (result != null ? result.defaultIfEmpty(entity) : Mono.just(entity));
@@ -646,7 +646,7 @@ class DefaultWebClient implements WebClient {
 
 		@Nullable
 		private <T> Mono<T> applyStatusHandlers(ClientResponse response) {
-			int statusCode = response.rawStatusCode();
+			int statusCode = response.statusCode().value();
 			for (StatusHandler handler : this.statusHandlers) {
 				if (handler.test(statusCode)) {
 					Mono<? extends Throwable> exMono;

@@ -189,42 +189,54 @@ public class WebClientResponseException extends WebClientException {
 			int statusCode, String statusText, HttpHeaders headers, byte[] body,
 			@Nullable Charset charset, @Nullable HttpRequest request) {
 
-		HttpStatus httpStatus = HttpStatus.resolve(statusCode);
-		if (httpStatus != null) {
-			switch (httpStatus) {
-				case BAD_REQUEST:
-					return new WebClientResponseException.BadRequest(statusText, headers, body, charset, request);
-				case UNAUTHORIZED:
-					return new WebClientResponseException.Unauthorized(statusText, headers, body, charset, request);
-				case FORBIDDEN:
-					return new WebClientResponseException.Forbidden(statusText, headers, body, charset, request);
-				case NOT_FOUND:
-					return new WebClientResponseException.NotFound(statusText, headers, body, charset, request);
-				case METHOD_NOT_ALLOWED:
-					return new WebClientResponseException.MethodNotAllowed(statusText, headers, body, charset, request);
-				case NOT_ACCEPTABLE:
-					return new WebClientResponseException.NotAcceptable(statusText, headers, body, charset, request);
-				case CONFLICT:
-					return new WebClientResponseException.Conflict(statusText, headers, body, charset, request);
-				case GONE:
-					return new WebClientResponseException.Gone(statusText, headers, body, charset, request);
-				case UNSUPPORTED_MEDIA_TYPE:
-					return new WebClientResponseException.UnsupportedMediaType(statusText, headers, body, charset, request);
-				case TOO_MANY_REQUESTS:
-					return new WebClientResponseException.TooManyRequests(statusText, headers, body, charset, request);
-				case UNPROCESSABLE_ENTITY:
-					return new WebClientResponseException.UnprocessableEntity(statusText, headers, body, charset, request);
-				case INTERNAL_SERVER_ERROR:
-					return new WebClientResponseException.InternalServerError(statusText, headers, body, charset, request);
-				case NOT_IMPLEMENTED:
-					return new WebClientResponseException.NotImplemented(statusText, headers, body, charset, request);
-				case BAD_GATEWAY:
-					return new WebClientResponseException.BadGateway(statusText, headers, body, charset, request);
-				case SERVICE_UNAVAILABLE:
-					return new WebClientResponseException.ServiceUnavailable(statusText, headers, body, charset, request);
-				case GATEWAY_TIMEOUT:
-					return new WebClientResponseException.GatewayTimeout(statusText, headers, body, charset, request);
-			}
+		HttpStatus httpStatus = HttpStatus.valueOf(statusCode);
+		if (HttpStatus.BAD_REQUEST.equals(httpStatus)) {
+			return new BadRequest(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.UNAUTHORIZED.equals(httpStatus)) {
+			return new Unauthorized(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.FORBIDDEN.equals(httpStatus)) {
+			return new Forbidden(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.NOT_FOUND.equals(httpStatus)) {
+			return new NotFound(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.METHOD_NOT_ALLOWED.equals(httpStatus)) {
+			return new MethodNotAllowed(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.NOT_ACCEPTABLE.equals(httpStatus)) {
+			return new NotAcceptable(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.CONFLICT.equals(httpStatus)) {
+			return new Conflict(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.GONE.equals(httpStatus)) {
+			return new Gone(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.UNSUPPORTED_MEDIA_TYPE.equals(httpStatus)) {
+			return new UnsupportedMediaType(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.TOO_MANY_REQUESTS.equals(httpStatus)) {
+			return new TooManyRequests(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.UNPROCESSABLE_ENTITY.equals(httpStatus)) {
+			return new UnprocessableEntity(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.INTERNAL_SERVER_ERROR.equals(httpStatus)) {
+			return new InternalServerError(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.NOT_IMPLEMENTED.equals(httpStatus)) {
+			return new NotImplemented(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.BAD_GATEWAY.equals(httpStatus)) {
+			return new BadGateway(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)) {
+			return new ServiceUnavailable(statusText, headers, body, charset, request);
+		}
+		else if (HttpStatus.GATEWAY_TIMEOUT.equals(httpStatus)) {
+			return new GatewayTimeout(statusText, headers, body, charset, request);
 		}
 		return new WebClientResponseException(statusCode, statusText, headers, body, charset, request);
 	}

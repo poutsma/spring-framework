@@ -33,7 +33,6 @@ import org.springframework.web.testfixture.http.client.reactive.MockClientHttpRe
 import org.springframework.web.testfixture.http.client.reactive.MockClientHttpResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * @author Arjen Poutsma
@@ -102,10 +101,9 @@ public class DefaultClientResponseBuilderTests {
 
 	@Test
 	public void mutateWithCustomStatus() {
-		ClientResponse other = ClientResponse.create(499, ExchangeStrategies.withDefaults()).build();
+		ClientResponse other = ClientResponse.create(HttpStatus.valueOf(499), ExchangeStrategies.withDefaults()).build();
 		ClientResponse result = other.mutate().build();
 
-		assertThat(result.rawStatusCode()).isEqualTo(499);
-		assertThatIllegalArgumentException().isThrownBy(result::statusCode);
+		assertThat(result.statusCode()).isEqualTo(HttpStatus.valueOf(499));
 	}
 }

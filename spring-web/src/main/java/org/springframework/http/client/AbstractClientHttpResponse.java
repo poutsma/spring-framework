@@ -25,10 +25,13 @@ import org.springframework.http.HttpStatus;
  *
  * @author Arjen Poutsma
  * @since 3.1.1
+ * @deprecated with no direct replacement
  */
+@Deprecated
 public abstract class AbstractClientHttpResponse implements ClientHttpResponse {
 
 	@Override
+	@Deprecated
 	public HttpStatus getStatusCode() throws IOException {
 		return HttpStatus.valueOf(getRawStatusCode());
 	}

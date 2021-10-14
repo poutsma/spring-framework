@@ -155,7 +155,9 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 	 * Return the HTTP status code of the response.
 	 * @return the HTTP status as an int value
 	 * @since 4.3
+	 * @deprecated in favor of {@link #getStatusCode()}
 	 */
+	@Deprecated
 	public int getStatusCodeValue() {
 		if (this.status instanceof HttpStatus) {
 			return ((HttpStatus) this.status).value();

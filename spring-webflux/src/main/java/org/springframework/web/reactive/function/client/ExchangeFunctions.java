@@ -126,9 +126,8 @@ public abstract class ExchangeFunctions {
 
 		private void logResponse(ClientHttpResponse response, String logPrefix) {
 			LogFormatUtils.traceDebug(logger, traceOn -> {
-				int code = response.getRawStatusCode();
-				HttpStatus status = HttpStatus.resolve(code);
-				return logPrefix + "Response " + (status != null ? status : code) +
+				HttpStatus status = response.getStatusCode();
+				return logPrefix + "Response " + status +
 						(traceOn ? ", headers=" + formatHeaders(response.getHeaders()) : "");
 			});
 		}

@@ -66,7 +66,9 @@ public interface ClientResponse {
 	 * @since 5.1
 	 * @see #statusCode()
 	 * @see HttpStatus#resolve(int)
+	 * @deprecated in favor of {@link #statusCode()}
 	 */
+	@Deprecated
 	int rawStatusCode();
 
 	/**
@@ -246,9 +248,11 @@ public interface ClientResponse {
 	 * @param strategies the strategies
 	 * @return the created builder
 	 * @since 5.1.9
+	 * @deprecated in favor of {@link #create(HttpStatus, ExchangeStrategies)}
 	 */
+	@Deprecated
 	static Builder create(int statusCode, ExchangeStrategies strategies) {
-		return new DefaultClientResponseBuilder(strategies).rawStatusCode(statusCode);
+		return new DefaultClientResponseBuilder(strategies).statusCode(HttpStatus.valueOf(statusCode));
 	}
 
 	/**
@@ -321,7 +325,9 @@ public interface ClientResponse {
 		 * @param statusCode the new status code
 		 * @return this builder
 		 * @since 5.1.9
+		 * @deprecated in favor of {@link #statusCode(HttpStatus)}
 		 */
+		@Deprecated
 		Builder rawStatusCode(int statusCode);
 
 		/**

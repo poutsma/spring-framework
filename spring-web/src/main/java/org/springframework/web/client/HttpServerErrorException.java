@@ -95,32 +95,34 @@ public class HttpServerErrorException extends HttpStatusCodeException {
 	public static HttpServerErrorException create(@Nullable String message, HttpStatus statusCode,
 			String statusText, HttpHeaders headers, byte[] body, @Nullable Charset charset) {
 
-		switch (statusCode) {
-			case INTERNAL_SERVER_ERROR:
-				return message != null ?
-						new HttpServerErrorException.InternalServerError(message, statusText, headers, body, charset) :
-						new HttpServerErrorException.InternalServerError(statusText, headers, body, charset);
-			case NOT_IMPLEMENTED:
-				return message != null ?
-						new HttpServerErrorException.NotImplemented(message, statusText, headers, body, charset) :
-						new HttpServerErrorException.NotImplemented(statusText, headers, body, charset);
-			case BAD_GATEWAY:
-				return message != null ?
-						new HttpServerErrorException.BadGateway(message, statusText, headers, body, charset) :
-						new HttpServerErrorException.BadGateway(statusText, headers, body, charset);
-			case SERVICE_UNAVAILABLE:
-				return message != null ?
-						new HttpServerErrorException.ServiceUnavailable(message, statusText, headers, body, charset) :
-						new HttpServerErrorException.ServiceUnavailable(statusText, headers, body, charset);
-			case GATEWAY_TIMEOUT:
-				return message != null ?
-						new HttpServerErrorException.GatewayTimeout(message, statusText, headers, body, charset) :
-						new HttpServerErrorException.GatewayTimeout(statusText, headers, body, charset);
-			default:
-				return message != null ?
-						new HttpServerErrorException(message, statusCode, statusText, headers, body, charset) :
-						new HttpServerErrorException(statusCode, statusText, headers, body, charset);
+		if (HttpStatus.INTERNAL_SERVER_ERROR.equals(statusCode)) {
+			return message != null ?
+					new InternalServerError(message, statusText, headers, body, charset) :
+					new InternalServerError(statusText, headers, body, charset);
 		}
+		else if (HttpStatus.NOT_IMPLEMENTED.equals(statusCode)) {
+			return message != null ?
+					new NotImplemented(message, statusText, headers, body, charset) :
+					new NotImplemented(statusText, headers, body, charset);
+		}
+		else if (HttpStatus.BAD_GATEWAY.equals(statusCode)) {
+			return message != null ?
+					new BadGateway(message, statusText, headers, body, charset) :
+					new BadGateway(statusText, headers, body, charset);
+		}
+		else if (HttpStatus.SERVICE_UNAVAILABLE.equals(statusCode)) {
+			return message != null ?
+					new ServiceUnavailable(message, statusText, headers, body, charset) :
+					new ServiceUnavailable(statusText, headers, body, charset);
+		}
+		else if (HttpStatus.GATEWAY_TIMEOUT.equals(statusCode)) {
+			return message != null ?
+					new GatewayTimeout(message, statusText, headers, body, charset) :
+					new GatewayTimeout(statusText, headers, body, charset);
+		}
+		return message != null ?
+				new HttpServerErrorException(message, statusCode, statusText, headers, body, charset) :
+				new HttpServerErrorException(statusCode, statusText, headers, body, charset);
 	}
 
 

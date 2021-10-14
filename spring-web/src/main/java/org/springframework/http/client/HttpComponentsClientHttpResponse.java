@@ -26,6 +26,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StreamUtils;
 
@@ -40,7 +41,7 @@ import org.springframework.util.StreamUtils;
  * @since 3.1
  * @see HttpComponentsClientHttpRequest#execute()
  */
-final class HttpComponentsClientHttpResponse extends AbstractClientHttpResponse {
+final class HttpComponentsClientHttpResponse implements ClientHttpResponse {
 
 	private final HttpResponse httpResponse;
 
@@ -52,8 +53,13 @@ final class HttpComponentsClientHttpResponse extends AbstractClientHttpResponse 
 		this.httpResponse = httpResponse;
 	}
 
+	@Override
+	public HttpStatus getStatusCode() throws IOException {
+		return HttpStatus.valueOf(this.httpResponse.getStatusLine().getStatusCode());
+	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() throws IOException {
 		return this.httpResponse.getStatusLine().getStatusCode();
 	}

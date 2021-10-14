@@ -563,7 +563,7 @@ public class ExceptionHandlerExceptionResolverTests {
 	static class ResponseStatusTestExceptionResolver {
 
 		@ExceptionHandler(SocketTimeoutException.class)
-		@ResponseStatus(code = HttpStatus.GATEWAY_TIMEOUT, reason = "gateway.timeout")
+		@ResponseStatus(code = HttpStatus.GATEWAY_TIMEOUT_VALUE, reason = "gateway.timeout")
 		public void handleException(SocketTimeoutException ex) {
 
 		}

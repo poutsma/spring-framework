@@ -17,6 +17,7 @@
 package org.springframework.web.reactive.handler;
 
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.handler.ResponseStatusExceptionHandler;
 
@@ -37,12 +38,12 @@ import org.springframework.web.server.handler.ResponseStatusExceptionHandler;
 public class WebFluxResponseStatusExceptionHandler extends ResponseStatusExceptionHandler {
 
 	@Override
-	protected int determineRawStatusCode(Throwable ex) {
-		int status = super.determineRawStatusCode(ex);
-		if (status == -1) {
+	protected HttpStatus determineStatus(Throwable ex) {
+		HttpStatus status = super.determineStatus(ex);
+		if (status == null) {
 			ResponseStatus ann = AnnotatedElementUtils.findMergedAnnotation(ex.getClass(), ResponseStatus.class);
 			if (ann != null) {
-				status = ann.code().value();
+				status = HttpStatus.valueOf(ann.code());
 			}
 		}
 		return status;

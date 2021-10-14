@@ -57,7 +57,7 @@ public class WebFluxResponseStatusExceptionHandlerTests extends AbstractResponse
 
 
 	@SuppressWarnings("serial")
-	@ResponseStatus(HttpStatus.I_AM_A_TEAPOT)
+	@ResponseStatus(HttpStatus.I_AM_A_TEAPOT_VALUE)
 	private static class CustomException extends Exception {
 	}
 

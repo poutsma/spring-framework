@@ -46,14 +46,14 @@ abstract class AbstractServerResponse extends ErrorHandlingServerResponse {
 
 	private static final Set<HttpMethod> SAFE_METHODS = EnumSet.of(HttpMethod.GET, HttpMethod.HEAD);
 
-	final int statusCode;
+	final HttpStatus statusCode;
 
 	private final HttpHeaders headers;
 
 	private final MultiValueMap<String, Cookie> cookies;
 
 	protected AbstractServerResponse(
-			int statusCode, HttpHeaders headers, MultiValueMap<String, Cookie> cookies) {
+			HttpStatus statusCode, HttpHeaders headers, MultiValueMap<String, Cookie> cookies) {
 
 		this.statusCode = statusCode;
 		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
@@ -63,12 +63,13 @@ abstract class AbstractServerResponse extends ErrorHandlingServerResponse {
 
 	@Override
 	public final HttpStatus statusCode() {
-		return HttpStatus.valueOf(this.statusCode);
+		return this.statusCode;
 	}
 
 	@Override
+	@Deprecated
 	public int rawStatusCode() {
-		return this.statusCode;
+		return this.statusCode.value();
 	}
 
 	@Override
@@ -105,7 +106,7 @@ abstract class AbstractServerResponse extends ErrorHandlingServerResponse {
 	}
 
 	private void writeStatusAndHeaders(HttpServletResponse response) {
-		response.setStatus(this.statusCode);
+		response.setStatus(this.statusCode.value());
 		writeHeaders(response);
 		writeCookies(response);
 	}

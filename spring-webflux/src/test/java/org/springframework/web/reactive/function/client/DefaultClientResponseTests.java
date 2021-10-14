@@ -47,7 +47,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.springframework.web.reactive.function.BodyExtractors.toMono;
@@ -230,8 +229,7 @@ public class DefaultClientResponseTests {
 
 		httpHeaders.setContentType(MediaType.TEXT_PLAIN);
 		given(mockResponse.getHeaders()).willReturn(httpHeaders);
-		given(mockResponse.getStatusCode()).willThrow(new IllegalArgumentException("999"));
-		given(mockResponse.getRawStatusCode()).willReturn(999);
+		given(mockResponse.getStatusCode()).willReturn(HttpStatus.valueOf(999));
 		given(mockResponse.getBody()).willReturn(body);
 
 		List<HttpMessageReader<?>> messageReaders = Collections
@@ -240,8 +238,6 @@ public class DefaultClientResponseTests {
 
 		ResponseEntity<String> result = defaultClientResponse.toEntity(String.class).block();
 		assertThat(result.getBody()).isEqualTo("foo");
-		assertThatIllegalArgumentException().isThrownBy(
-				result::getStatusCode);
 		assertThat(result.getStatusCodeValue()).isEqualTo(999);
 		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 	}
@@ -292,8 +288,7 @@ public class DefaultClientResponseTests {
 
 		httpHeaders.setContentType(MediaType.TEXT_PLAIN);
 		given(mockResponse.getHeaders()).willReturn(httpHeaders);
-		given(mockResponse.getStatusCode()).willThrow(new IllegalArgumentException("999"));
-		given(mockResponse.getRawStatusCode()).willReturn(999);
+		given(mockResponse.getStatusCode()).willReturn(HttpStatus.valueOf(999));
 		given(mockResponse.getBody()).willReturn(body);
 
 		List<HttpMessageReader<?>> messageReaders = Collections
@@ -302,9 +297,7 @@ public class DefaultClientResponseTests {
 
 		ResponseEntity<List<String>> result = defaultClientResponse.toEntityList(String.class).block();
 		assertThat(result.getBody()).isEqualTo(Collections.singletonList("foo"));
-		assertThatIllegalArgumentException().isThrownBy(
-				result::getStatusCode);
-		assertThat(result.getStatusCodeValue()).isEqualTo(999);
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatus.valueOf(999));
 		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 	}
 

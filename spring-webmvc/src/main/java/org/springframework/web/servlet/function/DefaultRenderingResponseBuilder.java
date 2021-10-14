@@ -46,7 +46,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 
 	private final String name;
 
-	private int status = HttpStatus.OK.value();
+	private HttpStatus status = HttpStatus.OK;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -58,8 +58,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 	public DefaultRenderingResponseBuilder(RenderingResponse other) {
 		Assert.notNull(other, "RenderingResponse must not be null");
 		this.name = other.name();
-		this.status = (other instanceof DefaultRenderingResponse ?
-				((DefaultRenderingResponse) other).statusCode : other.statusCode().value());
+		this.status = other.statusCode();
 		this.headers.putAll(other.headers());
 		this.model.putAll(other.model());
 	}
@@ -73,13 +72,14 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 	@Override
 	public RenderingResponse.Builder status(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus must not be null");
-		this.status = status.value();
+		this.status = status;
 		return this;
 	}
 
 	@Override
+	@Deprecated
 	public RenderingResponse.Builder status(int status) {
-		this.status = status;
+		this.status = HttpStatus.valueOf(status);
 		return this;
 	}
 
@@ -156,7 +156,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 
 		private final Map<String, Object> model;
 
-		public DefaultRenderingResponse(int statusCode, HttpHeaders headers,
+		public DefaultRenderingResponse(HttpStatus statusCode, HttpHeaders headers,
 				MultiValueMap<String, Cookie> cookies, String name, Map<String, Object> model) {
 
 			super(statusCode, headers, cookies);
@@ -178,14 +178,7 @@ final class DefaultRenderingResponseBuilder implements RenderingResponse.Builder
 		protected ModelAndView writeToInternal(HttpServletRequest request,
 				HttpServletResponse response, Context context) {
 
-			HttpStatus status = HttpStatus.resolve(this.statusCode);
-			ModelAndView mav;
-			if (status != null) {
-				mav = new ModelAndView(this.name, status);
-			}
-			else {
-				mav = new ModelAndView(this.name);
-			}
+			ModelAndView mav = new ModelAndView(this.name, this.statusCode);
 			mav.addAllObjects(this.model);
 			return mav;
 		}

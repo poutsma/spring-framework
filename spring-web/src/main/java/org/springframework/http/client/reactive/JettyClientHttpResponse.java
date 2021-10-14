@@ -69,6 +69,7 @@ class JettyClientHttpResponse implements ClientHttpResponse {
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() {
 		return this.reactiveResponse.getStatus();
 	}

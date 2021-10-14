@@ -238,7 +238,7 @@ public class HandlerMethod {
 					this.messageSource.getMessage(reason, null, reason, LocaleContextHolder.getLocale()) :
 					reason);
 
-			this.responseStatus = annotation.code();
+			this.responseStatus = HttpStatus.valueOf(annotation.code());
 			this.responseStatusReason = resolvedReason;
 		}
 	}

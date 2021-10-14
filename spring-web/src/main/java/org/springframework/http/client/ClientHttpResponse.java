@@ -54,8 +54,9 @@ public interface ClientHttpResponse extends HttpInputMessage, Closeable {
 	 * @throws IOException in case of I/O errors
 	 * @since 3.1.1
 	 * @see #getStatusCode()
-	 * @see HttpStatus#resolve(int)
+	 * @deprecated in favor of {@link #getStatusCode()}
 	 */
+	@Deprecated
 	int getRawStatusCode() throws IOException;
 
 	/**

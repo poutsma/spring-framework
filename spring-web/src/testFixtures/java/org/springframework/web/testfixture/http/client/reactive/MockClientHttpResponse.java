@@ -46,7 +46,7 @@ import org.springframework.util.MultiValueMap;
  */
 public class MockClientHttpResponse implements ClientHttpResponse {
 
-	private final int status;
+	private final HttpStatus status;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -57,23 +57,23 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 
 	public MockClientHttpResponse(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus is required");
-		this.status = status.value();
+		this.status = status;
 	}
 
 	public MockClientHttpResponse(int status) {
-		Assert.isTrue(status > 99 && status < 1000, "Status must be between 100 and 999");
-		this.status = status;
+		this.status = HttpStatus.valueOf(status);
 	}
 
 
 	@Override
 	public HttpStatus getStatusCode() {
-		return HttpStatus.valueOf(this.status);
+		return this.status;
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() {
-		return this.status;
+		return this.status.value();
 	}
 
 	@Override
@@ -140,7 +140,6 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 
 	@Override
 	public String toString() {
-		HttpStatus code = HttpStatus.resolve(this.status);
-		return (code != null ? code.name() + "(" + this.status + ")" : "Status (" + this.status + ")") + this.headers;
+		return this.status.getReasonPhrase() + "(" + this.status + ")" + this.headers;
 	}
 }

@@ -108,7 +108,7 @@ public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionRes
 	protected ModelAndView resolveResponseStatus(ResponseStatus responseStatus, HttpServletRequest request,
 			HttpServletResponse response, @Nullable Object handler, Exception ex) throws Exception {
 
-		int statusCode = responseStatus.code().value();
+		int statusCode = responseStatus.code();
 		String reason = responseStatus.reason();
 		return applyStatusAndReason(statusCode, reason, response);
 	}

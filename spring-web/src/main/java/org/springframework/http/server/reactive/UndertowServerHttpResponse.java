@@ -83,7 +83,7 @@ class UndertowServerHttpResponse extends AbstractListenerServerHttpResponse impl
 	@Override
 	public HttpStatus getStatusCode() {
 		HttpStatus status = super.getStatusCode();
-		return (status != null ? status : HttpStatus.resolve(this.exchange.getStatusCode()));
+		return (status != null ? status : HttpStatus.valueOf(this.exchange.getStatusCode()));
 	}
 
 	@Override

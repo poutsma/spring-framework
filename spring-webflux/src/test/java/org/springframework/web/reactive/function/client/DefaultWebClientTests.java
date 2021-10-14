@@ -73,6 +73,7 @@ public class DefaultWebClientTests {
 	@BeforeEach
 	public void setup() {
 		ClientResponse mockResponse = mock(ClientResponse.class);
+		when(mockResponse.statusCode()).thenReturn(HttpStatus.OK);
 		when(mockResponse.bodyToMono(Void.class)).thenReturn(Mono.empty());
 		given(this.exchangeFunction.exchange(this.captor.capture())).willReturn(Mono.just(mockResponse));
 		this.builder = WebClient.builder().baseUrl("/base").exchangeFunction(this.exchangeFunction);

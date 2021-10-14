@@ -79,6 +79,7 @@ public class ClientResponseWrapper implements ClientResponse {
 	}
 
 	@Override
+	@Deprecated
 	public int rawStatusCode() {
 		return this.delegate.rawStatusCode();
 	}

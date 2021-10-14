@@ -807,9 +807,8 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 		boolean hasError = errorHandler.hasError(response);
 		if (logger.isDebugEnabled()) {
 			try {
-				int code = response.getRawStatusCode();
-				HttpStatus status = HttpStatus.resolve(code);
-				logger.debug("Response " + (status != null ? status : code));
+				HttpStatus status = response.getStatusCode();
+				logger.debug("Response " + status);
 			}
 			catch (IOException ex) {
 				// ignore
@@ -1035,10 +1034,10 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 		public ResponseEntity<T> extractData(ClientHttpResponse response) throws IOException {
 			if (this.delegate != null) {
 				T body = this.delegate.extractData(response);
-				return ResponseEntity.status(response.getRawStatusCode()).headers(response.getHeaders()).body(body);
+				return ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).body(body);
 			}
 			else {
-				return ResponseEntity.status(response.getRawStatusCode()).headers(response.getHeaders()).build();
+				return ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).build();
 			}
 		}
 	}

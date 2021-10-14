@@ -125,7 +125,7 @@ public class InvocableHandlerMethodTests {
 
 		assertThatExceptionOfType(UnsupportedMediaTypeStatusException.class).isThrownBy(
 				mono::block)
-			.withMessage("415 UNSUPPORTED_MEDIA_TYPE \"boo\"");
+			.withMessage("415 Unsupported Media Type \"boo\"");
 	}
 
 	@Test
@@ -260,7 +260,7 @@ public class InvocableHandlerMethodTests {
 			throw new IllegalStateException("boo");
 		}
 
-		@ResponseStatus(HttpStatus.CREATED)
+		@ResponseStatus(HttpStatus.CREATED_VALUE)
 		String created() {
 			return "created";
 		}

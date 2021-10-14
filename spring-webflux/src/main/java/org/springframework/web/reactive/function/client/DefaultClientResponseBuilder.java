@@ -68,7 +68,7 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 
 	private ExchangeStrategies strategies;
 
-	private int statusCode = 200;
+	private HttpStatus statusCode = HttpStatus.OK;
 
 	@Nullable
 	private HttpHeaders headers;
@@ -95,7 +95,7 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 	DefaultClientResponseBuilder(ClientResponse other, boolean mutate) {
 		Assert.notNull(other, "ClientResponse must not be null");
 		this.strategies = other.strategies();
-		this.statusCode = other.rawStatusCode();
+		this.statusCode = other.statusCode();
 		if (mutate) {
 			this.body = other.bodyToFlux(DataBuffer.class);
 		}
@@ -115,9 +115,9 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 	}
 
 	@Override
+	@Deprecated
 	public DefaultClientResponseBuilder rawStatusCode(int statusCode) {
-		Assert.isTrue(statusCode >= 100 && statusCode < 600, "StatusCode must be between 1xx and 5xx");
-		this.statusCode = statusCode;
+		this.statusCode = HttpStatus.valueOf(statusCode);
 		return this;
 	}
 
@@ -217,7 +217,7 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 
 	private static class BuiltClientHttpResponse implements ClientHttpResponse {
 
-		private final int statusCode;
+		private final HttpStatus statusCode;
 
 		@Nullable
 		private final HttpHeaders headers;
@@ -231,7 +231,7 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 		private final ClientResponse originalResponse;
 
 
-		BuiltClientHttpResponse(int statusCode, @Nullable HttpHeaders headers,
+		BuiltClientHttpResponse(HttpStatus statusCode, @Nullable HttpHeaders headers,
 				@Nullable MultiValueMap<String, ResponseCookie> cookies, Flux<DataBuffer> body,
 				@Nullable ClientResponse originalResponse) {
 
@@ -250,12 +250,13 @@ final class DefaultClientResponseBuilder implements ClientResponse.Builder {
 
 		@Override
 		public HttpStatus getStatusCode() {
-			return HttpStatus.valueOf(this.statusCode);
+			return this.statusCode;
 		}
 
 		@Override
+		@Deprecated
 		public int getRawStatusCode() {
-			return this.statusCode;
+			return this.statusCode.value();
 		}
 
 		@Override

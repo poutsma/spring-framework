@@ -36,7 +36,7 @@ import org.springframework.util.Assert;
 @SuppressWarnings("serial")
 public class ResponseStatusException extends NestedRuntimeException {
 
-	private final int status;
+	private final HttpStatus status;
 
 	@Nullable
 	private final String reason;
@@ -59,7 +59,7 @@ public class ResponseStatusException extends NestedRuntimeException {
 	public ResponseStatusException(HttpStatus status, @Nullable String reason) {
 		super("");
 		Assert.notNull(status, "HttpStatus is required");
-		this.status = status.value();
+		this.status = status;
 		this.reason = reason;
 	}
 
@@ -73,7 +73,7 @@ public class ResponseStatusException extends NestedRuntimeException {
 	public ResponseStatusException(HttpStatus status, @Nullable String reason, @Nullable Throwable cause) {
 		super(null, cause);
 		Assert.notNull(status, "HttpStatus is required");
-		this.status = status.value();
+		this.status = status;
 		this.reason = reason;
 	}
 
@@ -87,7 +87,7 @@ public class ResponseStatusException extends NestedRuntimeException {
 	 */
 	public ResponseStatusException(int rawStatusCode, @Nullable String reason, @Nullable Throwable cause) {
 		super(null, cause);
-		this.status = rawStatusCode;
+		this.status = HttpStatus.valueOf(rawStatusCode);
 		this.reason = reason;
 	}
 
@@ -99,7 +99,7 @@ public class ResponseStatusException extends NestedRuntimeException {
 	 * @see HttpStatus#valueOf(int)
 	 */
 	public HttpStatus getStatus() {
-		return HttpStatus.valueOf(this.status);
+		return this.status;
 	}
 
 	/**
@@ -108,10 +108,9 @@ public class ResponseStatusException extends NestedRuntimeException {
 	 * @return the HTTP status as an integer value
 	 * @since 5.3
 	 * @see #getStatus()
-	 * @see HttpStatus#resolve(int)
 	 */
 	public int getRawStatusCode() {
-		return this.status;
+		return this.status.value();
 	}
 
 	/**
@@ -153,8 +152,7 @@ public class ResponseStatusException extends NestedRuntimeException {
 
 	@Override
 	public String getMessage() {
-		HttpStatus code = HttpStatus.resolve(this.status);
-		String msg = (code != null ? code : this.status) + (this.reason != null ? " \"" + this.reason + "\"" : "");
+		String msg = this.status + (this.reason != null ? " \"" + this.reason + "\"" : "");
 		return NestedExceptionUtils.buildMessage(msg, getCause());
 	}
 

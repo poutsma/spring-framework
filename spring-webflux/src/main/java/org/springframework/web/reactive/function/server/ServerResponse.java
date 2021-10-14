@@ -71,8 +71,9 @@ public interface ServerResponse {
 	 * @return the status as an integer
 	 * @since 5.2
 	 * @see #statusCode()
-	 * @see HttpStatus#resolve(int)
+	 * @deprecated in favor of {@link #statusCode()}
 	 */
+	@Deprecated
 	int rawStatusCode();
 
 	/**
@@ -119,9 +120,11 @@ public interface ServerResponse {
 	 * @param status the response status
 	 * @return the created builder
 	 * @since 5.0.3
+	 * @deprecated in favor of {@link #status(HttpStatus)}
 	 */
+	@Deprecated
 	static BodyBuilder status(int status) {
-		return new DefaultServerResponseBuilder(status);
+		return new DefaultServerResponseBuilder(HttpStatus.valueOf(status));
 	}
 
 	/**

@@ -32,6 +32,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -197,9 +198,9 @@ public class HttpEntityMethodProcessor extends AbstractMessageConverterMethodPro
 		}
 
 		if (responseEntity instanceof ResponseEntity) {
-			int returnStatus = ((ResponseEntity<?>) responseEntity).getStatusCodeValue();
-			outputMessage.getServletResponse().setStatus(returnStatus);
-			if (returnStatus == 200) {
+			HttpStatus returnStatus = ((ResponseEntity<?>) responseEntity).getStatusCode();
+			outputMessage.getServletResponse().setStatus(returnStatus.value());
+			if (returnStatus.equals(HttpStatus.OK)) {
 				HttpMethod method = inputMessage.getMethod();
 				if ((HttpMethod.GET.equals(method) || HttpMethod.HEAD.equals(method))
 						&& isResourceNotModified(inputMessage, outputMessage)) {
@@ -207,7 +208,7 @@ public class HttpEntityMethodProcessor extends AbstractMessageConverterMethodPro
 					return;
 				}
 			}
-			else if (returnStatus / 100 == 3) {
+			else if (returnStatus.is3xxRedirection()) {
 				String location = outputHeaders.getFirst("location");
 				if (location != null) {
 					saveFlashAttributes(mavContainer, webRequest, location);

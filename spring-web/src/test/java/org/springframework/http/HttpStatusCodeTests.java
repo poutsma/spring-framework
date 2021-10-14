@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Arjen Poutsma
  */
-class HttpStatusTests {
+class HttpStatusCodeTests {
 
 	@Test
 	public void comparison() {
@@ -146,6 +146,5 @@ class HttpStatusTests {
 
 		assertThat(HttpStatusCode.CONTINUE.is5xxServerError()).isFalse();
 	}
-
 
 }

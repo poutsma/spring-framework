@@ -16,10 +16,9 @@
 
 package org.springframework.test.web.servlet
 
-import org.assertj.core.api.Assertions.*
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatExceptionOfType
 import org.hamcrest.CoreMatchers
-import org.hamcrest.Matcher
-import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
@@ -188,7 +187,7 @@ class MockMvcExtensionsTests {
 
 		@Suppress("UNUSED_PARAMETER")
 		@PostMapping("/person")
-		@ResponseStatus(HttpStatus.CREATED)
+		@ResponseStatus(HttpStatus.CREATED_VALUE)
 		fun post(@RequestBody person: Person) {}
 
 		@GetMapping("/async")

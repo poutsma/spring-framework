@@ -16,6 +16,8 @@
 
 package org.springframework.util;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -180,6 +182,13 @@ public class ConcurrentLruCache<K, V> {
 	 */
 	public int sizeLimit() {
 		return this.sizeLimit;
+	}
+
+	/**
+	 * Return the cached values.
+	 */
+	public Collection<V> cachedValues() {
+		return Collections.unmodifiableCollection(this.cache.values());
 	}
 
 }

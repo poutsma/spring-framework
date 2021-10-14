@@ -180,7 +180,9 @@ public class ExchangeResult {
 	 * Return the HTTP status code (potentially non-standard and not resolvable
 	 * through the {@link HttpStatus} enum) as an integer.
 	 * @since 5.1.10
+	 * @deprecated in favor of {@link #getStatus()}
 	 */
+	@Deprecated
 	public int getRawStatusCode() {
 		return this.response.getRawStatusCode();
 	}

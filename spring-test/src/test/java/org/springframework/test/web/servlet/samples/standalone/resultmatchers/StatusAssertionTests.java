@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 import org.springframework.core.annotation.AliasFor;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,10 +33,13 @@ import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.BAD_REQUEST_VALUE;
 import static org.springframework.http.HttpStatus.CREATED;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.CREATED_VALUE;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR_VALUE;
 import static org.springframework.http.HttpStatus.I_AM_A_TEAPOT;
-import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED;
+import static org.springframework.http.HttpStatus.I_AM_A_TEAPOT_VALUE;
+import static org.springframework.http.HttpStatus.NOT_IMPLEMENTED_VALUE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -95,11 +97,11 @@ class StatusAssertionTests {
 		String[] path() default {};
 
 		@AliasFor(annotation = ResponseStatus.class, attribute = "code")
-		HttpStatus status() default INTERNAL_SERVER_ERROR;
+		int status() default INTERNAL_SERVER_ERROR_VALUE;
 	}
 
 	@RestController
-	@ResponseStatus(I_AM_A_TEAPOT)
+	@ResponseStatus(I_AM_A_TEAPOT_VALUE)
 	private static class StatusController {
 
 		@RequestMapping("/teaPot")
@@ -107,26 +109,26 @@ class StatusAssertionTests {
 		}
 
 		@RequestMapping("/created")
-		@ResponseStatus(CREATED)
+		@ResponseStatus(CREATED_VALUE)
 		void created() {
 		}
 
-		@Get(path = "/createdWithComposedAnnotation", status = CREATED)
+		@Get(path = "/createdWithComposedAnnotation", status = CREATED_VALUE)
 		void createdWithComposedAnnotation() {
 		}
 
 		@RequestMapping("/badRequest")
-		@ResponseStatus(code = BAD_REQUEST, reason = "Expired token")
+		@ResponseStatus(code = BAD_REQUEST_VALUE, reason = "Expired token")
 		void badRequest() {
 		}
 
 		@RequestMapping("/notImplemented")
-		@ResponseStatus(NOT_IMPLEMENTED)
+		@ResponseStatus(NOT_IMPLEMENTED_VALUE)
 		void notImplemented() {
 		}
 
 		@RequestMapping("/throwsException")
-		@ResponseStatus(NOT_IMPLEMENTED)
+		@ResponseStatus(NOT_IMPLEMENTED_VALUE)
 		void throwsException() {
 			throw new IllegalStateException();
 		}

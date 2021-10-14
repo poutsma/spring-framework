@@ -151,17 +151,17 @@ public class ResponseStatusExceptionResolverTests {
 	}
 
 
-	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	@ResponseStatus(HttpStatus.BAD_REQUEST_VALUE)
 	@SuppressWarnings("serial")
 	private static class StatusCodeException extends Exception {
 	}
 
-	@ResponseStatus(code = HttpStatus.GONE, reason = "You suck!")
+	@ResponseStatus(code = HttpStatus.GONE_VALUE, reason = "You suck!")
 	@SuppressWarnings("serial")
 	private static class StatusCodeAndReasonException extends Exception {
 	}
 
-	@ResponseStatus(code = HttpStatus.GONE, reason = "gone.reason")
+	@ResponseStatus(code = HttpStatus.GONE_VALUE, reason = "gone.reason")
 	@SuppressWarnings("serial")
 	private static class StatusCodeAndReasonMessageException extends Exception {
 	}
@@ -172,10 +172,10 @@ public class ResponseStatusExceptionResolverTests {
 	@interface ComposedResponseStatus {
 
 		@AliasFor(annotation = ResponseStatus.class, attribute = "code")
-		HttpStatus responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR;
+		int responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR_VALUE;
 	}
 
-	@ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST)
+	@ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST_VALUE)
 	@SuppressWarnings("serial")
 	private static class StatusCodeFromComposedResponseStatusException extends Exception {
 	}

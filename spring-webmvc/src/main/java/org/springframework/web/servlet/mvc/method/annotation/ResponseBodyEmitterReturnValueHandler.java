@@ -132,7 +132,7 @@ public class ResponseBodyEmitterReturnValueHandler implements HandlerMethodRetur
 
 		if (returnValue instanceof ResponseEntity) {
 			ResponseEntity<?> responseEntity = (ResponseEntity<?>) returnValue;
-			response.setStatus(responseEntity.getStatusCodeValue());
+			response.setStatus(responseEntity.getStatusCode().value());
 			outputMessage.getHeaders().putAll(responseEntity.getHeaders());
 			returnValue = responseEntity.getBody();
 			returnType = returnType.nested();

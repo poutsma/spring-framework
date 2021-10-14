@@ -3067,7 +3067,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 			throw new NotFoundException();
 		}
 
-		@ResponseStatus(HttpStatus.NOT_FOUND)
+		@ResponseStatus(HttpStatus.NOT_FOUND_VALUE)
 		@SuppressWarnings("serial")
 		private static class NotFoundException extends RuntimeException {
 		}
@@ -3320,7 +3320,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 	static class ResponseStatusController {
 
 		@RequestMapping("/something")
-		@ResponseStatus(code = HttpStatus.CREATED, reason = "It's alive!")
+		@ResponseStatus(code = HttpStatus.CREATED_VALUE, reason = "It's alive!")
 		public void handle(Writer writer) throws IOException {
 			writer.write("something");
 		}
@@ -3838,7 +3838,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 	static class HttpHeadersResponseController {
 
 		@RequestMapping(value = "", method = RequestMethod.POST)
-		@ResponseStatus(HttpStatus.CREATED)
+		@ResponseStatus(HttpStatus.CREATED_VALUE)
 		public HttpHeaders create() throws URISyntaxException {
 			HttpHeaders headers = new HttpHeaders();
 			headers.setLocation(new URI("/test/items/123"));
@@ -3846,7 +3846,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		}
 
 		@RequestMapping(value = "empty", method = RequestMethod.POST)
-		@ResponseStatus(HttpStatus.CREATED)
+		@ResponseStatus(HttpStatus.CREATED_VALUE)
 		public HttpHeaders createNoHeader() {
 			return new HttpHeaders();
 		}

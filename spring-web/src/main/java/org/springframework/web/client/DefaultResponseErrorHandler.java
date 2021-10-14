@@ -58,9 +58,8 @@ public class DefaultResponseErrorHandler implements ResponseErrorHandler {
 	 */
 	@Override
 	public boolean hasError(ClientHttpResponse response) throws IOException {
-		int rawStatusCode = response.getRawStatusCode();
-		HttpStatus statusCode = HttpStatus.resolve(rawStatusCode);
-		return (statusCode != null ? hasError(statusCode) : hasError(rawStatusCode));
+		HttpStatus statusCode = response.getStatusCode();
+		return hasError(statusCode);
 	}
 
 	/**
@@ -110,15 +109,7 @@ public class DefaultResponseErrorHandler implements ResponseErrorHandler {
 	 */
 	@Override
 	public void handleError(ClientHttpResponse response) throws IOException {
-		HttpStatus statusCode = HttpStatus.resolve(response.getRawStatusCode());
-		if (statusCode == null) {
-			byte[] body = getResponseBody(response);
-			String message = getErrorMessage(response.getRawStatusCode(),
-					response.getStatusText(), body, getCharset(response));
-			throw new UnknownHttpStatusCodeException(message,
-					response.getRawStatusCode(), response.getStatusText(),
-					response.getHeaders(), body, getCharset(response));
-		}
+		HttpStatus statusCode = response.getStatusCode();
 		handleError(response, statusCode);
 	}
 
@@ -163,13 +154,14 @@ public class DefaultResponseErrorHandler implements ResponseErrorHandler {
 		Charset charset = getCharset(response);
 		String message = getErrorMessage(statusCode.value(), statusText, body, charset);
 
-		switch (statusCode.series()) {
-			case CLIENT_ERROR:
-				throw HttpClientErrorException.create(message, statusCode, statusText, headers, body, charset);
-			case SERVER_ERROR:
-				throw HttpServerErrorException.create(message, statusCode, statusText, headers, body, charset);
-			default:
-				throw new UnknownHttpStatusCodeException(message, statusCode.value(), statusText, headers, body, charset);
+		if (statusCode.is4xxClientError()) {
+			throw HttpClientErrorException.create(message, statusCode, statusText, headers, body, charset);
+		}
+		else if (statusCode.is5xxServerError()) {
+			throw HttpServerErrorException.create(message, statusCode, statusText, headers, body, charset);
+		}
+		else {
+			throw new UnknownHttpStatusCodeException(message, statusCode.value(), statusText, headers, body, charset);
 		}
 	}
 

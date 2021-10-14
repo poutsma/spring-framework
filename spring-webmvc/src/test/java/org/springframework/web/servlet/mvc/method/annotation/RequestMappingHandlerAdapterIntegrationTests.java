@@ -556,14 +556,14 @@ public class RequestMappingHandlerAdapterIntegrationTests {
 			return "viewName";
 		}
 
-		@ResponseStatus(HttpStatus.ACCEPTED)
+		@ResponseStatus(HttpStatus.ACCEPTED_VALUE)
 		@ResponseBody
 		public String handleRequestBody(@RequestBody byte[] bytes) throws Exception {
 			String requestBody = new String(bytes, "UTF-8");
 			return "Handled requestBody=[" + requestBody + "]";
 		}
 
-		@ResponseStatus(code = HttpStatus.ACCEPTED)
+		@ResponseStatus(code = HttpStatus.ACCEPTED_VALUE)
 		@ResponseBody
 		public String handleAndValidateRequestBody(@Valid TestBean modelAttr, Errors errors) {
 			return "Error count [" + errors.getErrorCount() + "]";

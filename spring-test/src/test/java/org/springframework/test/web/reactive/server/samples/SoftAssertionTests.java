@@ -57,7 +57,7 @@ class SoftAssertionTests {
 								)
 				)
 				.withMessage("Multiple Exceptions (2):\n" +
-						"Status expected:<400 BAD_REQUEST> but was:<200 OK>\n" +
+						"Status expected:<400 Bad Request> but was:<200 OK>\n" +
 						"Response body expected:<bogus> but was:<hello>");
 	}
 

@@ -88,6 +88,7 @@ final class DefaultAsyncServerResponse extends ErrorHandlingServerResponse imple
 	}
 
 	@Override
+	@Deprecated
 	public int rawStatusCode() {
 		return delegate(ServerResponse::rawStatusCode);
 	}

@@ -44,7 +44,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	 * @param statusCode the status code
 	 */
 	protected HttpStatusCodeException(HttpStatus statusCode) {
-		this(statusCode, statusCode.name(), null, null, null);
+		this(statusCode, statusCode.getReasonPhrase(), null, null, null);
 	}
 
 	/**

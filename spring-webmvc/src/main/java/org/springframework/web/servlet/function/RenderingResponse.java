@@ -141,7 +141,9 @@ public interface RenderingResponse extends ServerResponse {
 		 * Set the HTTP status.
 		 * @param status the response status
 		 * @return this builder
+		 * @deprecated in favor of {@link #status(HttpStatus)}
 		 */
+		@Deprecated
 		Builder status(int status);
 
 		/**

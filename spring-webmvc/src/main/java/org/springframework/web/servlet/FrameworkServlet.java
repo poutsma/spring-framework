@@ -1127,8 +1127,8 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			logger.debug("Exiting from \"" + dispatchType + "\" dispatch, status " + status + headers);
 		}
 		else {
-			HttpStatus httpStatus = HttpStatus.resolve(status);
-			logger.debug("Completed " + (httpStatus != null ? httpStatus : status) + headers);
+			HttpStatus httpStatus = HttpStatus.valueOf(status);
+			logger.debug("Completed " + httpStatus + headers);
 		}
 	}
 

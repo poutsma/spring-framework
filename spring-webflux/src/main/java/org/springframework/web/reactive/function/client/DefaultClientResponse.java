@@ -111,6 +111,7 @@ class DefaultClientResponse implements ClientResponse {
 	}
 
 	@Override
+	@Deprecated
 	public int rawStatusCode() {
 		return this.response.getRawStatusCode();
 	}
@@ -208,24 +209,14 @@ class DefaultClientResponse implements ClientResponse {
 					HttpRequest request = this.requestSupplier.get();
 					Charset charset = headers().contentType().map(MimeType::getCharset).orElse(null);
 					int statusCode = rawStatusCode();
-					HttpStatus httpStatus = HttpStatus.resolve(statusCode);
-					if (httpStatus != null) {
-						return WebClientResponseException.create(
-								statusCode,
-								httpStatus.getReasonPhrase(),
-								headers().asHttpHeaders(),
-								bodyBytes,
-								charset,
-								request);
-					}
-					else {
-						return new UnknownHttpStatusCodeException(
-								statusCode,
-								headers().asHttpHeaders(),
-								bodyBytes,
-								charset,
-								request);
-					}
+					HttpStatus httpStatus = HttpStatus.valueOf(statusCode);
+					return WebClientResponseException.create(
+							statusCode,
+							httpStatus.getReasonPhrase(),
+							headers().asHttpHeaders(),
+							bodyBytes,
+							charset,
+							request);
 				});
 	}
 

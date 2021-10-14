@@ -103,7 +103,7 @@ class ServletServerHttpResponse extends AbstractListenerServerHttpResponse {
 	@Override
 	public HttpStatus getStatusCode() {
 		HttpStatus status = super.getStatusCode();
-		return (status != null ? status : HttpStatus.resolve(this.response.getStatus()));
+		return (status != null ? status : HttpStatus.valueOf(this.response.getStatus()));
 	}
 
 	@Override

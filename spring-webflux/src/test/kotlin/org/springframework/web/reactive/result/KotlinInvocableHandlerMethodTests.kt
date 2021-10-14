@@ -23,14 +23,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.http.server.reactive.ServerHttpResponse
-import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get
-import org.springframework.web.testfixture.server.MockServerWebExchange
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.reactive.BindingContext
 import org.springframework.web.reactive.HandlerResult
 import org.springframework.web.reactive.result.method.HandlerMethodArgumentResolver
 import org.springframework.web.reactive.result.method.InvocableHandlerMethod
 import org.springframework.web.reactive.result.method.annotation.ContinuationHandlerMethodArgumentResolver
+import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get
+import org.springframework.web.testfixture.server.MockServerWebExchange
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.lang.reflect.Method
@@ -136,7 +136,7 @@ class KotlinInvocableHandlerMethodTests {
 			throw IllegalStateException("boo")
 		}
 
-		@ResponseStatus(HttpStatus.CREATED)
+		@ResponseStatus(HttpStatus.CREATED_VALUE)
 		suspend fun created(): String {
 			delay(10)
 			return "created"

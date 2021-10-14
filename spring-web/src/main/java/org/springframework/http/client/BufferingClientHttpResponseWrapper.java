@@ -51,6 +51,7 @@ final class BufferingClientHttpResponseWrapper implements ClientHttpResponse {
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() throws IOException {
 		return this.response.getRawStatusCode();
 	}

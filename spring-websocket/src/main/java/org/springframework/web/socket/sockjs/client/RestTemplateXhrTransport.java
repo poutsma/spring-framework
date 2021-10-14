@@ -39,7 +39,6 @@ import org.springframework.web.client.RequestCallback;
 import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.UnknownHttpStatusCodeException;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHandler;
@@ -156,7 +155,7 @@ public class RestTemplateXhrTransport extends AbstractXhrTransport {
 	private static final ResponseExtractor<ResponseEntity<String>> textResponseExtractor =
 			response -> {
 				String body = StreamUtils.copyToString(response.getBody(), SockJsFrame.CHARSET);
-				return ResponseEntity.status(response.getRawStatusCode()).headers(response.getHeaders()).body(body);
+				return ResponseEntity.status(response.getStatusCode()).headers(response.getHeaders()).body(body);
 			};
 
 
@@ -208,11 +207,7 @@ public class RestTemplateXhrTransport extends AbstractXhrTransport {
 
 		@Override
 		public Object extractData(ClientHttpResponse response) throws IOException {
-			HttpStatus httpStatus = HttpStatus.resolve(response.getRawStatusCode());
-			if (httpStatus == null) {
-				throw new UnknownHttpStatusCodeException(
-						response.getRawStatusCode(), response.getStatusText(), response.getHeaders(), null, null);
-			}
+			HttpStatus httpStatus = response.getStatusCode();
 			if (httpStatus != HttpStatus.OK) {
 				throw new HttpServerErrorException(
 						httpStatus, response.getStatusText(), response.getHeaders(), null, null);

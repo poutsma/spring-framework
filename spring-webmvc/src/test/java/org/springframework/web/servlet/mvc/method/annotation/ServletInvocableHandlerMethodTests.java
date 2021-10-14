@@ -435,7 +435,7 @@ public class ServletInvocableHandlerMethodTests {
 	@interface ComposedResponseStatus {
 
 		@AliasFor(annotation = ResponseStatus.class, attribute = "code")
-		HttpStatus responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR;
+		int responseStatus() default HttpStatus.INTERNAL_SERVER_ERROR_VALUE;
 	}
 
 
@@ -446,21 +446,21 @@ public class ServletInvocableHandlerMethodTests {
 			return "view";
 		}
 
-		@ResponseStatus(HttpStatus.BAD_REQUEST)
+		@ResponseStatus(HttpStatus.BAD_REQUEST_VALUE)
 		public void responseStatus() {
 		}
 
-		@ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "400 Bad Request")
+		@ResponseStatus(code = HttpStatus.BAD_REQUEST_VALUE, reason = "400 Bad Request")
 		public String responseStatusWithReason() {
 			return "foo";
 		}
 
-		@ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "BadRequest.error")
+		@ResponseStatus(code = HttpStatus.BAD_REQUEST_VALUE, reason = "BadRequest.error")
 		public String responseStatusWithReasonCode() {
 			return "foo";
 		}
 
-		@ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST)
+		@ComposedResponseStatus(responseStatus = HttpStatus.BAD_REQUEST_VALUE)
 		public void composedResponseStatus() {
 		}
 
@@ -477,7 +477,7 @@ public class ServletInvocableHandlerMethodTests {
 
 
 	@SuppressWarnings("unused")
-	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	@ResponseStatus(HttpStatus.BAD_REQUEST_VALUE)
 	private static class ResponseStatusHandler {
 
 		public void handle() { }

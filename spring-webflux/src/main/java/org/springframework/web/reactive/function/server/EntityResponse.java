@@ -161,7 +161,9 @@ public interface EntityResponse<T> extends ServerResponse {
 		 * @param status the response status
 		 * @return this builder
 		 * @since 5.0.3
+		 * @deprecated in favor of {@link #status(HttpStatus)}
 		 */
+		@Deprecated
 		Builder<T> status(int status);
 
 		/**

@@ -60,7 +60,7 @@ class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T> {
 
 	private final BodyInserter<T, ? super ServerHttpResponse> inserter;
 
-	private int status = HttpStatus.OK.value();
+	private HttpStatus status = HttpStatus.OK;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -78,13 +78,14 @@ class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T> {
 	@Override
 	public EntityResponse.Builder<T> status(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus must not be null");
-		this.status = status.value();
+		this.status = status;
 		return this;
 	}
 
 	@Override
+	@Deprecated
 	public EntityResponse.Builder<T> status(int status) {
-		this.status = status;
+		this.status = HttpStatus.valueOf(status);
 		return this;
 	}
 
@@ -209,7 +210,7 @@ class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T> {
 		private final BodyInserter<T, ? super ServerHttpResponse> inserter;
 
 
-		public DefaultEntityResponse(int statusCode, HttpHeaders headers,
+		public DefaultEntityResponse(HttpStatus statusCode, HttpHeaders headers,
 				MultiValueMap<String, ResponseCookie> cookies, T entity,
 				BodyInserter<T, ? super ServerHttpResponse> inserter, Map<String, Object> hints) {
 

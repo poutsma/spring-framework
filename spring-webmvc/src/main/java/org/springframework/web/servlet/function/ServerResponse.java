@@ -71,7 +71,9 @@ public interface ServerResponse {
 	 * @return the status as an integer
 	 * @see #statusCode()
 	 * @see HttpStatus#valueOf(int)
+	 * @deprecated in favor of {@link #statusCode()}
 	 */
+	@Deprecated
 	int rawStatusCode();
 
 	/**

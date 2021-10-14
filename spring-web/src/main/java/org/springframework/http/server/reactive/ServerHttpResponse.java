@@ -57,17 +57,15 @@ public interface ServerHttpResponse extends ReactiveHttpOutputMessage {
 	 * @return {@code false} if the status code change wasn't processed because
 	 * the HTTP response is committed, {@code true} if successfully set.
 	 * @since 5.2.4
+	 * @deprecated in favor of {@link #setStatusCode(HttpStatus)}
 	 */
+	@Deprecated
 	default boolean setRawStatusCode(@Nullable Integer value) {
 		if (value == null) {
 			return setStatusCode(null);
 		}
 		else {
-			HttpStatus httpStatus = HttpStatus.resolve(value);
-			if (httpStatus == null) {
-				throw new IllegalStateException(
-						"Unresolvable HttpStatus for general ServerHttpResponse: " + value);
-			}
+			HttpStatus httpStatus = HttpStatus.valueOf(value);
 			return setStatusCode(httpStatus);
 		}
 	}

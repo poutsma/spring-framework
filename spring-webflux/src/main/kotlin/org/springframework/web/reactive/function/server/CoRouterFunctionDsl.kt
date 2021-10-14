@@ -665,7 +665,8 @@ class CoRouterFunctionDsl internal constructor (private val init: (CoRouterFunct
 	/**
 	 * @see ServerResponse.status
 	 */
-	fun status(status: Int) = ServerResponse.status(status)
+	@Deprecated("in favor of status(HttpStatus)", ReplaceWith("ServerResponse.status(HttpStatus.valueOf(status))"))
+	fun status(status: Int) = ServerResponse.status(HttpStatus.valueOf(status))
 
 }
 

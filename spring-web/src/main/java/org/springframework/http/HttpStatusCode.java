@@ -16,12 +16,17 @@
 
 package org.springframework.http;
 
+import java.io.Serializable;
+
+import org.jetbrains.annotations.NotNull;
+
+import org.springframework.util.Assert;
 import org.springframework.util.ConcurrentLruCache;
 
 /**
  * @author Arjen Poutsma
  */
-public final class HttpStatusCode implements Comparable<HttpStatusCode> {
+public final class HttpStatusCode implements Comparable<HttpStatusCode>, Serializable {
 
 	// 1xx Informational
 
@@ -639,10 +644,158 @@ public final class HttpStatusCode implements Comparable<HttpStatusCode> {
 	 */
 	public static final int UNAVAILABLE_FOR_LEGAL_REASONS_VALUE = 451;
 
+
+	// --- 5xx Server Error ---
+
+	/**
+	 * {@code 500 Internal Server Error}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.1">HTTP/1.1: Semantics and Content, section 6.6.1</a>
+	 */
+	public static final HttpStatusCode INTERNAL_SERVER_ERROR;
+
+	/**
+	 * The integer equivalent of {@link #INTERNAL_SERVER_ERROR}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.1">HTTP/1.1: Semantics and Content, section 6.6.1</a>
+	 */
+	public static final int INTERNAL_SERVER_ERROR_VALUE = 500;
+
+	/**
+	 * {@code 501 Not Implemented}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">HTTP/1.1: Semantics and Content, section 6.6.2</a>
+	 */
+	public static final HttpStatusCode NOT_IMPLEMENTED;
+
+	/**
+	 * The integer equivalent of {@link #NOT_IMPLEMENTED}.
+	 * {@code 501 Not Implemented}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.2">HTTP/1.1: Semantics and Content, section 6.6.2</a>
+	 */
+	public static final int NOT_IMPLEMENTED_VALUE = 501;
+
+	/**
+	 * {@code 502 Bad Gateway}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.3">HTTP/1.1: Semantics and Content, section 6.6.3</a>
+	 */
+	public static final HttpStatusCode BAD_GATEWAY;
+
+	/**
+	 * The integer equivalent of {@link #BAD_GATEWAY}.
+	 * {@code 502 Bad Gateway}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.3">HTTP/1.1: Semantics and Content, section 6.6.3</a>
+	 */
+	public static final int BAD_GATEWAY_VALUE = 502;
+
+	/**
+	 * {@code 503 Service Unavailable}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">HTTP/1.1: Semantics and Content, section 6.6.4</a>
+	 */
+	public static final HttpStatusCode SERVICE_UNAVAILABLE;
+
+	/**
+	 * The integer equivalent of {@link #SERVICE_UNAVAILABLE}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.4">HTTP/1.1: Semantics and Content, section 6.6.4</a>
+	 */
+	public static final int SERVICE_UNAVAILABLE_VALUE = 503;
+
+	/**
+	 * {@code 504 Gateway Timeout}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.5">HTTP/1.1: Semantics and Content, section 6.6.5</a>
+	 */
+	public static final HttpStatusCode GATEWAY_TIMEOUT;
+
+	/**
+	 * The integer equivalent of {@link #GATEWAY_TIMEOUT}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.5">HTTP/1.1: Semantics and Content, section 6.6.5</a>
+	 */
+	public static final int GATEWAY_TIMEOUT_VALUE = 504;
+
+	/**
+	 * {@code 505 HTTP Version Not Supported}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.6">HTTP/1.1: Semantics and Content, section 6.6.6</a>
+	 */
+	public static final HttpStatusCode HTTP_VERSION_NOT_SUPPORTED;
+
+	/**
+	 * The integer equivalent of {@link #HTTP_VERSION_NOT_SUPPORTED}.
+	 * @see <a href="https://tools.ietf.org/html/rfc7231#section-6.6.6">HTTP/1.1: Semantics and Content, section 6.6.6</a>
+	 */
+	public static final int HTTP_VERSION_NOT_SUPPORTED_VALUE = 505;
+
+	/**
+	 * {@code 506 Variant Also Negotiates}
+	 * @see <a href="https://tools.ietf.org/html/rfc2295#section-8.1">Transparent Content Negotiation</a>
+	 */
+	public static final HttpStatusCode VARIANT_ALSO_NEGOTIATES;
+
+	/**
+	 * The integer equivalent of {@link #VARIANT_ALSO_NEGOTIATES}.
+	 * @see <a href="https://tools.ietf.org/html/rfc2295#section-8.1">Transparent Content Negotiation</a>
+	 */
+	public static final int VARIANT_ALSO_NEGOTIATES_VALUE = 506;
+
+	/**
+	 * {@code 507 Insufficient Storage}
+	 * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.5">WebDAV</a>
+	 */
+	public static final HttpStatusCode INSUFFICIENT_STORAGE;
+
+	/**
+	 * The integer equivalent of {@link #INSUFFICIENT_STORAGE}.
+	 * @see <a href="https://tools.ietf.org/html/rfc4918#section-11.5">WebDAV</a>
+	 */
+	public static final int INSUFFICIENT_STORAGE_VALUE = 507;
+
+	/**
+	 * {@code 508 Loop Detected}
+	 * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">WebDAV Binding Extensions</a>
+ 	 */
+	public static final HttpStatusCode LOOP_DETECTED;
+
+	/**
+	 * The integer equivalent of {@link #LOOP_DETECTED}.
+	 * @see <a href="https://tools.ietf.org/html/rfc5842#section-7.2">WebDAV Binding Extensions</a>
+ 	 */
+	public static final int LOOP_DETECTED_VALUE = 508;
+
+	/**
+	 * {@code 509 Bandwidth Limit Exceeded}
+ 	 */
+	public static final HttpStatusCode BANDWIDTH_LIMIT_EXCEEDED;
+
+	/**
+	 * The integer equivalent of {@link #BANDWIDTH_LIMIT_EXCEEDED}.
+ 	 */
+	public static final int BANDWIDTH_LIMIT_EXCEEDED_VALUE = 509;
+
+	/**
+	 * {@code 510 Not Extended}
+	 * @see <a href="https://tools.ietf.org/html/rfc2774#section-7">HTTP Extension Framework</a>
+	 */
+	public static final HttpStatusCode NOT_EXTENDED;
+
+	/**
+	 * The integer equivalent of {@link #NOT_EXTENDED}.
+	 * @see <a href="https://tools.ietf.org/html/rfc2774#section-7">HTTP Extension Framework</a>
+	 */
+	public static final int NOT_EXTENDED_VALUE = 510;
+
+	/**
+	 * {@code 511 Network Authentication Required}.
+	 * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">Additional HTTP Status Codes</a>
+	 */
+	public static final HttpStatusCode NETWORK_AUTHENTICATION_REQUIRED;
+
+	/**
+	 * {@code 511 Network Authentication Required}.
+	 * @see <a href="https://tools.ietf.org/html/rfc6585#section-6">Additional HTTP Status Codes</a>
+	 */
+	public static final int NETWORK_AUTHENTICATION_REQUIRED_VALUE = 511;
+
+
 	private static final long serialVersionUID = 7017664779360718111L;
 
 	private static final ConcurrentLruCache<Integer, HttpStatusCode> cachedCodes =
-			new ConcurrentLruCache<>(64, HttpStatusCode::new);
+			new ConcurrentLruCache<>(100, HttpStatusCode::new);
 
 	static {
 		CONTINUE = cachedCodes.get(CONTINUE_VALUE);
@@ -697,6 +850,19 @@ public final class HttpStatusCode implements Comparable<HttpStatusCode> {
 		TOO_MANY_REQUESTS = cachedCodes.get(TOO_MANY_REQUESTS_VALUE);
 		REQUEST_HEADER_FIELDS_TOO_LARGE = cachedCodes.get(REQUEST_HEADER_FIELDS_TOO_LARGE_VALUE);
 		UNAVAILABLE_FOR_LEGAL_REASONS = cachedCodes.get(UNAVAILABLE_FOR_LEGAL_REASONS_VALUE);
+
+		INTERNAL_SERVER_ERROR = cachedCodes.get(INTERNAL_SERVER_ERROR_VALUE);
+		NOT_IMPLEMENTED = cachedCodes.get(NOT_IMPLEMENTED_VALUE);
+		BAD_GATEWAY = cachedCodes.get(BAD_GATEWAY_VALUE);
+		SERVICE_UNAVAILABLE = cachedCodes.get(SERVICE_UNAVAILABLE_VALUE);
+		GATEWAY_TIMEOUT = cachedCodes.get(GATEWAY_TIMEOUT_VALUE);
+		HTTP_VERSION_NOT_SUPPORTED = cachedCodes.get(HTTP_VERSION_NOT_SUPPORTED_VALUE);
+		VARIANT_ALSO_NEGOTIATES = cachedCodes.get(VARIANT_ALSO_NEGOTIATES_VALUE);
+		INSUFFICIENT_STORAGE = cachedCodes.get(INSUFFICIENT_STORAGE_VALUE);
+		LOOP_DETECTED = cachedCodes.get(LOOP_DETECTED_VALUE);
+		BANDWIDTH_LIMIT_EXCEEDED = cachedCodes.get(BANDWIDTH_LIMIT_EXCEEDED_VALUE);
+		NOT_EXTENDED = cachedCodes.get(NOT_EXTENDED_VALUE);
+		NETWORK_AUTHENTICATION_REQUIRED = cachedCodes.get(NETWORK_AUTHENTICATION_REQUIRED_VALUE);
 	}
 
 	private final int value;
@@ -704,6 +870,104 @@ public final class HttpStatusCode implements Comparable<HttpStatusCode> {
 
 	private HttpStatusCode(int value) {
 		this.value = value;
+	}
+
+	/**
+	 * Return an {@code HttpStatusCode} object for the given integer value.
+	 * @param code the status code as integer
+	 * @return the corresponding {@code HttpStatusCode}
+	 * @throws IllegalArgumentException if {@code code} is not a three-digit
+	 * positive number
+	 */
+	public static HttpStatusCode valueOf(int code) {
+		Assert.isTrue(code >= 100 && code <= 999, "Code '" + code + "' should be a thee-digit positive integer");
+
+		return cachedCodes.get(code);
+	}
+
+
+	/**
+	 * Return the value of this status code.
+	 * @return an three-digit positive integer.
+	 */
+	public int value() {
+		return this.value;
+	}
+
+	/**
+	 * Whether this status code is in the Informational class (1xx).
+	 * @see <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-6.2">Informational 1xx</a>
+	 */
+	public boolean is1xxInformational() {
+		return this.value / 100 == 1;
+	}
+
+	/**
+	 * Whether this status code is in the Successful class (2xx).
+	 * @see <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-6.3">Successful 2xx</a>
+	 */
+	public boolean is2xxSuccessful() {
+		return this.value / 100 == 2;
+	}
+
+	/**
+	 * Whether this status code is in the Redirection class (3xx).
+	 * @see <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-6.4">Redirection 3xx</a>
+	 */
+	public boolean is3xxRedirection() {
+		return this.value / 100 == 3;
+	}
+
+	/**
+	 * Whether this status code is in the Client Error class (4xx).
+	 * @see <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-6.5">Client Error 4xx</a>
+	 */
+	public boolean is4xxClientError() {
+		return this.value / 100 == 4;
+	}
+
+	/**
+	 * Whether this status code is in the Server Error class (5xx).
+	 * @see <a href="https://datatracker.ietf.org/doc/html/rfc7231#section-6.6">Server Error 5xx</a>
+	 */
+	public boolean is5xxServerError() {
+		return this.value / 100 == 5;
+	}
+
+	/**
+	 * Whether this status code is in Client or Server error class (4xx or 5xx).
+	 * @see #is4xxClientError()
+	 * @see #is5xxServerError()
+	 */
+	public boolean isError() {
+		return (is4xxClientError() || is5xxServerError());
+	}
+
+
+	@Override
+	public int compareTo(@NotNull HttpStatusCode o) {
+		return Integer.compare(this.value, o.value);
+	}
+
+	@Override
+	public int hashCode() {
+		return this.value;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		else if (o instanceof HttpStatusCode other) {
+			return this.value == other.value;
+		}
+		return false;
+	}
+
+	@Override
+	public String toString() {
+		return Integer.toString(this.value);
 	}
 
 }

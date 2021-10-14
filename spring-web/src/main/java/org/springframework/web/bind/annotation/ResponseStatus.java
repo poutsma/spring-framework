@@ -64,7 +64,7 @@ public @interface ResponseStatus {
 	 * Alias for {@link #code}.
 	 */
 	@AliasFor("code")
-	HttpStatus value() default HttpStatus.INTERNAL_SERVER_ERROR;
+	int value() default HttpStatus.INTERNAL_SERVER_ERROR_VALUE;
 
 	/**
 	 * The status <em>code</em> to use for the response.
@@ -75,7 +75,7 @@ public @interface ResponseStatus {
 	 * @see jakarta.servlet.http.HttpServletResponse#sendError(int)
 	 */
 	@AliasFor("value")
-	HttpStatus code() default HttpStatus.INTERNAL_SERVER_ERROR;
+	int code() default HttpStatus.INTERNAL_SERVER_ERROR_VALUE;
 
 	/**
 	 * The <em>reason</em> to be used for the response.

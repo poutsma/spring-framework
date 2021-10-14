@@ -60,6 +60,7 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() throws IOException {
 		return this.status.value();
 	}

@@ -308,7 +308,11 @@ public class MvcAnnotationPredicates {
 		@Override
 		public boolean test(Method method) {
 			ResponseStatus annot = AnnotatedElementUtils.findMergedAnnotation(method, ResponseStatus.class);
-			return annot != null && annot.code().equals(this.code);
+			if (annot != null) {
+				HttpStatus annotCode = HttpStatus.valueOf(annot.code());
+				return annotCode.equals(this.code);
+			}
+			return false;
 		}
 	}
 

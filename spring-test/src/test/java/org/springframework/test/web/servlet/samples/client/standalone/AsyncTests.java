@@ -210,7 +210,7 @@ public class AsyncTests {
 		}
 
 		@ExceptionHandler(Exception.class)
-		@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+		@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR_VALUE)
 		public String errorHandler(Exception ex) {
 			return ex.getMessage();
 		}

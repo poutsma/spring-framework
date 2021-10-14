@@ -734,8 +734,9 @@ class RouterFunctionDsl internal constructor (private val init: RouterFunctionDs
 	 * @return the created builder
 	 * @since 5.1
 	 */
+	@Deprecated("in favor of status(HttpStatus)", ReplaceWith("ServerResponse.status(HttpStatus.valueOf(status))"))
 	fun status(status: Int): ServerResponse.BodyBuilder =
-			ServerResponse.status(status)
+			ServerResponse.status(HttpStatus.valueOf(status))
 
 	/**
 	 * Create a builder with the status set to [200 OK][HttpStatus.OK].

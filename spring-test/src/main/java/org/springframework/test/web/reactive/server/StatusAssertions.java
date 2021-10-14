@@ -48,16 +48,18 @@ public class StatusAssertions {
 	 * Assert the response status as an {@link HttpStatus}.
 	 */
 	public WebTestClient.ResponseSpec isEqualTo(HttpStatus status) {
-		return isEqualTo(status.value());
+		HttpStatus actual = this.exchangeResult.getStatus();
+		this.exchangeResult.assertWithDiagnostics(() -> AssertionErrors.assertEquals("Status", status, actual));
+		return this.responseSpec;
 	}
 
 	/**
 	 * Assert the response status as an integer.
+	 * @deprecated in favor of {@link #isEqualTo(HttpStatus)}
 	 */
+	@Deprecated
 	public WebTestClient.ResponseSpec isEqualTo(int status) {
-		int actual = this.exchangeResult.getRawStatusCode();
-		this.exchangeResult.assertWithDiagnostics(() -> AssertionErrors.assertEquals("Status", status, actual));
-		return this.responseSpec;
+		return isEqualTo(HttpStatus.valueOf(status));
 	}
 
 	/**
@@ -203,7 +205,7 @@ public class StatusAssertions {
 	 * @since 5.1
 	 */
 	public WebTestClient.ResponseSpec value(Matcher<? super Integer> matcher) {
-		int actual = this.exchangeResult.getRawStatusCode();
+		int actual = this.exchangeResult.getStatus().value();
 		this.exchangeResult.assertWithDiagnostics(() -> MatcherAssert.assertThat("Response status", actual, matcher));
 		return this.responseSpec;
 	}
@@ -214,7 +216,7 @@ public class StatusAssertions {
 	 * @since 5.1
 	 */
 	public WebTestClient.ResponseSpec value(Consumer<Integer> consumer) {
-		int actual = this.exchangeResult.getRawStatusCode();
+		int actual = this.exchangeResult.getStatus().value();
 		this.exchangeResult.assertWithDiagnostics(() -> consumer.accept(actual));
 		return this.responseSpec;
 	}

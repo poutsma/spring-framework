@@ -49,7 +49,7 @@ import org.springframework.web.servlet.ModelAndView;
  */
 class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
-	private final int statusCode;
+	private final HttpStatus statusCode;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -58,19 +58,18 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 	public DefaultServerResponseBuilder(ServerResponse other) {
 		Assert.notNull(other, "ServerResponse must not be null");
-		this.statusCode = (other instanceof AbstractServerResponse ?
-				((AbstractServerResponse) other).statusCode : other.statusCode().value());
+		this.statusCode = other.statusCode();
 		this.headers.addAll(other.headers());
 		this.cookies.addAll(other.cookies());
 	}
 
 	public DefaultServerResponseBuilder(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus must not be null");
-		this.statusCode = status.value();
+		this.statusCode = status;
 	}
 
 	public DefaultServerResponseBuilder(int statusCode) {
-		this.statusCode = statusCode;
+		this.statusCode = HttpStatus.valueOf(statusCode);
 	}
 
 	@Override
@@ -221,7 +220,7 @@ class DefaultServerResponseBuilder implements ServerResponse.BodyBuilder {
 
 		private final BiFunction<HttpServletRequest, HttpServletResponse, ModelAndView> writeFunction;
 
-		public WriterFunctionResponse(int statusCode, HttpHeaders headers, MultiValueMap<String, Cookie> cookies,
+		public WriterFunctionResponse(HttpStatus statusCode, HttpHeaders headers, MultiValueMap<String, Cookie> cookies,
 				BiFunction<HttpServletRequest, HttpServletResponse, ModelAndView> writeFunction) {
 
 			super(statusCode, headers, cookies);

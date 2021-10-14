@@ -635,7 +635,6 @@ class WebClientIntegrationTests {
 		startServer(connector);
 
 		int errorStatus = 555;
-		assertThat((Object) HttpStatus.resolve(errorStatus)).isNull();
 		String errorMessage = "Something went wrong";
 		prepareResponse(response -> response.setResponseCode(errorStatus)
 				.setHeader("Content-Type", "text/plain").setBody(errorMessage));
@@ -647,9 +646,8 @@ class WebClientIntegrationTests {
 
 		StepVerifier.create(result)
 				.expectErrorSatisfies(throwable -> {
-					assertThat(throwable instanceof UnknownHttpStatusCodeException).isTrue();
-					UnknownHttpStatusCodeException ex = (UnknownHttpStatusCodeException) throwable;
-					assertThat(ex.getMessage()).isEqualTo(("Unknown status code ["+errorStatus+"]"));
+					assertThat(throwable).isInstanceOf(WebClientResponseException.class);
+					WebClientResponseException ex = (WebClientResponseException) throwable;
 					assertThat(ex.getRawStatusCode()).isEqualTo(errorStatus);
 					assertThat(ex.getStatusText()).isEqualTo("");
 					assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
@@ -1054,7 +1052,6 @@ class WebClientIntegrationTests {
 		startServer(connector);
 
 		int errorStatus = 555;
-		assertThat((Object) HttpStatus.resolve(errorStatus)).isNull();
 		String errorMessage = "Something went wrong";
 		prepareResponse(response -> response.setResponseCode(errorStatus)
 				.setHeader("Content-Type", "text/plain").setBody(errorMessage));

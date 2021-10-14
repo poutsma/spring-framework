@@ -80,7 +80,7 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 
 	private final Type entityType;
 
-	private int status = HttpStatus.OK.value();
+	private HttpStatus status = HttpStatus.OK;
 
 	private final HttpHeaders headers = new HttpHeaders();
 
@@ -95,13 +95,14 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 	@Override
 	public EntityResponse.Builder<T> status(HttpStatus status) {
 		Assert.notNull(status, "HttpStatus must not be null");
-		this.status = status.value();
+		this.status = status;
 		return this;
 	}
 
 	@Override
+	@Deprecated
 	public EntityResponse.Builder<T> status(int status) {
-		this.status = status;
+		this.status = HttpStatus.valueOf(status);
 		return this;
 	}
 
@@ -242,7 +243,7 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 
 		private final Type entityType;
 
-		public DefaultEntityResponse(int statusCode, HttpHeaders headers,
+		public DefaultEntityResponse(HttpStatus statusCode, HttpHeaders headers,
 				MultiValueMap<String, Cookie> cookies, T entity, Type entityType) {
 
 			super(statusCode, headers, cookies);
@@ -350,7 +351,7 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 	 */
 	private static class CompletionStageEntityResponse<T> extends DefaultEntityResponse<CompletionStage<T>> {
 
-		public CompletionStageEntityResponse(int statusCode, HttpHeaders headers,
+		public CompletionStageEntityResponse(HttpStatus statusCode, HttpHeaders headers,
 				MultiValueMap<String, Cookie> cookies, CompletionStage<T> entity, Type entityType) {
 
 			super(statusCode, headers, cookies, entity, entityType);
@@ -404,7 +405,7 @@ final class DefaultEntityResponseBuilder<T> implements EntityResponse.Builder<T>
 	 */
 	private static class PublisherEntityResponse<T> extends DefaultEntityResponse<Publisher<T>> {
 
-		public PublisherEntityResponse(int statusCode, HttpHeaders headers,
+		public PublisherEntityResponse(HttpStatus statusCode, HttpHeaders headers,
 				MultiValueMap<String, Cookie> cookies, Publisher<T> entity, Type entityType) {
 
 			super(statusCode, headers, cookies, entity, entityType);
