@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.function.BiPredicate;
 
 import org.springframework.lang.Nullable;
 
@@ -478,6 +479,38 @@ public abstract class CollectionUtils {
 		});
 		Map<K, List<V>> unmodifiableMap = Collections.unmodifiableMap(result);
 		return toMultiValueMap(unmodifiableMap);
+	}
+
+	/**
+	 * Sort the specified list with the (inefficient) bubble sort algorithm,
+	 * using the specified swapping function.
+	 *
+	 * <p><b>Note:</b> for general purpose sorting,
+	 * {@link Collections#sort(List, java.util.Comparator)} is far more efficient.
+	 * However, bubble sort does not require a transitive comparison operation,
+	 * whereas {@link java.util.Comparator#compare(Object, Object)} does.
+	 * @param <T> the type of the objects in the list
+	 * @param list the list to be sorted
+	 * @param swap the function that determines whether two elements should be
+	 * swapped
+	 * @since 6.0
+	 * @see Collections#sort(List, java.util.Comparator)
+	 */
+	public static <T> void bubbleSort(List<T> list, BiPredicate<? super T, ? super T> swap) {
+		Assert.notNull(list, "List must not be null");
+		Assert.notNull(swap, "Swap must not be null");
+
+		int len = list.size();
+		for (int i = 0; i < len; i++) {
+			for (int j = 1; j < len - i ; j++) {
+				T prev = list.get(j - 1);
+				T cur = list.get(j);
+				if (swap.test(prev, cur)) {
+					list.set(j, prev);
+					list.set(j - 1, cur);
+				}
+			}
+		}
 	}
 
 

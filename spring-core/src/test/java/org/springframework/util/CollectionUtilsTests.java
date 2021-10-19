@@ -209,6 +209,13 @@ class CollectionUtilsTests {
 		assertThat(CollectionUtils.hasUniqueObject(list)).isFalse();
 	}
 
+	@Test
+	void bubbleSort() {
+		List<Integer> list = new ArrayList<>(List.of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1));
+		CollectionUtils.bubbleSort(list, (i1, i2) -> i1 > i2);
+		assertThat(list).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+	}
+
 
 	private static final class Instance {
 
