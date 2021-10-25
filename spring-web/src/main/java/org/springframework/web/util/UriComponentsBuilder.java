@@ -479,9 +479,10 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 			result = new OpaqueUriComponents(this.scheme, this.ssp, this.fragment);
 		}
 		else {
+
 			HierarchicalUriComponents uric = new HierarchicalUriComponents(this.scheme, this.fragment,
-					this.userInfo, this.host, this.port, this.pathBuilder.build(), this.queryParams,
-					hint == EncodingHint.FULLY_ENCODED);
+					this.userInfo, this.host, this.port, this.pathBuilder.build(),
+					new LinkedMultiValueMap<>(this.queryParams), hint == EncodingHint.FULLY_ENCODED);
 			result = (hint == EncodingHint.ENCODE_TEMPLATE ? uric.encodeTemplate(this.charset) : uric);
 		}
 		if (!this.uriVariables.isEmpty()) {
