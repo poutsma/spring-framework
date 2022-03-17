@@ -216,7 +216,7 @@ public class HttpEntityMethodProcessor extends AbstractMessageConverterMethodPro
 		}
 
 		if (httpEntity instanceof ResponseEntity<?> responseEntity) {
-			int returnStatus = responseEntity.getStatusCodeValue();
+			int returnStatus = responseEntity.getStatusCode().value();
 			outputMessage.getServletResponse().setStatus(returnStatus);
 			if (returnStatus == 200) {
 				HttpMethod method = inputMessage.getMethod();

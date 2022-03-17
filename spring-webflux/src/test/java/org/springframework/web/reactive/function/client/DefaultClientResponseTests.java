@@ -39,6 +39,7 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +50,6 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -243,8 +243,7 @@ public class DefaultClientResponseTests {
 
 		ResponseEntity<String> result = defaultClientResponse.toEntity(String.class).block();
 		assertThat(result.getBody()).isEqualTo("foo");
-		assertThatIllegalArgumentException().isThrownBy(
-				result::getStatusCode);
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(999));
 		assertThat(result.getStatusCodeValue()).isEqualTo(999);
 		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 	}
@@ -305,8 +304,7 @@ public class DefaultClientResponseTests {
 
 		ResponseEntity<List<String>> result = defaultClientResponse.toEntityList(String.class).block();
 		assertThat(result.getBody()).isEqualTo(Collections.singletonList("foo"));
-		assertThatIllegalArgumentException().isThrownBy(
-				result::getStatusCode);
+		assertThat(result.getStatusCode()).isEqualTo(HttpStatusCode.valueOf(999));
 		assertThat(result.getStatusCodeValue()).isEqualTo(999);
 		assertThat(result.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 	}

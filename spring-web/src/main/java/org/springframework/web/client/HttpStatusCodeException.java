@@ -20,6 +20,7 @@ import java.nio.charset.Charset;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
@@ -36,15 +37,24 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	private static final long serialVersionUID = 5696801857651587810L;
 
 
-	private final HttpStatus statusCode;
+	private final HttpStatusCode statusCode;
 
 
 	/**
 	 * Construct a new instance with an {@link HttpStatus}.
 	 * @param statusCode the status code
 	 */
-	protected HttpStatusCodeException(HttpStatus statusCode) {
-		this(statusCode, statusCode.name(), null, null, null);
+	protected HttpStatusCodeException(HttpStatusCode statusCode) {
+		this(statusCode, name(statusCode), null, null, null);
+	}
+
+	private static String name(HttpStatusCode statusCode) {
+		if (statusCode instanceof HttpStatus status) {
+			return status.name();
+		}
+		else {
+			return "";
+		}
 	}
 
 	/**
@@ -52,7 +62,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	 * @param statusCode the status code
 	 * @param statusText the status text
 	 */
-	protected HttpStatusCodeException(HttpStatus statusCode, String statusText) {
+	protected HttpStatusCodeException(HttpStatusCode statusCode, String statusText) {
 		this(statusCode, statusText, null, null, null);
 	}
 
@@ -64,7 +74,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	 * @param responseCharset the response body charset, may be {@code null}
 	 * @since 3.0.5
 	 */
-	protected HttpStatusCodeException(HttpStatus statusCode, String statusText,
+	protected HttpStatusCodeException(HttpStatusCode statusCode, String statusText,
 			@Nullable byte[] responseBody, @Nullable Charset responseCharset) {
 
 		this(statusCode, statusText, null, responseBody, responseCharset);
@@ -80,7 +90,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	 * @param responseCharset the response body charset, may be {@code null}
 	 * @since 3.1.2
 	 */
-	protected HttpStatusCodeException(HttpStatus statusCode, String statusText,
+	protected HttpStatusCodeException(HttpStatusCode statusCode, String statusText,
 			@Nullable HttpHeaders responseHeaders, @Nullable byte[] responseBody, @Nullable Charset responseCharset) {
 
 		this(getMessage(statusCode, statusText),
@@ -98,16 +108,16 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	 * @param responseCharset the response body charset, may be {@code null}
 	 * @since 5.2.2
 	 */
-	protected HttpStatusCodeException(String message, HttpStatus statusCode, String statusText,
+	protected HttpStatusCodeException(String message, HttpStatusCode statusCode, String statusText,
 			@Nullable HttpHeaders responseHeaders, @Nullable byte[] responseBody, @Nullable Charset responseCharset) {
 
 		super(message, statusCode.value(), statusText, responseHeaders, responseBody, responseCharset);
 		this.statusCode = statusCode;
 	}
 
-	private static String getMessage(HttpStatus statusCode, String statusText) {
-		if (!StringUtils.hasLength(statusText)) {
-			statusText = statusCode.getReasonPhrase();
+	private static String getMessage(HttpStatusCode statusCode, String statusText) {
+		if (!StringUtils.hasLength(statusText) && statusCode instanceof HttpStatus status) {
+			statusText = status.getReasonPhrase();
 		}
 		return statusCode.value() + " " + statusText;
 	}
@@ -115,7 +125,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	/**
 	 * Return the HTTP status code.
 	 */
-	public HttpStatus getStatusCode() {
+	public HttpStatusCode getStatusCode() {
 		return this.statusCode;
 	}
 

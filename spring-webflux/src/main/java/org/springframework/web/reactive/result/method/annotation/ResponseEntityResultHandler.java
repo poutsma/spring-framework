@@ -163,7 +163,7 @@ public class ResponseEntityResultHandler extends AbstractMessageWriterResultHand
 
 			if (httpEntity instanceof ResponseEntity) {
 				exchange.getResponse().setRawStatusCode(
-						((ResponseEntity<?>) httpEntity).getStatusCodeValue());
+						((ResponseEntity<?>) httpEntity).getStatusCode().value());
 			}
 
 			HttpHeaders entityHeaders = httpEntity.getHeaders();

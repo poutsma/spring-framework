@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.util.Assert;
@@ -38,14 +39,14 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	/**
 	 * Constructor with response body as a byte array.
 	 */
-	public MockClientHttpResponse(byte[] body, HttpStatus statusCode) {
+	public MockClientHttpResponse(byte[] body, HttpStatusCode statusCode) {
 		super(body);
 		Assert.notNull(statusCode, "HttpStatus is required");
 		this.statusCode = statusCode.value();
 	}
 
 	/**
-	 * Variant of {@link #MockClientHttpResponse(byte[], HttpStatus)} with a
+	 * Variant of {@link #MockClientHttpResponse(byte[], HttpStatusCode)} with a
 	 * custom HTTP status code.
 	 * @since 5.3.17
 	 */
@@ -57,14 +58,14 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	/**
 	 * Constructor with response body as InputStream.
 	 */
-	public MockClientHttpResponse(InputStream body, HttpStatus statusCode) {
+	public MockClientHttpResponse(InputStream body, HttpStatusCode statusCode) {
 		super(body);
 		Assert.notNull(statusCode, "HttpStatus is required");
 		this.statusCode = statusCode.value();
 	}
 
 	/**
-	 * Variant of {@link #MockClientHttpResponse(InputStream, HttpStatus)} with a
+	 * Variant of {@link #MockClientHttpResponse(InputStream, HttpStatusCode)} with a
 	 * custom HTTP status code.
 	 * @since 5.3.17
 	 */
@@ -75,11 +76,12 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 
 
 	@Override
-	public HttpStatus getStatusCode() {
-		return HttpStatus.valueOf(this.statusCode);
+	public HttpStatusCode getStatusCode() {
+		return HttpStatusCode.valueOf(this.statusCode);
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() {
 		return this.statusCode;
 	}
