@@ -233,8 +233,7 @@ public class DefaultClientResponseTests {
 
 		httpHeaders.setContentType(MediaType.TEXT_PLAIN);
 		given(mockResponse.getHeaders()).willReturn(httpHeaders);
-		given(mockResponse.getStatusCode()).willThrow(new IllegalArgumentException("999"));
-		given(mockResponse.getRawStatusCode()).willReturn(999);
+		given(mockResponse.getStatusCode()).willReturn(HttpStatusCode.valueOf(999));
 		given(mockResponse.getBody()).willReturn(body);
 
 		List<HttpMessageReader<?>> messageReaders = Collections
@@ -294,8 +293,7 @@ public class DefaultClientResponseTests {
 
 		httpHeaders.setContentType(MediaType.TEXT_PLAIN);
 		given(mockResponse.getHeaders()).willReturn(httpHeaders);
-		given(mockResponse.getStatusCode()).willThrow(new IllegalArgumentException("999"));
-		given(mockResponse.getRawStatusCode()).willReturn(999);
+		given(mockResponse.getStatusCode()).willReturn(HttpStatusCode.valueOf(999));
 		given(mockResponse.getBody()).willReturn(body);
 
 		List<HttpMessageReader<?>> messageReaders = Collections

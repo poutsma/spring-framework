@@ -30,6 +30,7 @@ import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.client.reactive.ClientHttpResponse;
@@ -67,11 +68,12 @@ public class MockClientHttpResponse implements ClientHttpResponse {
 
 
 	@Override
-	public HttpStatus getStatusCode() {
-		return HttpStatus.valueOf(this.status);
+	public HttpStatusCode getStatusCode() {
+		return HttpStatusCode.valueOf(this.status);
 	}
 
 	@Override
+	@Deprecated
 	public int getRawStatusCode() {
 		return this.status;
 	}

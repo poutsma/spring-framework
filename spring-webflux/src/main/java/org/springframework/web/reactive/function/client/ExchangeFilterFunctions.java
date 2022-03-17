@@ -27,6 +27,7 @@ import reactor.core.publisher.Mono;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -71,7 +72,7 @@ public abstract class ExchangeFilterFunctions {
 	 * @param exceptionFunction the function that to create the exception
 	 * @return the filter to generate an error signal
 	 */
-	public static ExchangeFilterFunction statusError(Predicate<HttpStatus> statusPredicate,
+	public static ExchangeFilterFunction statusError(Predicate<HttpStatusCode> statusPredicate,
 			Function<ClientResponse, ? extends Throwable> exceptionFunction) {
 
 		Assert.notNull(statusPredicate, "Predicate must not be null");
