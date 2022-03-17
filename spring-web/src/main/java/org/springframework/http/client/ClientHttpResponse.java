@@ -37,7 +37,7 @@ public interface ClientHttpResponse extends HttpInputMessage, Closeable {
 
 	/**
 	 * Get the HTTP status code as an {@link HttpStatusCode}.
-	 * @return the HTTP status as {@code HttpStatusCode} enum value (never {@code null})
+	 * @return the HTTP status as {@code HttpStatusCode} value (never {@code null})
 	 * @throws IOException in case of I/O errors
 	 */
 	HttpStatusCode getStatusCode() throws IOException;
