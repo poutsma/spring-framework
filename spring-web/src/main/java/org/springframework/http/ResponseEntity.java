@@ -31,7 +31,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Extension of {@link HttpEntity} that adds an {@link HttpStatus} status code.
+ * Extension of {@link HttpEntity} that adds an {@link HttpStatusCode} status code.
  * Used in {@code RestTemplate} as well as in {@code @Controller} methods.
  *
  * <p>In {@code RestTemplate}, this class is returned by
@@ -189,9 +189,9 @@ public class ResponseEntity<T> extends HttpEntity<T> {
 	public String toString() {
 		StringBuilder builder = new StringBuilder("<");
 		builder.append(this.status);
-		if (this.status instanceof HttpStatus) {
+		if (this.status instanceof HttpStatus httpStatus) {
 			builder.append(' ');
-			builder.append(((HttpStatus) this.status).getReasonPhrase());
+			builder.append(httpStatus.getReasonPhrase());
 		}
 		builder.append(',');
 		T body = getBody();

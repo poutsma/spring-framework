@@ -16,7 +16,6 @@
 
 package org.springframework.http.server.reactive;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ReactiveHttpOutputMessage;
 import org.springframework.http.ResponseCookie;
@@ -51,8 +50,7 @@ public interface ServerHttpResponse extends ReactiveHttpOutputMessage {
 	HttpStatusCode getStatusCode();
 
 	/**
-	 * Set the HTTP status code to the given value (potentially non-standard and
-	 * not resolvable through the {@link HttpStatus} enum) as an integer.
+	 * Set the HTTP status code to the given value as an integer.
 	 * @param value the status code value
 	 * @return {@code false} if the status code change wasn't processed because
 	 * the HTTP response is committed, {@code true} if successfully set.

@@ -321,7 +321,7 @@ public class HttpEntityMethodProcessorMockTests {
 
 	@Test
 	public void shouldHandleProblemDetail() throws Exception {
-		ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+		ProblemDetail problemDetail = ProblemDetail.forStatusCode(HttpStatus.BAD_REQUEST);
 		servletRequest.addHeader("Accept", APPLICATION_PROBLEM_JSON_VALUE);
 		given(jsonMessageConverter.canWrite(ProblemDetail.class, APPLICATION_PROBLEM_JSON)).willReturn(true);
 

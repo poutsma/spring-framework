@@ -21,7 +21,7 @@ import org.apache.commons.logging.LogFactory;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.log.LogFormatUtils;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.lang.Nullable;
@@ -90,8 +90,8 @@ public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 
 	private boolean updateResponse(ServerHttpResponse response, Throwable ex) {
 		boolean result = false;
-		HttpStatus httpStatus = determineStatus(ex);
-		int code = (httpStatus != null ? httpStatus.value() : determineRawStatusCode(ex));
+		HttpStatusCode statusCode = determineStatus(ex);
+		int code = (statusCode != null ? statusCode.value() : determineRawStatusCode(ex));
 		if (code != -1) {
 			if (response.setRawStatusCode(code)) {
 				if (ex instanceof ResponseStatusException) {
@@ -112,16 +112,17 @@ public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 
 	/**
 	 * Determine the HTTP status for the given exception.
-	 * <p>As of 5.3 this method always returns {@code null} in which case
-	 * {@link #determineRawStatusCode(Throwable)} is used instead.
 	 * @param ex the exception to check
 	 * @return the associated HTTP status, if any
-	 * @deprecated as of 5.3 in favor of {@link #determineRawStatusCode(Throwable)}.
 	 */
 	@Nullable
-	@Deprecated
-	protected HttpStatus determineStatus(Throwable ex) {
-		return null;
+	protected HttpStatusCode determineStatus(Throwable ex) {
+		if (ex instanceof ResponseStatusException responseStatusException) {
+			return responseStatusException.getStatusCode();
+		}
+		else {
+			return null;
+		}
 	}
 
 	/**
@@ -132,7 +133,7 @@ public class ResponseStatusExceptionHandler implements WebExceptionHandler {
 	 */
 	protected int determineRawStatusCode(Throwable ex) {
 		if (ex instanceof ResponseStatusException) {
-			return ((ResponseStatusException) ex).getRawStatusCode();
+			return ((ResponseStatusException) ex).getStatusCode().value();
 		}
 		return -1;
 	}

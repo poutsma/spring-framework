@@ -25,7 +25,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
- * Abstract base class for exceptions based on an {@link HttpStatus}.
+ * Abstract base class for exceptions based on an {@link HttpStatusCode}.
  *
  * @author Arjen Poutsma
  * @author Chris Beams

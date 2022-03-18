@@ -18,7 +18,6 @@ package org.springframework.web.servlet;
 
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.lang.Nullable;
 import org.springframework.ui.ModelMap;
@@ -265,7 +264,7 @@ public class ModelAndView {
 	 * <p>The response status is set just prior to View rendering.
 	 * @since 4.3
 	 */
-	public void setStatus(@Nullable HttpStatus status) {
+	public void setStatus(@Nullable HttpStatusCode status) {
 		this.status = status;
 	}
 

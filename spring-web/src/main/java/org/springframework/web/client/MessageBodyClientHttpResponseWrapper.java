@@ -59,9 +59,9 @@ class MessageBodyClientHttpResponseWrapper implements ClientHttpResponse {
 	 * @throws IOException in case of I/O errors
 	 */
 	public boolean hasMessageBody() throws IOException {
-		HttpStatus status = HttpStatus.resolve(getRawStatusCode());
-		if (status != null && (status.is1xxInformational() || status == HttpStatus.NO_CONTENT ||
-				status == HttpStatus.NOT_MODIFIED)) {
+		HttpStatusCode statusCode = getStatusCode();
+		if (statusCode.is1xxInformational() || statusCode == HttpStatus.NO_CONTENT ||
+				statusCode == HttpStatus.NOT_MODIFIED) {
 			return false;
 		}
 		if (getHeaders().getContentLength() == 0) {

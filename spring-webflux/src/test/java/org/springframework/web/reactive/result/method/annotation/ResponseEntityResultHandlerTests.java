@@ -265,7 +265,7 @@ public class ResponseEntityResultHandlerTests {
 
 	@Test
 	public void handleProblemDetail() {
-		ProblemDetail problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+		ProblemDetail problemDetail = ProblemDetail.forStatusCode(HttpStatus.BAD_REQUEST);
 		MethodParameter returnType = on(TestController.class).resolveReturnType(ProblemDetail.class);
 		HandlerResult result = handlerResult(problemDetail, returnType);
 		MockServerWebExchange exchange = MockServerWebExchange.from(get("/path"));

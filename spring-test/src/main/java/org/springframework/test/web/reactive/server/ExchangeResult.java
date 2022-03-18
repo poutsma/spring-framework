@@ -171,7 +171,7 @@ public class ExchangeResult {
 
 
 	/**
-	 * Return the HTTP status code as an {@link HttpStatus} enum value.
+	 * Return the HTTP status code as an {@link HttpStatusCode} value.
 	 */
 	public HttpStatusCode getStatus() {
 		return this.response.getStatusCode();

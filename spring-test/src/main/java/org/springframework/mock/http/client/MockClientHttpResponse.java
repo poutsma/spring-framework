@@ -33,7 +33,7 @@ import org.springframework.util.Assert;
  */
 public class MockClientHttpResponse extends MockHttpInputMessage implements ClientHttpResponse {
 
-	private final int statusCode;
+	private final HttpStatusCode statusCode;
 
 
 	/**
@@ -41,8 +41,8 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	 */
 	public MockClientHttpResponse(byte[] body, HttpStatusCode statusCode) {
 		super(body);
-		Assert.notNull(statusCode, "HttpStatus is required");
-		this.statusCode = statusCode.value();
+		Assert.notNull(statusCode, "HttpStatusCode is required");
+		this.statusCode = statusCode;
 	}
 
 	/**
@@ -51,8 +51,7 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	 * @since 5.3.17
 	 */
 	public MockClientHttpResponse(byte[] body, int statusCode) {
-		super(body);
-		this.statusCode = statusCode;
+		this(body, HttpStatusCode.valueOf(statusCode));
 	}
 
 	/**
@@ -61,7 +60,7 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	public MockClientHttpResponse(InputStream body, HttpStatusCode statusCode) {
 		super(body);
 		Assert.notNull(statusCode, "HttpStatus is required");
-		this.statusCode = statusCode.value();
+		this.statusCode = statusCode;
 	}
 
 	/**
@@ -70,26 +69,29 @@ public class MockClientHttpResponse extends MockHttpInputMessage implements Clie
 	 * @since 5.3.17
 	 */
 	public MockClientHttpResponse(InputStream body, int statusCode) {
-		super(body);
-		this.statusCode = statusCode;
+		this(body, HttpStatusCode.valueOf(statusCode));
 	}
 
 
 	@Override
 	public HttpStatusCode getStatusCode() {
-		return HttpStatusCode.valueOf(this.statusCode);
+		return this.statusCode;
 	}
 
 	@Override
 	@Deprecated
 	public int getRawStatusCode() {
-		return this.statusCode;
+		return this.statusCode.value();
 	}
 
 	@Override
 	public String getStatusText() {
-		HttpStatus status = HttpStatus.resolve(this.statusCode);
-		return (status != null ? status.getReasonPhrase() : "");
+		if (this.statusCode instanceof HttpStatus status) {
+			return status.getReasonPhrase();
+		}
+		else {
+			return "";
+		}
 	}
 
 	@Override

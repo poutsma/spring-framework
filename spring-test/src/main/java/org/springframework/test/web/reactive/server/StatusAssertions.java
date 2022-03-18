@@ -46,19 +46,19 @@ public class StatusAssertions {
 
 
 	/**
-	 * Assert the response status as an {@link HttpStatus}.
+	 * Assert the response status as an {@link HttpStatusCode}.
 	 */
-	public WebTestClient.ResponseSpec isEqualTo(HttpStatus status) {
-		return isEqualTo(status.value());
+	public WebTestClient.ResponseSpec isEqualTo(HttpStatusCode status) {
+		HttpStatusCode actual = this.exchangeResult.getStatus();
+		this.exchangeResult.assertWithDiagnostics(() -> AssertionErrors.assertEquals("Status", status, actual));
+		return this.responseSpec;
 	}
 
 	/**
 	 * Assert the response status as an integer.
 	 */
 	public WebTestClient.ResponseSpec isEqualTo(int status) {
-		int actual = this.exchangeResult.getStatus().value();
-		this.exchangeResult.assertWithDiagnostics(() -> AssertionErrors.assertEquals("Status", status, actual));
-		return this.responseSpec;
+		return isEqualTo(HttpStatusCode.valueOf(status));
 	}
 
 	/**

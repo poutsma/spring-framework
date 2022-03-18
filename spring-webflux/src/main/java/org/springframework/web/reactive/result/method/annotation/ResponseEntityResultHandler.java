@@ -141,7 +141,7 @@ public class ResponseEntityResultHandler extends AbstractMessageWriterResultHand
 				httpEntity = (HttpEntity<?>) returnValue;
 			}
 			else if (returnValue instanceof ErrorResponse response) {
-				httpEntity = new ResponseEntity<>(response.getBody(), response.getHeaders(), response.getRawStatusCode());
+				httpEntity = new ResponseEntity<>(response.getBody(), response.getHeaders(), response.getStatusCode());
 			}
 			else if (returnValue instanceof ProblemDetail detail) {
 				httpEntity = new ResponseEntity<>(returnValue, HttpHeaders.EMPTY, detail.getStatus());

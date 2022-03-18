@@ -203,9 +203,8 @@ class DefaultClientResponse implements ClientResponse {
 				.map(bodyBytes -> {
 					HttpRequest request = this.requestSupplier.get();
 					Charset charset = headers().contentType().map(MimeType::getCharset).orElse(null);
-					int statusCode = rawStatusCode();
-					HttpStatus httpStatus = HttpStatus.resolve(statusCode);
-					if (httpStatus != null) {
+					HttpStatusCode statusCode = statusCode();
+					if (statusCode instanceof HttpStatus httpStatus) {
 						return WebClientResponseException.create(
 								statusCode,
 								httpStatus.getReasonPhrase(),

@@ -35,7 +35,7 @@ public class UnknownHttpStatusCodeException extends RestClientResponseException 
 
 	/**
 	 * Construct a new instance of {@code HttpStatusCodeException} based on an
-	 * {@link HttpStatus}, status text, and response body content.
+	 * status, status text, and response body content.
 	 * @param rawStatusCode the raw status code value
 	 * @param statusText the status text
 	 * @param responseHeaders the response headers (may be {@code null})
