@@ -142,7 +142,7 @@ public class DefaultResponseErrorHandlerTests {
 
 	@Test
 	public void handleErrorForCustomClientError() throws Exception {
-		int statusCode = 499;
+		HttpStatusCode statusCode = HttpStatusCode.valueOf(499);
 		String statusText = "Custom status code";
 
 		HttpHeaders headers = new HttpHeaders();
@@ -151,7 +151,7 @@ public class DefaultResponseErrorHandlerTests {
 		String responseBody = "Hello World";
 		TestByteArrayInputStream body = new TestByteArrayInputStream(responseBody.getBytes(StandardCharsets.UTF_8));
 
-		given(response.getStatusCode()).willReturn(HttpStatusCode.valueOf(statusCode));
+		given(response.getStatusCode()).willReturn(statusCode);
 		given(response.getStatusText()).willReturn(statusText);
 		given(response.getHeaders()).willReturn(headers);
 		given(response.getBody()).willReturn(body);
@@ -161,7 +161,7 @@ public class DefaultResponseErrorHandlerTests {
 		// validate exception
 		assertThat(throwable).isInstanceOf(HttpClientErrorException.class);
 		HttpClientErrorException actualHttpClientErrorException = (HttpClientErrorException) throwable;
-		assertThat(actualHttpClientErrorException.getRawStatusCode()).isEqualTo(statusCode);
+		assertThat(actualHttpClientErrorException.getStatusCode()).isEqualTo(statusCode);
 		assertThat(actualHttpClientErrorException.getStatusText()).isEqualTo(statusText);
 		assertThat(actualHttpClientErrorException.getResponseHeaders()).isEqualTo(headers);
 		assertThat(actualHttpClientErrorException.getMessage()).contains(responseBody);
@@ -182,7 +182,7 @@ public class DefaultResponseErrorHandlerTests {
 
 	@Test
 	public void handleErrorForCustomServerError() throws Exception {
-		int statusCode = 599;
+		HttpStatusCode statusCode = HttpStatusCode.valueOf(599);
 		String statusText = "Custom status code";
 
 		HttpHeaders headers = new HttpHeaders();
@@ -191,7 +191,7 @@ public class DefaultResponseErrorHandlerTests {
 		String responseBody = "Hello World";
 		TestByteArrayInputStream body = new TestByteArrayInputStream(responseBody.getBytes(StandardCharsets.UTF_8));
 
-		given(response.getStatusCode()).willReturn(HttpStatusCode.valueOf(statusCode));
+		given(response.getStatusCode()).willReturn(statusCode);
 		given(response.getStatusText()).willReturn(statusText);
 		given(response.getHeaders()).willReturn(headers);
 		given(response.getBody()).willReturn(body);
@@ -201,7 +201,7 @@ public class DefaultResponseErrorHandlerTests {
 		// validate exception
 		assertThat(throwable).isInstanceOf(HttpServerErrorException.class);
 		HttpServerErrorException actualHttpServerErrorException = (HttpServerErrorException) throwable;
-		assertThat(actualHttpServerErrorException.getRawStatusCode()).isEqualTo(statusCode);
+		assertThat(actualHttpServerErrorException.getStatusCode()).isEqualTo(statusCode);
 		assertThat(actualHttpServerErrorException.getStatusText()).isEqualTo(statusText);
 		assertThat(actualHttpServerErrorException.getResponseHeaders()).isEqualTo(headers);
 		assertThat(actualHttpServerErrorException.getMessage()).contains(responseBody);

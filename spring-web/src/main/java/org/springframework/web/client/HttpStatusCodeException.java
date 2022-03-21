@@ -37,9 +37,6 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	private static final long serialVersionUID = 5696801857651587810L;
 
 
-	private final HttpStatusCode statusCode;
-
-
 	/**
 	 * Construct a new instance with an {@link HttpStatusCode}.
 	 * @param statusCode the status code
@@ -111,8 +108,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	protected HttpStatusCodeException(String message, HttpStatusCode statusCode, String statusText,
 			@Nullable HttpHeaders responseHeaders, @Nullable byte[] responseBody, @Nullable Charset responseCharset) {
 
-		super(message, statusCode.value(), statusText, responseHeaders, responseBody, responseCharset);
-		this.statusCode = statusCode;
+		super(message, statusCode, statusText, responseHeaders, responseBody, responseCharset);
 	}
 
 	private static String getMessage(HttpStatusCode statusCode, String statusText) {
@@ -120,13 +116,6 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 			statusText = status.getReasonPhrase();
 		}
 		return statusCode.value() + " " + statusText;
-	}
-
-	/**
-	 * Return the HTTP status code.
-	 */
-	public HttpStatusCode getStatusCode() {
-		return this.statusCode;
 	}
 
 }
