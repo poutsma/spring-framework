@@ -41,7 +41,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 
 
 	/**
-	 * Construct a new instance with an {@link HttpStatus}.
+	 * Construct a new instance with an {@link HttpStatusCode}.
 	 * @param statusCode the status code
 	 */
 	protected HttpStatusCodeException(HttpStatusCode statusCode) {
@@ -58,7 +58,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	}
 
 	/**
-	 * Construct a new instance with an {@link HttpStatus} and status text.
+	 * Construct a new instance with an {@link HttpStatusCode} and status text.
 	 * @param statusCode the status code
 	 * @param statusText the status text
 	 */
@@ -67,7 +67,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	}
 
 	/**
-	 * Construct instance with an {@link HttpStatus}, status text, and content.
+	 * Construct instance with an {@link HttpStatusCode}, status text, and content.
 	 * @param statusCode the status code
 	 * @param statusText the status text
 	 * @param responseBody the response body content, may be {@code null}
@@ -81,7 +81,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	}
 
 	/**
-	 * Construct instance with an {@link HttpStatus}, status text, content, and
+	 * Construct instance with an {@link HttpStatusCode}, status text, content, and
 	 * a response charset.
 	 * @param statusCode the status code
 	 * @param statusText the status text
@@ -98,7 +98,7 @@ public abstract class HttpStatusCodeException extends RestClientResponseExceptio
 	}
 
 	/**
-	 * Construct instance with an {@link HttpStatus}, status text, content, and
+	 * Construct instance with an {@link HttpStatusCode}, status text, content, and
 	 * a response charset.
 	 * @param message the exception message
 	 * @param statusCode the status code

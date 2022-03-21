@@ -231,7 +231,7 @@ public class StatusAssertions {
 	}
 
 
-	private WebTestClient.ResponseSpec assertStatusAndReturn(HttpStatus expected) {
+	private WebTestClient.ResponseSpec assertStatusAndReturn(HttpStatusCode expected) {
 		HttpStatusCode actual = this.exchangeResult.getStatus();
 		this.exchangeResult.assertWithDiagnostics(() -> AssertionErrors.assertEquals("Status", expected, actual));
 		return this.responseSpec;

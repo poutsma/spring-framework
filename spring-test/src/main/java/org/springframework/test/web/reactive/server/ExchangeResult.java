@@ -178,8 +178,7 @@ public class ExchangeResult {
 	}
 
 	/**
-	 * Return the HTTP status code (potentially non-standard and not resolvable
-	 * through the {@link HttpStatus} enum) as an integer.
+	 * Return the HTTP status code as an integer.
 	 * @since 5.1.10
 	 * @deprecated as of 6.0, in favor of {@link #getStatus()}
 	 */

@@ -102,7 +102,7 @@ public class ProblemDetail {
 	 */
 	public ProblemDetail withStatus(HttpStatusCode statusCode) {
 		Assert.notNull(statusCode, "HttpStatus is required");
-		setStatus(status);
+		setStatus(statusCode.value());
 		return this;
 	}
 
@@ -112,7 +112,8 @@ public class ProblemDetail {
 	 * @return the same instance
 	 */
 	public ProblemDetail withStatus(int status) {
-		return withStatus(HttpStatusCode.valueOf(status));
+		setStatus(status);
+		return this;
 	}
 
 	/**

@@ -162,25 +162,20 @@ public abstract class ResponseEntityExceptionHandler {
 
 		// Other, lower level exceptions
 
-		if (ex instanceof ConversionNotSupportedException) {
-			HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-			return handleConversionNotSupported((ConversionNotSupportedException) ex, headers, status, request);
+		if (ex instanceof ConversionNotSupportedException cnse) {
+			return handleConversionNotSupported(cnse, headers, HttpStatus.INTERNAL_SERVER_ERROR, request);
 		}
-		else if (ex instanceof TypeMismatchException) {
-			HttpStatus status = HttpStatus.BAD_REQUEST;
-			return handleTypeMismatch((TypeMismatchException) ex, headers, status, request);
+		else if (ex instanceof TypeMismatchException tme) {
+			return handleTypeMismatch(tme, headers, HttpStatus.BAD_REQUEST, request);
 		}
-		else if (ex instanceof HttpMessageNotReadableException) {
-			HttpStatus status = HttpStatus.BAD_REQUEST;
-			return handleHttpMessageNotReadable((HttpMessageNotReadableException) ex, headers, status, request);
+		else if (ex instanceof HttpMessageNotReadableException hmnre) {
+			return handleHttpMessageNotReadable(hmnre, headers, HttpStatus.BAD_REQUEST, request);
 		}
-		else if (ex instanceof HttpMessageNotWritableException) {
-			HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-			return handleHttpMessageNotWritable((HttpMessageNotWritableException) ex, headers, status, request);
+		else if (ex instanceof HttpMessageNotWritableException hmnwe) {
+			return handleHttpMessageNotWritable(hmnwe, headers, HttpStatus.INTERNAL_SERVER_ERROR, request);
 		}
-		else if (ex instanceof BindException) {
-			HttpStatus status = HttpStatus.BAD_REQUEST;
-			return handleBindException((BindException) ex, headers, status, request);
+		else if (ex instanceof BindException be) {
+			return handleBindException(be, headers, HttpStatus.BAD_REQUEST, request);
 		}
 		else {
 			// Unknown exception, typically a wrapper with a common MVC exception as cause
