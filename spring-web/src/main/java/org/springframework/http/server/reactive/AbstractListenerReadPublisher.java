@@ -219,13 +219,12 @@ public abstract class AbstractListenerReadPublisher<T> implements Publisher<T> {
 
 	private void changeToDemandState(State oldState) {
 		if (changeState(oldState, State.DEMAND)) {
-			// Protect from infinite recursion in Undertow, where we can't check if data
-			// is available, so all we can do is to try to read.
-			// Generally, no need to check if we just came out of readAndPublish()...
-			if (oldState != State.READING) {
-				checkOnDataAvailable();
-			}
+			onDemandState(oldState == State.READING);
 		}
+	}
+
+	protected void onDemandState(boolean afterReading) {
+		checkOnDataAvailable();
 	}
 
 	private boolean handlePendingCompletionOrError() {

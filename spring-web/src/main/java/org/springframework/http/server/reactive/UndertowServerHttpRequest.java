@@ -174,6 +174,17 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 		}
 
 		@Override
+		protected void onDemandState(boolean afterReading) {
+			// Protect from infinite recursion in Undertow, where we can't check if data
+			// is available, so all we can do is to try to read.
+			// Generally, no need to check if we just came out of readAndPublish()...
+			if (!afterReading) {
+				checkOnDataAvailable();
+			}
+
+		}
+
+		@Override
 		protected void readingPaused() {
 			this.channel.suspendReads();
 		}
