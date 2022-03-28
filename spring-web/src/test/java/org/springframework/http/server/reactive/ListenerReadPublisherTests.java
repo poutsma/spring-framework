@@ -98,7 +98,7 @@ public class ListenerReadPublisherTests {
 		}
 
 		@Override
-		protected void checkOnDataAvailable() {
+		protected void checkOnDataAvailable(boolean afterReading) {
 			// no-op
 		}
 

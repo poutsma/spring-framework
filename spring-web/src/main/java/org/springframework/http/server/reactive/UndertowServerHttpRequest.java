@@ -160,10 +160,15 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 		}
 
 		@Override
-		protected void checkOnDataAvailable() {
-			this.channel.resumeReads();
-			// We are allowed to try, it will return null if data is not available
-			onDataAvailable();
+		protected void checkOnDataAvailable(boolean afterReading) {
+			// Protect from infinite recursion in Undertow, where we can't check if data
+			// is available, so all we can do is to try to read.
+			// Generally, no need to check if we just came out of readAndPublish()...
+			if (!afterReading) {
+				this.channel.resumeReads();
+				// We are allowed to try, it will return null if data is not available
+				onDataAvailable();
+			}
 		}
 
 		@Override

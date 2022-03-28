@@ -274,7 +274,7 @@ public abstract class AbstractListenerWebSocketSession<T> extends AbstractWebSoc
 
 
 		@Override
-		protected void checkOnDataAvailable() {
+		protected void checkOnDataAvailable(boolean afterReading) {
 			resumeReceiving();
 			int size = this.pendingMessages.size();
 			if (rsReadLogger.isTraceEnabled()) {

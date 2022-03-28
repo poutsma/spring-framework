@@ -110,7 +110,7 @@ public abstract class AbstractListenerReadPublisher<T> implements Publisher<T> {
 
 	/**
 	 * Invoked when reading is possible, either in the same thread after a check
-	 * via {@link #checkOnDataAvailable()}, or as a callback from the underlying
+	 * via {@link #checkOnDataAvailable(boolean)}, or as a callback from the underlying
 	 * container.
 	 */
 	public final void onDataAvailable() {
@@ -147,8 +147,9 @@ public abstract class AbstractListenerReadPublisher<T> implements Publisher<T> {
 	/**
 	 * Check if data is available and either call {@link #onDataAvailable()}
 	 * immediately or schedule a notification.
+	 * @param afterReading whether the previous state was {@link State#READING}
 	 */
-	protected abstract void checkOnDataAvailable();
+	protected abstract void checkOnDataAvailable(boolean afterReading);
 
 	/**
 	 * Read once from the input, if possible.
@@ -160,7 +161,7 @@ public abstract class AbstractListenerReadPublisher<T> implements Publisher<T> {
 	/**
 	 * Invoked when reading is paused due to a lack of demand.
 	 * <p><strong>Note:</strong> This method is guaranteed not to compete with
-	 * {@link #checkOnDataAvailable()} so it can be used to safely suspend
+	 * {@link #checkOnDataAvailable(boolean)} so it can be used to safely suspend
 	 * reading, if the underlying API supports it, i.e. without competing with
 	 * an implicit call to resume via {@code checkOnDataAvailable()}.
 	 * @since 5.0.2
@@ -219,12 +220,7 @@ public abstract class AbstractListenerReadPublisher<T> implements Publisher<T> {
 
 	private void changeToDemandState(State oldState) {
 		if (changeState(oldState, State.DEMAND)) {
-			// Protect from infinite recursion in Undertow, where we can't check if data
-			// is available, so all we can do is to try to read.
-			// Generally, no need to check if we just came out of readAndPublish()...
-			if (oldState != State.READING) {
-				checkOnDataAvailable();
-			}
+			checkOnDataAvailable(oldState == State.READING);
 		}
 	}
 
