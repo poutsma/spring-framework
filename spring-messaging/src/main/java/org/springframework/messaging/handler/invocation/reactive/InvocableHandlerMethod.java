@@ -24,6 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import kotlin.Unit;
+import kotlin.jvm.JvmClassMappingKt;
+import kotlin.reflect.KClassifier;
+import kotlin.reflect.KFunction;
+import kotlin.reflect.jvm.ReflectJvmMapping;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.CoroutinesUtils;
@@ -205,15 +210,37 @@ public class InvocableHandlerMethod extends HandlerMethod {
 			if (reactiveAdapter.isNoValue()) {
 				return true;
 			}
-			Type parameterType = returnType.getGenericParameterType();
-			if (parameterType instanceof ParameterizedType) {
-				ParameterizedType type = (ParameterizedType) parameterType;
-				if (type.getActualTypeArguments().length == 1) {
-					return Void.class.equals(type.getActualTypeArguments()[0]);
-				}
+		}
+		Type parameterType = returnType.getGenericParameterType();
+		if (parameterType instanceof ParameterizedType) {
+			ParameterizedType type = (ParameterizedType) parameterType;
+			if (type.getActualTypeArguments().length == 1) {
+				return Void.class.equals(type.getActualTypeArguments()[0]);
 			}
 		}
-		return false;
+		Method method = returnType.getMethod();
+		return method != null && KotlinDetector.isSuspendingFunction(method) && KotlinDelegate.returnsUnit(method);
+	}
+
+
+	/**
+	 * Inner class to avoid a hard dependency on Kotlin at runtime.
+	 */
+	private static class KotlinDelegate {
+
+		/**
+		 * Determines whether the given Java method is a Kotlin function, and
+		 * returns {@link Unit}.
+		 */
+		public static boolean returnsUnit(Method method) {
+			KFunction<?> function = ReflectJvmMapping.getKotlinFunction(method);
+			if (function == null) {
+				return false;
+			}
+			KClassifier returnType = function.getReturnType().getClassifier();
+			return JvmClassMappingKt.getKotlinClass(Unit.class).equals(returnType);
+		}
+
 	}
 
 }
