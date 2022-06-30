@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import io.undertow.server.HttpServerExchange;
+import io.undertow.servlet.spec.HttpServletRequestImpl;
 import io.undertow.websockets.WebSocketConnectionCallback;
 import io.undertow.websockets.WebSocketProtocolHandshakeHandler;
 import io.undertow.websockets.core.WebSocketChannel;
@@ -55,7 +56,8 @@ public class UndertowRequestUpgradeStrategy implements RequestUpgradeStrategy {
 	public Mono<Void> upgrade(ServerWebExchange exchange, WebSocketHandler handler,
 			@Nullable String subProtocol, Supplier<HandshakeInfo> handshakeInfoFactory) {
 
-		HttpServerExchange httpExchange = ServerHttpRequestDecorator.getNativeRequest(exchange.getRequest());
+		HttpServletRequestImpl servletRequest = ServerHttpRequestDecorator.getNativeRequest(exchange.getRequest());
+		HttpServerExchange httpExchange = servletRequest.getExchange();
 
 		Set<String> protocols = (subProtocol != null ? Collections.singleton(subProtocol) : Collections.emptySet());
 		Hybi13Handshake handshake = new Hybi13Handshake(protocols, false);

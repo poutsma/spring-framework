@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2016 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,15 @@ package org.springframework.web.testfixture.http.server.reactive.bootstrap;
 
 import java.net.InetSocketAddress;
 
+import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.server.handlers.PathHandler;
+import io.undertow.servlet.Servlets;
+import io.undertow.servlet.api.DeploymentInfo;
+import io.undertow.servlet.api.DeploymentManager;
+import io.undertow.servlet.util.ImmediateInstanceHandle;
 
-import org.springframework.http.server.reactive.UndertowHttpHandlerAdapter;
+import org.springframework.http.server.reactive.ServletHttpHandlerAdapter;
 
 /**
  * @author Marek Hawrylczak
@@ -32,13 +38,26 @@ public class UndertowHttpServer extends AbstractHttpServer {
 
 	@Override
 	protected void initServer() throws Exception {
-		this.server = Undertow.builder().addHttpListener(getPort(), getHost())
-				.setHandler(initHttpHandlerAdapter())
-				.build();
-	}
+		ServletHttpHandlerAdapter servlet = new ServletHttpHandlerAdapter(resolveHttpHandler());
 
-	private UndertowHttpHandlerAdapter initHttpHandlerAdapter() {
-		return new UndertowHttpHandlerAdapter(resolveHttpHandler());
+		DeploymentInfo deploymentInfo = Servlets.deployment()
+				.setClassLoader(UndertowHttpServer.class.getClassLoader())
+				.setContextPath("")
+				.setDeploymentName("httpHandlerServlet.war")
+				.addServlet(
+						Servlets.servlet("httpHandlerServlet", ServletHttpHandlerAdapter.class,
+										() -> new ImmediateInstanceHandle<>(servlet))
+								.setAsyncSupported(true)
+								.addMapping("/"));
+
+		DeploymentManager manager = Servlets.defaultContainer().addDeployment(deploymentInfo);
+		manager.deploy();
+		PathHandler path = Handlers.path(Handlers.redirect("/"))
+				.addPrefixPath("/", manager.start());
+
+		this.server = Undertow.builder().addHttpListener(getPort(), getHost())
+				.setHandler(path)
+				.build();
 	}
 
 	@Override
@@ -57,5 +76,6 @@ public class UndertowHttpServer extends AbstractHttpServer {
 	protected void resetInternal() {
 		this.server = null;
 	}
+
 
 }

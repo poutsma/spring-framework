@@ -196,10 +196,12 @@ public abstract class RouterFunctions {
 	 * <ul>
 	 * <li>Servlet environments using the
 	 * {@link org.springframework.http.server.reactive.ServletHttpHandlerAdapter},</li>
-	 * <li>Reactor using the
+	 * <li>Reactor Netty using the
 	 * {@link org.springframework.http.server.reactive.ReactorHttpHandlerAdapter},</li>
-	 * <li>Undertow using the
-	 * {@link org.springframework.http.server.reactive.UndertowHttpHandlerAdapter}.</li>
+	 * <li>Tomcat using the
+	 * {@link org.springframework.http.server.reactive.TomcatHttpHandlerAdapter}.</li>
+	 * <li>Jetty using the
+	 * {@link org.springframework.http.server.reactive.JettyHttpHandlerAdapter}.</li>
 	 * </ul>
 	 * <p>Note that {@code HttpWebHandlerAdapter} also implements {@link WebHandler}, allowing
 	 * for additional filter and exception handler registration through
@@ -220,8 +222,10 @@ public abstract class RouterFunctions {
 	 * {@link org.springframework.http.server.reactive.ServletHttpHandlerAdapter},</li>
 	 * <li>Reactor using the
 	 * {@link org.springframework.http.server.reactive.ReactorHttpHandlerAdapter},</li>
-	 * <li>Undertow using the
-	 * {@link org.springframework.http.server.reactive.UndertowHttpHandlerAdapter}.</li>
+	 * <li>Tomcat using the
+	 * {@link org.springframework.http.server.reactive.TomcatHttpHandlerAdapter}.</li>
+	 * <li>Jetty using the
+	 * {@link org.springframework.http.server.reactive.JettyHttpHandlerAdapter}.</li>
 	 * </ul>
 	 * @param routerFunction the router function to convert
 	 * @param strategies the strategies to use

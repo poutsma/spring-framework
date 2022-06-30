@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,9 @@ import org.springframework.util.Assert;
  * @author Rossen Stoyanchev
  * @author Arjen Poutsma
  * @since 5.0
+ * @deprecated as of version 6.0
  */
+@Deprecated
 class UndertowServerHttpResponse extends AbstractListenerServerHttpResponse implements ZeroCopyHttpOutputMessage {
 
 	private final HttpServerExchange exchange;

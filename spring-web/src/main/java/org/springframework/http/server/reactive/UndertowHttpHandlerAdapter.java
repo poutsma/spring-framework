@@ -37,7 +37,9 @@ import org.springframework.util.Assert;
  * @author Rossen Stoyanchev
  * @author Arjen Poutsma
  * @since 5.0
+ * @deprecated as of version 6.0, in favor of using the generic {@link ServletHttpHandlerAdapter}
  */
+@Deprecated
 public class UndertowHttpHandlerAdapter implements io.undertow.server.HttpHandler {
 
 	private static final Log logger = HttpLogging.forLogName(UndertowHttpHandlerAdapter.class);
