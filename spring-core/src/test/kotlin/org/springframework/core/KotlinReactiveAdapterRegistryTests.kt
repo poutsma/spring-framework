@@ -24,6 +24,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.reflect.lite.KClass
+import kotlinx.reflect.lite.jvm.java
+import kotlinx.reflect.lite.jvm.kotlin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.reactivestreams.Publisher
@@ -31,7 +34,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Duration
-import kotlin.reflect.KClass
 
 @OptIn(DelicateCoroutinesApi::class)
 class KotlinReactiveAdapterRegistryTests {
@@ -41,7 +43,7 @@ class KotlinReactiveAdapterRegistryTests {
 	@Test
 	fun deferredToPublisher() {
 		val source = GlobalScope.async { 1 }
-		val target: Publisher<Int> = getAdapter(Deferred::class).toPublisher(source)
+		val target: Publisher<Int> = getAdapter((Deferred::class.java).kotlin).toPublisher(source)
 		assertThat(target).isInstanceOf(Mono::class.java)
 		assertThat((target as Mono<Int>).block(Duration.ofMillis(1000))).isEqualTo(1)
 	}
@@ -49,7 +51,7 @@ class KotlinReactiveAdapterRegistryTests {
 	@Test
 	fun publisherToDeferred() {
 		val source = Mono.just(1)
-		val target = getAdapter(Deferred::class).fromPublisher(source)
+		val target = getAdapter((Deferred::class.java).kotlin).fromPublisher(source)
 		assertThat(target).isInstanceOf(Deferred::class.java)
 		assertThat(runBlocking { (target as Deferred<*>).await() }).isEqualTo(1)
 	}
@@ -61,7 +63,7 @@ class KotlinReactiveAdapterRegistryTests {
 			emit(2)
 			emit(3)
 		}
-		val target: Publisher<Int> = getAdapter(Flow::class).toPublisher(source)
+		val target: Publisher<Int> = getAdapter((Flow::class.java).kotlin).toPublisher(source)
 		assertThat(target).isInstanceOf(Flux::class.java)
 		StepVerifier.create(target)
 				.expectNext(1)
@@ -73,7 +75,7 @@ class KotlinReactiveAdapterRegistryTests {
 	@Test
 	fun publisherToFlow() {
 		val source = Flux.just(1, 2, 3)
-		val target = getAdapter(Flow::class).fromPublisher(source)
+		val target = getAdapter((Flow::class.java).kotlin).fromPublisher(source)
 		assertThat(target).isInstanceOf(Flow::class.java)
 		assertThat(runBlocking { (target as Flow<*>).toList() }).contains(1, 2, 3)
 	}

@@ -34,12 +34,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import kotlin.jvm.JvmClassMappingKt;
-import kotlin.reflect.KFunction;
-import kotlin.reflect.KParameter;
-import kotlin.reflect.full.KClasses;
-import kotlin.reflect.jvm.KCallablesJvm;
-import kotlin.reflect.jvm.ReflectJvmMapping;
+import kotlinx.reflect.lite.KFunction;
+import kotlinx.reflect.lite.KParameter;
+import kotlinx.reflect.lite.full.KCallablesJvm;
+import kotlinx.reflect.lite.full.KClasses;
+import kotlinx.reflect.lite.jvm.JvmClassMappingKt;
+import kotlinx.reflect.lite.jvm.ReflectJvmMapping;
 
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.KotlinDetector;
@@ -187,7 +187,7 @@ public abstract class BeanUtils {
 		Assert.notNull(ctor, "Constructor must not be null");
 		try {
 			ReflectionUtils.makeAccessible(ctor);
-			if (KotlinDetector.isKotlinReflectPresent() && KotlinDetector.isKotlinType(ctor.getDeclaringClass())) {
+			if (KotlinDetector.isKotlinReflectLitePresent() && KotlinDetector.isKotlinType(ctor.getDeclaringClass())) {
 				return KotlinDelegate.instantiateClass(ctor, args);
 			}
 			else {
@@ -274,7 +274,7 @@ public abstract class BeanUtils {
 	@Nullable
 	public static <T> Constructor<T> findPrimaryConstructor(Class<T> clazz) {
 		Assert.notNull(clazz, "Class must not be null");
-		if (KotlinDetector.isKotlinReflectPresent() && KotlinDetector.isKotlinType(clazz)) {
+		if (KotlinDetector.isKotlinReflectLitePresent() && KotlinDetector.isKotlinType(clazz)) {
 			return KotlinDelegate.findPrimaryConstructor(clazz);
 		}
 		return null;
@@ -841,7 +841,7 @@ public abstract class BeanUtils {
 		@Nullable
 		public static <T> Constructor<T> findPrimaryConstructor(Class<T> clazz) {
 			try {
-				KFunction<T> primaryCtor = KClasses.getPrimaryConstructor(JvmClassMappingKt.getKotlinClass(clazz));
+				KFunction<T> primaryCtor = KClasses.getPrimaryConstructor(JvmClassMappingKt.getLiteKClass(clazz));
 				if (primaryCtor == null) {
 					return null;
 				}

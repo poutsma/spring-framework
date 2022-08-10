@@ -40,6 +40,8 @@ public abstract class KotlinDetector {
 
 	private static final boolean kotlinReflectPresent;
 
+	private static final boolean kotlinReflectLitePresent;
+
 	static {
 		Class<?> metadata;
 		ClassLoader classLoader = KotlinDetector.class.getClassLoader();
@@ -53,6 +55,7 @@ public abstract class KotlinDetector {
 		kotlinMetadata = (Class<? extends Annotation>) metadata;
 		kotlinPresent = (kotlinMetadata != null);
 		kotlinReflectPresent = ClassUtils.isPresent("kotlin.reflect.full.KClasses", classLoader);
+		kotlinReflectLitePresent = ClassUtils.isPresent("kotlinx.reflect.lite.full.KCallables", classLoader);
 	}
 
 
@@ -64,11 +67,23 @@ public abstract class KotlinDetector {
 	}
 
 	/**
-	 * Determine whether Kotlin reflection is present.
+	 * Determine whether the Kotlin reflection API is present.
 	 * @since 5.1
+	 * @deprecated as of 6.0, in favor of {@link #isKotlinReflectLitePresent()},
+	 * as Spring Framework does not require the "full" Kotlin reflection API
+	 * anymore
 	 */
+	@Deprecated
 	public static boolean isKotlinReflectPresent() {
 		return kotlinReflectPresent;
+	}
+
+	/**
+	 * Determine whether the Kotlin "light" reflection API is present.
+	 * @since 6.0
+	 */
+	public static boolean isKotlinReflectLitePresent() {
+		return kotlinReflectLitePresent;
 	}
 
 	/**

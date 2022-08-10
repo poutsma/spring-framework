@@ -20,6 +20,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
+import kotlinx.reflect.lite.jvm.kotlin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.core.ParameterizedTypeReference
@@ -57,7 +58,7 @@ class ClientResponseExtensionsTests {
 
 	@Test
 	fun `bodyToFlow with KClass parameter`() {
-		response.bodyToFlow(Foo::class)
+		response.bodyToFlow(Foo::class.java.kotlin)
 		verify { response.bodyToFlux(Foo::class.java) }
 	}
 
@@ -87,7 +88,7 @@ class ClientResponseExtensionsTests {
 		val response = mockk<ClientResponse>()
 		every { response.bodyToMono(String::class.java) } returns Mono.just("foo")
 		runBlocking {
-			assertThat(response.awaitBody(String::class)).isEqualTo("foo")
+			assertThat(response.awaitBody(String::class.java.kotlin)).isEqualTo("foo")
 		}
 	}
 
@@ -105,7 +106,7 @@ class ClientResponseExtensionsTests {
 		val response = mockk<ClientResponse>()
 		every { response.bodyToMono(String::class.java) } returns Mono.empty()
 		runBlocking {
-			assertThat(response.awaitBodyOrNull(String::class)).isNull()
+			assertThat(response.awaitBodyOrNull(String::class.java.kotlin)).isNull()
 		}
 	}
 
@@ -125,7 +126,7 @@ class ClientResponseExtensionsTests {
 		val entity = ResponseEntity("foo", HttpStatus.OK)
 		every { response.toEntity(String::class.java) } returns Mono.just(entity)
 		runBlocking {
-			assertThat(response.awaitEntity(String::class)).isEqualTo(entity)
+			assertThat(response.awaitEntity(String::class.java.kotlin)).isEqualTo(entity)
 		}
 	}
 
@@ -145,7 +146,7 @@ class ClientResponseExtensionsTests {
 		val entity = ResponseEntity(listOf("foo"), HttpStatus.OK)
 		every { response.toEntityList(String::class.java) } returns Mono.just(entity)
 		runBlocking {
-			assertThat(response.awaitEntityList(String::class)).isEqualTo(entity)
+			assertThat(response.awaitEntityList(String::class.java.kotlin)).isEqualTo(entity)
 		}
 	}
 

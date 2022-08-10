@@ -21,13 +21,6 @@ import java.lang.reflect.Method;
 import java.util.Objects;
 
 import kotlin.Unit;
-import kotlin.jvm.JvmClassMappingKt;
-import kotlin.reflect.KClass;
-import kotlin.reflect.KClassifier;
-import kotlin.reflect.KFunction;
-import kotlin.reflect.full.KCallables;
-import kotlin.reflect.jvm.KCallablesJvm;
-import kotlin.reflect.jvm.ReflectJvmMapping;
 import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.CoroutineStart;
 import kotlinx.coroutines.Deferred;
@@ -36,6 +29,13 @@ import kotlinx.coroutines.GlobalScope;
 import kotlinx.coroutines.flow.Flow;
 import kotlinx.coroutines.reactor.MonoKt;
 import kotlinx.coroutines.reactor.ReactorFlowKt;
+import kotlinx.reflect.lite.KClass;
+import kotlinx.reflect.lite.KClassifier;
+import kotlinx.reflect.lite.KFunction;
+import kotlinx.reflect.lite.full.KCallables;
+import kotlinx.reflect.lite.full.KCallablesJvm;
+import kotlinx.reflect.lite.jvm.JvmClassMappingKt;
+import kotlinx.reflect.lite.jvm.ReflectJvmMapping;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -83,10 +83,10 @@ public abstract class CoroutinesUtils {
 
 		KClassifier returnType = function.getReturnType().getClassifier();
 		if (returnType != null) {
-			if (returnType.equals(JvmClassMappingKt.getKotlinClass(Flow.class))) {
+			if (returnType.equals(JvmClassMappingKt.getLiteKClass(Flow.class))) {
 				return mono.flatMapMany(CoroutinesUtils::asFlux);
 			}
-			else if (returnType.equals(JvmClassMappingKt.getKotlinClass(Mono.class))) {
+			else if (returnType.equals(JvmClassMappingKt.getLiteKClass(Mono.class))) {
 				return mono.flatMap(o -> ((Mono<?>)o));
 			}
 			else if (returnType instanceof KClass<?> kClass &&

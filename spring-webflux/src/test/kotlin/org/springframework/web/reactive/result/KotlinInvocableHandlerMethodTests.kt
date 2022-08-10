@@ -19,22 +19,24 @@ package org.springframework.web.reactive.result
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.delay
+import kotlinx.reflect.lite.KFunction
+import kotlinx.reflect.lite.jvm.javaMethod
+import kotlinx.reflect.lite.jvm.kotlin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.http.server.reactive.ServerHttpResponse
-import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get
-import org.springframework.web.testfixture.server.MockServerWebExchange
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.reactive.BindingContext
 import org.springframework.web.reactive.HandlerResult
 import org.springframework.web.reactive.result.method.HandlerMethodArgumentResolver
 import org.springframework.web.reactive.result.method.InvocableHandlerMethod
 import org.springframework.web.reactive.result.method.annotation.ContinuationHandlerMethodArgumentResolver
+import org.springframework.web.testfixture.http.server.reactive.MockServerHttpRequest.get
+import org.springframework.web.testfixture.server.MockServerWebExchange
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.lang.reflect.Method
-import kotlin.reflect.jvm.javaMethod
 
 class KotlinInvocableHandlerMethodTests {
 
@@ -45,7 +47,7 @@ class KotlinInvocableHandlerMethodTests {
 	@Test
 	fun resolveNoArg() {
 		this.resolvers.add(stubResolver(Mono.empty()))
-		val method = CoroutinesController::singleArg.javaMethod!!
+		val method = ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "singleArg" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method, null)
 		assertHandlerResultValue(result, "success:null")
 	}
@@ -53,21 +55,21 @@ class KotlinInvocableHandlerMethodTests {
 	@Test
 	fun resolveArg() {
 		this.resolvers.add(stubResolver("foo"))
-		val method = CoroutinesController::singleArg.javaMethod!!
+		val method =  ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "singleArg" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method,"foo")
 		assertHandlerResultValue(result, "success:foo")
 	}
 
 	@Test
 	fun resolveNoArgs() {
-		val method = CoroutinesController::noArgs.javaMethod!!
+		val method =  ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "noArgs" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method)
 		assertHandlerResultValue(result, "success")
 	}
 
 	@Test
 	fun invocationTargetException() {
-		val method = CoroutinesController::exceptionMethod.javaMethod!!
+		val method =  ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "exceptionMethod" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method)
 
 		StepVerifier.create(result)
@@ -77,7 +79,7 @@ class KotlinInvocableHandlerMethodTests {
 
 	@Test
 	fun responseStatusAnnotation() {
-		val method = CoroutinesController::created.javaMethod!!
+		val method =  ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "created" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method)
 
 		assertHandlerResultValue(result, "created")
@@ -88,7 +90,7 @@ class KotlinInvocableHandlerMethodTests {
 	fun voidMethodWithResponseArg() {
 		val response = this.exchange.response
 		this.resolvers.add(stubResolver(response))
-		val method = CoroutinesController::response.javaMethod!!
+		val method =  ((CoroutinesController::class.java.kotlin).members.single { it.name ==  "response" } as KFunction<*>).javaMethod!!
 		val result = invoke(CoroutinesController(), method)
 
 		StepVerifier.create(result)
@@ -100,7 +102,7 @@ class KotlinInvocableHandlerMethodTests {
 	@Test
 	fun privateController() {
 		this.resolvers.add(stubResolver("foo"))
-		val method = PrivateCoroutinesController::singleArg.javaMethod!!
+		val method =  ((PrivateCoroutinesController::class.java.kotlin).members.single { it.name ==  "singleArg" } as KFunction<*>).javaMethod!!
 		val result = invoke(PrivateCoroutinesController(), method,"foo")
 		assertHandlerResultValue(result, "success:foo")
 	}

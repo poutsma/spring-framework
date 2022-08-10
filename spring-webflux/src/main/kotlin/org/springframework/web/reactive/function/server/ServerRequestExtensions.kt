@@ -17,9 +17,11 @@
 package org.springframework.web.reactive.function.server
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.reactor.awaitSingleOrNull
-import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.reflect.lite.KClass
+import kotlinx.reflect.lite.jvm.java
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.Part
@@ -30,7 +32,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.net.InetSocketAddress
 import java.security.Principal
-import kotlin.reflect.KClass
 
 /**
  * Extension for [ServerRequest.bodyToMono] providing a `bodyToMono<Foo>()` variant

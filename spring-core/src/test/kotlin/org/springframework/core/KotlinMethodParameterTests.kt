@@ -16,13 +16,14 @@
 
 package org.springframework.core
 
+import kotlinx.reflect.lite.KFunction
+import kotlinx.reflect.lite.jvm.javaMethod
+import kotlinx.reflect.lite.jvm.kotlin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.lang.reflect.Method
 import java.lang.reflect.TypeVariable
 import kotlin.coroutines.Continuation
-import kotlin.reflect.full.declaredFunctions
-import kotlin.reflect.jvm.javaMethod
 
 /**
  * Tests for Kotlin support in [MethodParameter].
@@ -115,7 +116,7 @@ class KotlinMethodParameterTests {
 	private fun returnGenericParameterTypeBoundName(funName: String) = (returnGenericParameterType(funName) as TypeVariable<*>).bounds[0].typeName
 
 	private fun returnMethodParameter(funName: String) =
-		MethodParameter(this::class.declaredFunctions.first { it.name == funName }.javaMethod!!, -1)
+		MethodParameter((this::class.java).kotlin.members.filterIsInstance<KFunction<*>>().first { it.name == funName }.javaMethod!!, -1)
 
 	@Suppress("unused_parameter")
 	fun nullable(nullable: String?): Int? = 42

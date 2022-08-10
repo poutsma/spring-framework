@@ -13,7 +13,7 @@ dependencies {
 	optional("jakarta.transaction:jakarta.transaction-api")
 	optional("io.projectreactor:reactor-core")
 	optional("io.vavr:vavr")
-	optional("org.jetbrains.kotlin:kotlin-reflect")
+	optional("org.jetbrains.kotlinx:kotlinx.reflect.lite")
 	optional("org.jetbrains.kotlin:kotlin-stdlib")
 	optional("org.jetbrains.kotlinx:kotlinx-coroutines-core")
 	optional("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")

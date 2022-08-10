@@ -17,14 +17,15 @@
 package org.springframework.web.reactive.function.client
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.reactor.awaitSingleOrNull
-import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
+import kotlinx.reflect.lite.KClass
+import kotlinx.reflect.lite.jvm.java
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.ResponseEntity
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import kotlin.reflect.KClass
 
 /**
  * Extension for [ClientResponse.bodyToMono] providing a `bodyToMono<Foo>()` variant

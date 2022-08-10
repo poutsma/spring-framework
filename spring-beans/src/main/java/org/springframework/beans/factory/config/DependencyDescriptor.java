@@ -24,8 +24,8 @@ import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Optional;
 
-import kotlin.reflect.KProperty;
-import kotlin.reflect.jvm.ReflectJvmMapping;
+import kotlinx.reflect.lite.KProperty;
+import kotlinx.reflect.lite.jvm.ReflectJvmMapping;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -169,7 +169,7 @@ public class DependencyDescriptor extends InjectionPoint implements Serializable
 
 		if (this.field != null) {
 			return !(this.field.getType() == Optional.class || hasNullableAnnotation() ||
-					(KotlinDetector.isKotlinReflectPresent() &&
+					(KotlinDetector.isKotlinReflectLitePresent() &&
 							KotlinDetector.isKotlinType(this.field.getDeclaringClass()) &&
 							KotlinDelegate.isNullable(this.field)));
 		}

@@ -124,6 +124,7 @@ dependencies {
 		api("org.hibernate:hibernate-validator:7.0.4.Final")
 		api("org.hsqldb:hsqldb:2.5.2")
 		api("org.javamoney:moneta:1.4.2")
+		api("org.jetbrains.kotlinx:kotlinx.reflect.lite:1.1.0")
 		api("org.jruby:jruby:9.3.4.0")
 		api("org.junit.support:testng-engine:1.0.4")
 		api("org.mozilla:rhino:1.7.11")
