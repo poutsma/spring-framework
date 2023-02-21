@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.web.server.ServerWebExchange;
@@ -95,6 +96,19 @@ class DefaultWebSessionManagerTests {
 		assertThat(session).isSameAs(this.createSession);
 		assertThat(session.isStarted()).isFalse();
 		assertThat(session.isExpired()).isFalse();
+		verify(this.createSession, never()).save();
+		verify(this.sessionIdResolver, never()).setSessionId(any(), any());
+	}
+
+	@Test
+	void getSessionNoCreate() {
+		given(this.sessionIdResolver.resolveSessionIds(this.exchange)).willReturn(Collections.emptyList());
+		Mono<WebSession> session = this.sessionManager.getSession(this.exchange, false);
+
+		StepVerifier.create(session)
+				.verifyComplete();
+
+		verify(this.sessionStore, never()).createWebSession();
 		verify(this.createSession, never()).save();
 		verify(this.sessionIdResolver, never()).setSessionId(any(), any());
 	}

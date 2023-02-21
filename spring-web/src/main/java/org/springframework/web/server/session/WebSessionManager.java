@@ -32,13 +32,28 @@ import org.springframework.web.server.WebSession;
 public interface WebSessionManager {
 
 	/**
-	 * Return the {@link WebSession} for the given exchange. Always guaranteed
-	 * to return an instance either matching to the session id requested by the
-	 * client, or a new session either because the client did not specify one
-	 * or because the underlying session expired.
+	 * Return the {@link WebSession} associated with the given exchange, or if
+	 * the exchange does not have a (unexpired) session, create one.
 	 * @param exchange the current exchange
-	 * @return promise for the WebSession
+	 * @return promise for the WebSession that will not be empty
 	 */
-	Mono<WebSession> getSession(ServerWebExchange exchange);
+	default Mono<WebSession> getSession(ServerWebExchange exchange) {
+		return getSession(exchange, true);
+	}
+
+	/**
+	 * Return the {@link WebSession} associated with the given exchange or, if
+	 * there is no current, unexpired session and {@code create} is {@code true},
+	 * return a new session.
+	 *
+	 * <p>If create is {@code false} and the exchange has no valid
+	 * {@code WebSession}, this method returns an empty {@code Mono}.
+	 * @param exchange the current exchange
+	 * @param create {@code true} to create a new session if necessary;
+	 * {@code false} to return an empty mono if there is no current session
+	 * @return promise for the WebSession, or an empty promise if {@code create}
+	 * is {@code false} and the exchange has no valid session
+	 */
+	Mono<WebSession> getSession(ServerWebExchange exchange, boolean create);
 
 }

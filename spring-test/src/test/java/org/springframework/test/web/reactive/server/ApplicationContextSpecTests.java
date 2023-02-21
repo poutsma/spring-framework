@@ -70,7 +70,7 @@ public class ApplicationContextSpecTests {
 		@Bean
 		public WebSessionManager webSessionManager() {
 			MockWebSession session = new MockWebSession();
-			return exchange -> Mono.just(session);
+			return (exchange, create) -> Mono.just(session);
 		}
 	}
 
