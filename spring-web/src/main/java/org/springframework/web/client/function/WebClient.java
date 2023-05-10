@@ -1,0 +1,627 @@
+/*
+ * Copyright 2002-2023 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.web.client.function;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URI;
+import java.nio.charset.Charset;
+import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.StreamingHttpOutputMessage;
+import org.springframework.http.client.ClientHttpRequest;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.springframework.web.util.UriBuilder;
+import org.springframework.web.util.UriBuilderFactory;
+
+/**
+ * Non-blocking, reactive client to perform HTTP requests, exposing a fluent,
+ * reactive API over underlying HTTP client libraries such as Reactor Netty.
+ *
+ * <p>Use static factory methods {@link #create()} or {@link #create(String)},
+ * or {@link WebClient#builder()} to prepare an instance.
+ *
+ * <p>For examples with a response body see:
+ * <ul>
+ * <li>{@link RequestHeadersSpec#retrieve() retrieve()}
+ * <li>{@link RequestHeadersSpec#exchange(RequestHeadersSpec.ExchangeFunction) exchange(Function<ClientHttpRequest, T>)}
+ * </ul>
+ * <p>For examples with a request body see:
+ * <ul>
+ * <li>{@link RequestBodySpec#body(Object) body(Object)}
+ * <li>{@link RequestBodySpec#body(Object, ParameterizedTypeReference) body(Object, ParameterizedTypeReference)}
+ * <li>{@link RequestBodySpec#body(StreamingHttpOutputMessage.Body) body(Consumer<OutputStream>}
+ * </ul>
+ *
+ * @author Rossen Stoyanchev
+ * @author Arjen Poutsma
+ * @author Sebastien Deleuze
+ * @author Brian Clozel
+ * @since 6.1
+ */
+public interface WebClient {
+
+	/**
+	 * Start building an HTTP GET request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestHeadersUriSpec<?> get();
+
+	/**
+	 * Start building an HTTP HEAD request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestHeadersUriSpec<?> head();
+
+	/**
+	 * Start building an HTTP POST request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestBodyUriSpec post();
+
+	/**
+	 * Start building an HTTP PUT request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestBodyUriSpec put();
+
+	/**
+	 * Start building an HTTP PATCH request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestBodyUriSpec patch();
+
+	/**
+	 * Start building an HTTP DELETE request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestHeadersUriSpec<?> delete();
+
+	/**
+	 * Start building an HTTP OPTIONS request.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestHeadersUriSpec<?> options();
+
+	/**
+	 * Start building a request for the given {@code HttpMethod}.
+	 * @return a spec for specifying the target URL
+	 */
+	RequestBodyUriSpec method(HttpMethod method);
+
+
+	/**
+	 * Return a builder to create a new {@code WebClient} whose settings are
+	 * replicated from the current {@code WebClient}.
+	 */
+	Builder mutate();
+
+
+	// Static, factory methods
+
+	/**
+	 * Create a new {@code WebClient} with Reactor Netty by default.
+	 * @see #create(String)
+	 * @see #builder()
+	 */
+	static WebClient create() {
+		return new DefaultWebClientBuilder().build();
+	}
+
+	/**
+	 * Variant of {@link #create()} that accepts a default base URL. For more
+	 * details see {@link Builder#baseUrl(String) Builder.baseUrl(String)}.
+	 * @param baseUrl the base URI for all requests
+	 * @see #builder()
+	 */
+	static WebClient create(String baseUrl) {
+		return new DefaultWebClientBuilder().baseUrl(baseUrl).build();
+	}
+
+	/**
+	 * Obtain a {@code WebClient} builder.
+	 */
+	static WebClient.Builder builder() {
+		return new DefaultWebClientBuilder();
+	}
+
+
+	/**
+	 * A mutable builder for creating a {@link WebClient}.
+	 */
+	interface Builder {
+
+		/**
+		 * Configure a base URL for requests. Effectively a shortcut for:
+		 * <p>
+		 * <pre class="code">
+		 * String baseUrl = "https://abc.go.com/v1";
+		 * DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(baseUrl);
+		 * WebClient client = WebClient.builder().uriBuilderFactory(factory).build();
+		 * </pre>
+		 * <p>The {@code DefaultUriBuilderFactory} is used to prepare the URL
+		 * for every request with the given base URL, unless the URL request
+		 * for a given URL is absolute in which case the base URL is ignored.
+		 * <p><strong>Note:</strong> this method is mutually exclusive with
+		 * {@link #uriBuilderFactory(UriBuilderFactory)}. If both are used, the
+		 * baseUrl value provided here will be ignored.
+		 * @see DefaultUriBuilderFactory#DefaultUriBuilderFactory(String)
+		 * @see #uriBuilderFactory(UriBuilderFactory)
+		 */
+		Builder baseUrl(String baseUrl);
+
+		/**
+		 * Configure default URL variable values to use when expanding URI
+		 * templates with a {@link Map}. Effectively a shortcut for:
+		 * <p>
+		 * <pre class="code">
+		 * Map&lt;String, ?&gt; defaultVars = ...;
+		 * DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory();
+		 * factory.setDefaultVariables(defaultVars);
+		 * WebClient client = WebClient.builder().uriBuilderFactory(factory).build();
+		 * </pre>
+		 * <p><strong>Note:</strong> this method is mutually exclusive with
+		 * {@link #uriBuilderFactory(UriBuilderFactory)}. If both are used, the
+		 * defaultUriVariables value provided here will be ignored.
+		 * @see DefaultUriBuilderFactory#setDefaultUriVariables(Map)
+		 * @see #uriBuilderFactory(UriBuilderFactory)
+		 */
+		Builder defaultUriVariables(Map<String, ?> defaultUriVariables);
+
+		/**
+		 * Provide a pre-configured {@link UriBuilderFactory} instance. This is
+		 * an alternative to, and effectively overrides the following shortcut
+		 * properties:
+		 * <ul>
+		 * <li>{@link #baseUrl(String)}
+		 * <li>{@link #defaultUriVariables(Map)}.
+		 * </ul>
+		 * @param uriBuilderFactory the URI builder factory to use
+		 * @see #baseUrl(String)
+		 * @see #defaultUriVariables(Map)
+		 */
+		Builder uriBuilderFactory(UriBuilderFactory uriBuilderFactory);
+
+		/**
+		 * Global option to specify a header to be added to every request,
+		 * if the request does not already contain such a header.
+		 * @param header the header name
+		 * @param values the header values
+		 */
+		Builder defaultHeader(String header, String... values);
+
+		/**
+		 * Provides access to every {@link #defaultHeader(String, String...)}
+		 * declared so far with the possibility to add, replace, or remove.
+		 * @param headersConsumer the consumer
+		 */
+		Builder defaultHeaders(Consumer<HttpHeaders> headersConsumer);
+
+		/**
+		 * Provide a consumer to customize every request being built.
+		 * @param defaultRequest the consumer to use for modifying requests
+		 */
+		Builder defaultRequest(Consumer<RequestHeadersSpec<?>> defaultRequest);
+
+		/**
+		 * Register a default
+		 * {@link ResponseSpec#onStatus(Predicate, Function) status handler} to
+		 * apply to every response. Such default handlers are applied in the
+		 * order in which they are registered, and after any others that are
+		 * registered for a specific response.
+		 * @param statusPredicate to match responses with
+		 * @param exceptionFunction to map the response to an error signal
+		 * @return this builder
+		 */
+		Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
+				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction);
+
+
+		/**
+		 * Configure the {@link ClientHttpRequestFactory} to use. This is useful
+		 * for plugging in and/or customizing options of the underlying HTTP
+		 * client library (e.g. SSL).
+		 * @param requestFactory the request factory to use
+		 */
+		Builder requestFactory(ClientHttpRequestFactory requestFactory);
+
+		/**
+		 * Configure the message converters for the {@code WebClient} to use.
+		 * @param configurer the configurer to apply
+		 */
+		Builder messageConverters(Consumer<List<HttpMessageConverter<?>>> configurer);
+
+		/**
+		 * Apply the given {@code Consumer} to this builder instance.
+		 * <p>This can be useful for applying pre-packaged customizations.
+		 * @param builderConsumer the consumer to apply
+		 */
+		Builder apply(Consumer<Builder> builderConsumer);
+
+		/**
+		 * Clone this {@code WebClient.Builder}.
+		 */
+		Builder clone();
+
+		/**
+		 * Build the {@link WebClient} instance.
+		 */
+		WebClient build();
+	}
+
+
+	/**
+	 * Contract for specifying the URI for a request.
+	 * @param <S> a self reference to the spec type
+	 */
+	interface UriSpec<S extends RequestHeadersSpec<?>> {
+
+		/**
+		 * Specify the URI using an absolute, fully constructed {@link URI}.
+		 */
+		S uri(URI uri);
+
+		/**
+		 * Specify the URI for the request using a URI template and URI variables.
+		 * If a {@link UriBuilderFactory} was configured for the client (e.g.
+		 * with a base URI) it will be used to expand the URI template.
+		 */
+		S uri(String uri, Object... uriVariables);
+
+		/**
+		 * Specify the URI for the request using a URI template and URI variables.
+		 * If a {@link UriBuilderFactory} was configured for the client (e.g.
+		 * with a base URI) it will be used to expand the URI template.
+		 */
+		S uri(String uri, Map<String, ?> uriVariables);
+
+		/**
+		 * Specify the URI starting with a URI template and finishing off with a
+		 * {@link UriBuilder} created from the template.
+		 */
+		S uri(String uri, Function<UriBuilder, URI> uriFunction);
+
+		/**
+		 * Specify the URI by through a {@link UriBuilder}.
+		 * @see #uri(String, Function)
+		 */
+		S uri(Function<UriBuilder, URI> uriFunction);
+	}
+
+
+	/**
+	 * Contract for specifying request headers leading up to the exchange.
+	 * @param <S> a self reference to the spec type
+	 */
+	interface RequestHeadersSpec<S extends RequestHeadersSpec<S>> {
+
+		/**
+		 * Set the list of acceptable {@linkplain MediaType media types}, as
+		 * specified by the {@code Accept} header.
+		 * @param acceptableMediaTypes the acceptable media types
+		 * @return this builder
+		 */
+		S accept(MediaType... acceptableMediaTypes);
+
+		/**
+		 * Set the list of acceptable {@linkplain Charset charsets}, as specified
+		 * by the {@code Accept-Charset} header.
+		 * @param acceptableCharsets the acceptable charsets
+		 * @return this builder
+		 */
+		S acceptCharset(Charset... acceptableCharsets);
+
+		/**
+		 * Set the value of the {@code If-Modified-Since} header.
+		 * <p>The date should be specified as the number of milliseconds since
+		 * January 1, 1970 GMT.
+		 * @param ifModifiedSince the new value of the header
+		 * @return this builder
+		 */
+		S ifModifiedSince(ZonedDateTime ifModifiedSince);
+
+		/**
+		 * Set the values of the {@code If-None-Match} header.
+		 * @param ifNoneMatches the new value of the header
+		 * @return this builder
+		 */
+		S ifNoneMatch(String... ifNoneMatches);
+
+		/**
+		 * Add the given, single header value under the given name.
+		 * @param headerName  the header name
+		 * @param headerValues the header value(s)
+		 * @return this builder
+		 */
+		S header(String headerName, String... headerValues);
+
+		/**
+		 * Provides access to every header declared so far with the possibility
+		 * to add, replace, or remove values.
+		 * @param headersConsumer the consumer to provide access to
+		 * @return this builder
+		 */
+		S headers(Consumer<HttpHeaders> headersConsumer);
+
+		/**
+		 * Set the attribute with the given name to the given value.
+		 * @param name the name of the attribute to add
+		 * @param value the value of the attribute to add
+		 * @return this builder
+		 */
+		S attribute(String name, Object value);
+
+		/**
+		 * Provides access to every attribute declared so far with the
+		 * possibility to add, replace, or remove values.
+		 * @param attributesConsumer the consumer to provide access to
+		 * @return this builder
+		 */
+		S attributes(Consumer<Map<String, Object>> attributesConsumer);
+
+		/**
+		 * Callback for access to the {@link ClientHttpRequest} that in turn
+		 * provides access to the native request of the underlying HTTP library.
+		 * This could be useful for setting advanced, per-request options that
+		 * exposed by the underlying library.
+		 * @param requestConsumer a consumer to access the
+		 * {@code ClientHttpRequest} with
+		 * @return {@code ResponseSpec} to specify how to decode the body
+		 */
+		S httpRequest(Consumer<ClientHttpRequest> requestConsumer);
+
+		/**
+		 * Proceed to declare how to extract the response. For example to extract
+		 * a {@link ResponseEntity} with status, headers, and body:
+		 * <p><pre>
+		 * Mono&lt;ResponseEntity&lt;Person&gt;&gt; entityMono = client.get()
+		 *     .uri("/persons/1")
+		 *     .accept(MediaType.APPLICATION_JSON)
+		 *     .retrieve()
+		 *     .toEntity(Person.class);
+		 * </pre>
+		 * <p>Or if interested only in the body:
+		 * <p><pre>
+		 * Mono&lt;Person&gt; entityMono = client.get()
+		 *     .uri("/persons/1")
+		 *     .accept(MediaType.APPLICATION_JSON)
+		 *     .retrieve()
+		 *     .bodyToMono(Person.class);
+		 * </pre>
+		 * <p>By default, 4xx and 5xx responses result in a
+		 * {@link WebClientResponseException}. To customize error handling, use
+		 * {@link ResponseSpec#onStatus(Predicate, Function) onStatus} handlers.
+		 */
+		ResponseSpec retrieve();
+
+		/**
+		 * Exchange the {@link ClientHttpResponse} for a type {@code T}. This
+		 * can be useful for advanced scenarios, for example to decode the
+		 * response differently depending on the response status:
+		 * <p><pre>
+		 * Person person = client.get()
+		 *     .uri("/people/1")
+		 *     .accept(MediaType.APPLICATION_JSON)
+		 *     .exchange(response -&gt; {
+		 *         if (response.getStatusCode().equals(HttpStatus.OK)) {
+		 *             return deserialize(response.getBody());
+		 *         }
+		 *         else {
+		 *             throw new BusinessException();
+		 *         }
+		 *     });
+		 * </pre>
+		 * <p><strong>Note:</strong> The response is
+		 * {@linkplain ClientHttpResponse#close() closed} after the exchange
+		 * function has been invoked.
+		 * @param exchangeFunction the function to handle the response with
+		 * @param <T> the type the response will be transformed to
+		 * @return the value returned from the exchange function
+		 */
+		<T> T exchange(ExchangeFunction<T> exchangeFunction);
+
+
+		/**
+		 * Defines the contract for {@link #exchange(ExchangeFunction)}
+		 * @param <T> the type the response will be transformed to
+		 */
+		@FunctionalInterface
+		interface ExchangeFunction<T> {
+
+			/**
+			 * Exchange the given response into a type {@code T}.
+			 * @param clientResponse the response
+			 * @return the exchanged type
+			 * @throws IOException in case of I/O errors
+			 */
+			T exchange(ClientHttpResponse clientResponse) throws IOException;
+
+		}
+
+	}
+
+
+
+
+	/**
+	 * Contract for specifying request headers and body leading up to the exchange.
+	 */
+	interface RequestBodySpec extends RequestHeadersSpec<RequestBodySpec> {
+
+		/**
+		 * Set the length of the body in bytes, as specified by the
+		 * {@code Content-Length} header.
+		 * @param contentLength the content length
+		 * @return this builder
+		 * @see HttpHeaders#setContentLength(long)
+		 */
+		RequestBodySpec contentLength(long contentLength);
+
+		/**
+		 * Set the {@linkplain MediaType media type} of the body, as specified
+		 * by the {@code Content-Type} header.
+		 * @param contentType the content type
+		 * @return this builder
+		 * @see HttpHeaders#setContentType(MediaType)
+		 */
+		RequestBodySpec contentType(MediaType contentType);
+
+		/**
+		 * Set the body of the request to the given {@code Object}.
+		 * For example:
+		 * <p><pre class="code">
+		 * Person person = ... ;
+		 *
+		 * ResponseEntity&lt;Void&gt; client.post()
+		 *     .uri("/persons/{id}", id)
+		 *     .contentType(MediaType.APPLICATION_JSON)
+		 *     .body(person)
+		 *     .retrieve()
+		 *     .toBodilessEntity();
+		 * </pre>
+		 * @param body the body of the response
+		 * @return the built response
+		 */
+		RequestBodySpec body(Object body);
+
+		/**
+		 * Set the body of the response to the given {@code Object}. The parameter
+		 * {@code bodyType} is used to capture the generic type.
+		 * @param body the body of the response
+		 * @param bodyType the type of the body, used to capture the generic type
+		 * @return the built response
+		 */
+		<T> RequestBodySpec body(T body, ParameterizedTypeReference<T> bodyType);
+
+		/**
+		 * Set the body of the response to the given function that writes to
+		 * an {@link OutputStream}.
+		 * @param body a function that takes an {@code OutputStream} and can
+		 *             throw an {@code IOException}
+		 * @return the built response
+		 */
+		RequestBodySpec body(StreamingHttpOutputMessage.Body body);
+
+	}
+
+
+	/**
+	 * Contract for specifying response operations following the exchange.
+	 */
+	interface ResponseSpec {
+
+		/*
+		 * Provide a function to map specific error status codes to an error
+		 * signal to be propagated downstream instead of the response.
+		 * <p>By default, if there are no matching status handlers, responses
+		 * with status codes &gt;= 400 are mapped to
+		 * {@link WebClientResponseException} which is created with
+		 * {@link ClientResponse#createException()}.
+		 * <p>To suppress the treatment of a status code as an error and process
+		 * it as a normal response, return {@code Optional.empty()} from the
+		 * function.
+		 * The response will then propagate downstream to be processed.
+		 * @param statusPredicate to match responses with
+		 * @param exceptionFunction to map the response to an error signal
+		 * @return this builder
+		 * @see ClientResponse#createException()
+		 */
+		ResponseSpec onStatus(Predicate<HttpStatusCode> statusPredicate,
+				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction);
+
+		/**
+		 * Extract the body as an object of the given type.
+		 * @param bodyType the type of return value
+		 * @param <T> the body type
+		 * @return the body
+		 */
+		<T> T body(Class<T> bodyType);
+
+		/**
+		 * Extract the body as an object of the given type.
+		 * @param bodyType the type of return value
+		 * @param <T> the body type
+		 * @return the body
+		 */
+		<T> T body(ParameterizedTypeReference<T> bodyType);
+
+		/**
+		 * Return a {@code ResponseEntity} with the body decoded to an Object of
+		 * the given type. For an error response (status code of 4xx or 5xx), the
+		 * {@code Mono} emits a {@link WebClientException}. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response handling.
+		 * @param bodyType the expected response body type
+		 * @param <T> response body type
+		 * @return the {@code ResponseEntity} with the decoded body
+		 */
+		<T> ResponseEntity<T> toEntity(Class<T> bodyType);
+
+		/**
+		 * Return a {@code ResponseEntity} with the body decoded to an Object of
+		 * the given type. For an error response (status code of 4xx or 5xx), the
+		 * {@code Mono} emits a {@link WebClientException}. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response handling.
+		 * @param bodyType the expected response body type
+		 * @param <T> response body type
+		 * @return the {@code ResponseEntity} with the decoded body
+		 */
+		<T> ResponseEntity<T> toEntity(ParameterizedTypeReference<T> bodyType);
+
+		/*
+		 * Return a {@code ResponseEntity} without a body. For an error response
+		 * (status code of 4xx or 5xx), the {@code Mono} emits a
+		 * {@link WebClientException}. Use {@link #onStatus(Predicate, Function)}
+		 * to customize error response handling.
+		 * @return the {@code ResponseEntity}
+		 */
+		ResponseEntity<Void> toBodilessEntity();
+	}
+
+
+	/**
+	 * Contract for specifying request headers and URI for a request.
+	 * @param <S> a self reference to the spec type
+	 */
+	interface RequestHeadersUriSpec<S extends RequestHeadersSpec<S>>
+			extends UriSpec<S>, RequestHeadersSpec<S> {
+	}
+
+
+	/**
+	 * Contract for specifying request headers, body and URI for a request.
+	 */
+	interface RequestBodyUriSpec extends RequestBodySpec, RequestHeadersUriSpec<RequestBodySpec> {
+	}
+
+
+
+}

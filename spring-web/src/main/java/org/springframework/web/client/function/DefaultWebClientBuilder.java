@@ -1,0 +1,298 @@
+/*
+ * Copyright 2002-2023 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.web.client.function;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.cbor.MappingJackson2CborHttpMessageConverter;
+import org.springframework.http.converter.json.GsonHttpMessageConverter;
+import org.springframework.http.converter.json.JsonbHttpMessageConverter;
+import org.springframework.http.converter.json.KotlinSerializationJsonHttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.smile.MappingJackson2SmileHttpMessageConverter;
+import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.springframework.web.util.UriBuilderFactory;
+
+/**
+ * @author Arjen Poutsma
+ * @since 6.1
+ */
+final class DefaultWebClientBuilder implements WebClient.Builder {
+
+	private static final boolean httpComponentsClientPresent;
+
+	private static final boolean jackson2Present;
+
+	private static final boolean gsonPresent;
+
+	private static final boolean jsonbPresent;
+
+	private static final boolean kotlinSerializationJsonPresent;
+
+	private static final boolean jackson2SmilePresent;
+
+	private static final boolean jackson2CborPresent;
+
+
+	static {
+		ClassLoader loader = DefaultWebClientBuilder.class.getClassLoader();
+		httpComponentsClientPresent = ClassUtils.isPresent("org.apache.hc.client5.http.classic.HttpClient", loader);
+		jackson2Present = ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", loader) &&
+				ClassUtils.isPresent("com.fasterxml.jackson.core.JsonGenerator", loader);
+		gsonPresent = ClassUtils.isPresent("com.google.gson.Gson", loader);
+		jsonbPresent = ClassUtils.isPresent("jakarta.json.bind.Jsonb", loader);
+		kotlinSerializationJsonPresent = ClassUtils.isPresent("kotlinx.serialization.json.Json", loader);
+		jackson2SmilePresent = ClassUtils.isPresent("com.fasterxml.jackson.dataformat.smile.SmileFactory", loader);
+		jackson2CborPresent = ClassUtils.isPresent("com.fasterxml.jackson.dataformat.cbor.CBORFactory", loader);
+	}
+
+	@Nullable
+	private String baseUrl;
+
+	@Nullable
+	private Map<String, ?> defaultUriVariables;
+
+	@Nullable
+	private UriBuilderFactory uriBuilderFactory;
+
+	@Nullable
+	private HttpHeaders defaultHeaders;
+
+//	@Nullable
+//	private MultiValueMap<String, String> defaultCookies;
+
+	@Nullable
+	private Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest;
+
+	@Nullable
+	private Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlers;
+
+	@Nullable
+	private ClientHttpRequestFactory requestFactory;
+
+	@Nullable
+	private List<HttpMessageConverter<?>> messageConverters;
+
+
+
+	public DefaultWebClientBuilder() {
+	}
+
+	public DefaultWebClientBuilder(DefaultWebClientBuilder other) {
+		Assert.notNull(other, "Other must not be null");
+
+		this.baseUrl = other.baseUrl;
+		this.defaultUriVariables = (other.defaultUriVariables != null ?
+				new LinkedHashMap<>(other.defaultUriVariables) : null);
+		this.uriBuilderFactory = other.uriBuilderFactory;
+
+		if (other.defaultHeaders != null) {
+			this.defaultHeaders = new HttpHeaders();
+			this.defaultHeaders.putAll(other.defaultHeaders);
+		}
+		else {
+			this.defaultHeaders = null;
+		}
+//		this.defaultCookies = (other.defaultCookies != null ?
+//				new LinkedMultiValueMap<>(other.defaultCookies) : null);
+		this.defaultRequest = other.defaultRequest;
+		this.statusHandlers = (other.statusHandlers != null ? new LinkedHashMap<>(other.statusHandlers) : null);
+
+		this.requestFactory = other.requestFactory;
+		this.messageConverters = (other.messageConverters != null ?
+				new ArrayList<>(other.messageConverters) : null);
+	}
+
+	@Override
+	public WebClient.Builder baseUrl(String baseUrl) {
+		this.baseUrl = baseUrl;
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder defaultUriVariables(Map<String, ?> defaultUriVariables) {
+		this.defaultUriVariables = defaultUriVariables;
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder uriBuilderFactory(UriBuilderFactory uriBuilderFactory) {
+		this.uriBuilderFactory = uriBuilderFactory;
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder defaultHeader(String header, String... values) {
+		initHeaders().put(header, Arrays.asList(values));
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder defaultHeaders(Consumer<HttpHeaders> headersConsumer) {
+		headersConsumer.accept(initHeaders());
+		return this;
+	}
+
+	private HttpHeaders initHeaders() {
+		if (this.defaultHeaders == null) {
+			this.defaultHeaders = new HttpHeaders();
+		}
+		return this.defaultHeaders;
+	}
+
+	@Override
+	public WebClient.Builder defaultRequest(Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest) {
+		this.defaultRequest = this.defaultRequest != null ?
+				this.defaultRequest.andThen(defaultRequest) : defaultRequest;
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
+			Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction) {
+		this.statusHandlers = (this.statusHandlers != null ? this.statusHandlers : new LinkedHashMap<>());
+		this.statusHandlers.put(statusPredicate, exceptionFunction);
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder requestFactory(ClientHttpRequestFactory requestFactory) {
+		this.requestFactory = requestFactory;
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder messageConverters(Consumer<List<HttpMessageConverter<?>>> configurer) {
+		configurer.accept(initMessageConverters());
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder apply(Consumer<WebClient.Builder> builderConsumer) {
+		builderConsumer.accept(this);
+		return this;
+	}
+
+	private List<HttpMessageConverter<?>> initMessageConverters() {
+		if (this.messageConverters == null) {
+			this.messageConverters = new ArrayList<>();
+			this.messageConverters.add(new ByteArrayHttpMessageConverter());
+			this.messageConverters.add(new StringHttpMessageConverter());
+			this.messageConverters.add(new ResourceHttpMessageConverter(false));
+			this.messageConverters.add(new AllEncompassingFormHttpMessageConverter());
+
+			if (kotlinSerializationJsonPresent) {
+				this.messageConverters.add(new KotlinSerializationJsonHttpMessageConverter());
+			}
+			if (jackson2Present) {
+				this.messageConverters.add(new MappingJackson2HttpMessageConverter());
+			}
+			else if (gsonPresent) {
+				this.messageConverters.add(new GsonHttpMessageConverter());
+			}
+			else if (jsonbPresent) {
+				this.messageConverters.add(new JsonbHttpMessageConverter());
+			}
+			if (jackson2SmilePresent) {
+				this.messageConverters.add(new MappingJackson2SmileHttpMessageConverter());
+			}
+			if (jackson2CborPresent) {
+				this.messageConverters.add(new MappingJackson2CborHttpMessageConverter());
+			}
+		}
+		return this.messageConverters;
+	}
+
+
+	@Override
+	public WebClient.Builder clone() {
+		return new DefaultWebClientBuilder(this);
+	}
+
+	@Override
+	public WebClient build() {
+		ClientHttpRequestFactory requestFactory = initRequestFactory();
+		UriBuilderFactory uriBuilderFactory = initUriBuilderFactory();
+		HttpHeaders defaultHeaders = copyDefaultHeaders();
+		List<HttpMessageConverter<?>> messageConverters = (this.messageConverters != null ?
+				this.messageConverters : initMessageConverters());
+		return new DefaultWebClient(requestFactory,
+				uriBuilderFactory,
+				defaultHeaders,
+				this.statusHandlers,
+				messageConverters,
+				new DefaultWebClientBuilder(this)
+				);
+	}
+
+	private ClientHttpRequestFactory initRequestFactory() {
+		if (this.requestFactory != null) {
+			return this.requestFactory;
+		}
+		else if (httpComponentsClientPresent) {
+			return new HttpComponentsClientHttpRequestFactory();
+		}
+		else {
+			return new SimpleClientHttpRequestFactory();
+		}
+	}
+
+	private UriBuilderFactory initUriBuilderFactory() {
+		if (this.uriBuilderFactory != null) {
+			return this.uriBuilderFactory;
+		}
+		DefaultUriBuilderFactory factory = (this.baseUrl != null ?
+				new DefaultUriBuilderFactory(this.baseUrl) : new DefaultUriBuilderFactory());
+		factory.setDefaultUriVariables(this.defaultUriVariables);
+		return factory;
+	}
+
+	@Nullable
+	private HttpHeaders copyDefaultHeaders() {
+		if (this.defaultHeaders != null) {
+			HttpHeaders copy = new HttpHeaders();
+			this.defaultHeaders.forEach((key, values) -> copy.put(key, new ArrayList<>(values)));
+			return HttpHeaders.readOnlyHttpHeaders(copy);
+		}
+		else {
+			return null;
+		}
+	}
+
+}
