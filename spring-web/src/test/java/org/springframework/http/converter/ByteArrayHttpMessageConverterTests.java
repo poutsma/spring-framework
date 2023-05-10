@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.web.testfixture.http.MockHttpInputMessage;
 import org.springframework.web.testfixture.http.MockHttpOutputMessage;
+import org.springframework.web.testfixture.http.MockStreamingHttpOutputMessage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,6 +73,16 @@ public class ByteArrayHttpMessageConverterTests {
 	@Test
 	public void write() throws IOException {
 		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
+		byte[] body = new byte[]{0x1, 0x2};
+		converter.write(body, null, outputMessage);
+		assertThat(outputMessage.getBodyAsBytes()).as("Invalid result").isEqualTo(body);
+		assertThat(outputMessage.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_OCTET_STREAM);
+		assertThat(outputMessage.getHeaders().getContentLength()).isEqualTo(2);
+	}
+
+	@Test
+	public void writeStreaming() throws IOException {
+		MockHttpOutputMessage outputMessage = new MockStreamingHttpOutputMessage();
 		byte[] body = new byte[]{0x1, 0x2};
 		converter.write(body, null, outputMessage);
 		assertThat(outputMessage.getBodyAsBytes()).as("Invalid result").isEqualTo(body);

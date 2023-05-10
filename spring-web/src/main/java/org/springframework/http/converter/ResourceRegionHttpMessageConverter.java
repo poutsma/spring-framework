@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.MimeTypeUtils;
@@ -140,21 +141,33 @@ public class ResourceRegionHttpMessageConverter extends AbstractGenericHttpMessa
 
 	protected void writeResourceRegion(ResourceRegion region, HttpOutputMessage outputMessage) throws IOException {
 		Assert.notNull(region, "ResourceRegion must not be null");
-		HttpHeaders responseHeaders = outputMessage.getHeaders();
 
 		long start = region.getPosition();
-		long end = start + region.getCount() - 1;
 		long resourceLength = region.getResource().contentLength();
-		end = Math.min(end, resourceLength - 1);
+		long end = Math.min(start + region.getCount() - 1, resourceLength - 1);
 		long rangeLength = end - start + 1;
-		responseHeaders.add("Content-Range", "bytes " + start + '-' + end + '/' + resourceLength);
-		responseHeaders.setContentLength(rangeLength);
+
+		HttpHeaders headers = outputMessage.getHeaders();
+		headers.add("Content-Range", "bytes " + start + '-' + end + '/' + resourceLength);
+		headers.setContentLength(rangeLength);
+
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(
+					outputStream -> writeToOutputStream(region, outputStream, start, end));
+		}
+		else {
+			writeToOutputStream(region, outputMessage.getBody(), start, end);
+		}
+	}
+
+	private void writeToOutputStream(ResourceRegion region, OutputStream outputStream, long start, long end)
+			throws IOException {
 
 		InputStream in = region.getResource().getInputStream();
 		// We cannot use try-with-resources here for the InputStream, since we have
 		// custom handling of the close() method in a finally-block.
 		try {
-			StreamUtils.copyRange(in, outputMessage.getBody(), start, end);
+			StreamUtils.copyRange(in, outputStream, start, end);
 		}
 		finally {
 			try {
@@ -170,12 +183,23 @@ public class ResourceRegionHttpMessageConverter extends AbstractGenericHttpMessa
 			HttpOutputMessage outputMessage) throws IOException {
 
 		Assert.notNull(resourceRegions, "Collection of ResourceRegion should not be null");
-		HttpHeaders responseHeaders = outputMessage.getHeaders();
 
-		MediaType contentType = responseHeaders.getContentType();
+		HttpHeaders headers = outputMessage.getHeaders();
+		MediaType contentType = headers.getContentType();
 		String boundaryString = MimeTypeUtils.generateMultipartBoundaryString();
-		responseHeaders.set(HttpHeaders.CONTENT_TYPE, "multipart/byteranges; boundary=" + boundaryString);
-		OutputStream out = outputMessage.getBody();
+		headers.set(HttpHeaders.CONTENT_TYPE, "multipart/byteranges; boundary=" + boundaryString);
+
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(resourceRegions, outputStream, contentType, boundaryString));
+		}
+		else {
+			writeToOutputStream(resourceRegions, outputMessage.getBody(), contentType, boundaryString);
+		}
+	}
+
+	private void writeToOutputStream(Collection<ResourceRegion> resourceRegions, OutputStream out,
+			@Nullable MediaType contentType, String boundaryString) throws IOException {
 
 		Resource resource = null;
 		InputStream in = null;

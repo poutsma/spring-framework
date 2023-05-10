@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.http.converter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 import kotlinx.serialization.BinaryFormat;
 import kotlinx.serialization.KSerializer;
@@ -25,6 +26,7 @@ import kotlinx.serialization.SerializationException;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.util.StreamUtils;
 
 /**
@@ -67,10 +69,21 @@ public abstract class KotlinSerializationBinaryHttpMessageConverter<T extends Bi
 	protected void writeInternal(Object object, KSerializer<Object> serializer, T format,
 			HttpOutputMessage outputMessage) throws IOException, HttpMessageNotWritableException {
 
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(object, serializer, format, outputStream));
+		}
+		else {
+			writeToOutputStream(object, serializer, format, outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(Object object, KSerializer<Object> serializer, T format, OutputStream outputStream)
+			throws IOException {
 		try {
 			byte[] bytes = format.encodeToByteArray(serializer, object);
-			outputMessage.getBody().write(bytes);
-			outputMessage.getBody().flush();
+			outputStream.write(bytes);
+			outputStream.flush();
 		}
 		catch (SerializationException ex) {
 			throw new HttpMessageNotWritableException("Could not write " + format + ": " + ex.getMessage(), ex);

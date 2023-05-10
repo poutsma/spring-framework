@@ -46,6 +46,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.testfixture.http.MockHttpInputMessage;
 import org.springframework.web.testfixture.http.MockHttpOutputMessage;
+import org.springframework.web.testfixture.http.MockStreamingHttpOutputMessage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED;
@@ -135,12 +136,20 @@ public class FormHttpMessageConverterTests {
 
 	@Test
 	public void writeForm() throws IOException {
+		writeFormInternal(new MockHttpOutputMessage());
+	}
+
+	@Test
+	public void writeFormStreaming() throws IOException {
+		writeFormInternal(new MockStreamingHttpOutputMessage());
+	}
+
+	private void writeFormInternal(MockHttpOutputMessage outputMessage) throws IOException{
 		MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 		body.set("name 1", "value 1");
 		body.add("name 2", "value 2+1");
 		body.add("name 2", "value 2+2");
 		body.add("name 3", null);
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		this.converter.write(body, APPLICATION_FORM_URLENCODED, outputMessage);
 
 		assertThat(outputMessage.getBodyAsString(StandardCharsets.UTF_8))
@@ -151,9 +160,18 @@ public class FormHttpMessageConverterTests {
 				.as("Invalid content-length").isEqualTo(outputMessage.getBodyAsBytes().length);
 	}
 
+
 	@Test
 	public void writeMultipart() throws Exception {
+		writeMultipartInternal(new MockHttpOutputMessage());
+	}
 
+	@Test
+	public void writeMultipartStreaming() throws Exception {
+		writeMultipartInternal(new MockStreamingHttpOutputMessage());
+	}
+
+	private void writeMultipartInternal(MockHttpOutputMessage outputMessage) throws Exception {
 		MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
 		parts.add("name 1", "value 1");
 		parts.add("name 2", "value 2+1");
@@ -183,7 +201,6 @@ public class FormHttpMessageConverterTests {
 		parameters.put("charset", StandardCharsets.UTF_8.name());
 		parameters.put("foo", "bar");
 
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		this.converter.write(parts, new MediaType("multipart", "form-data", parameters), outputMessage);
 
 		final MediaType contentType = outputMessage.getHeaders().getContentType();
@@ -231,6 +248,15 @@ public class FormHttpMessageConverterTests {
 
 	@Test
 	public void writeMultipartWithSourceHttpMessageConverter() throws Exception {
+		writeMultipartWithSourceHttpMessageConverterInternal(new MockHttpOutputMessage());
+	}
+
+	@Test
+	public void writeMultipartWithSourceHttpMessageConverterStreaming() throws Exception {
+		writeMultipartWithSourceHttpMessageConverterInternal(new MockStreamingHttpOutputMessage());
+	}
+
+	private void writeMultipartWithSourceHttpMessageConverterInternal(MockHttpOutputMessage outputMessage) throws IOException {
 
 		converter.setPartConverters(List.of(
 				new StringHttpMessageConverter(),
@@ -265,7 +291,6 @@ public class FormHttpMessageConverterTests {
 		parameters.put("charset", StandardCharsets.UTF_8.name());
 		parameters.put("foo", "bar");
 
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		this.converter.write(parts, new MediaType("multipart", "form-data", parameters), outputMessage);
 
 		final MediaType contentType = outputMessage.getHeaders().getContentType();
@@ -312,7 +337,16 @@ public class FormHttpMessageConverterTests {
 	}
 
 	@Test  // SPR-13309
-	public void writeMultipartOrder() throws Exception {
+	public void writeMultipartOrder() throws IOException {
+		writeMultipartOrderInternal(new MockHttpOutputMessage());
+	}
+
+	@Test
+	public void writeMultipartOrderStreaming() throws IOException {
+		writeMultipartOrderInternal(new MockStreamingHttpOutputMessage());
+	}
+
+	private void writeMultipartOrderInternal(MockHttpOutputMessage outputMessage) throws IOException {
 		MyBean myBean = new MyBean();
 		myBean.setString("foo");
 
@@ -324,7 +358,6 @@ public class FormHttpMessageConverterTests {
 		HttpEntity<MyBean> entity = new HttpEntity<>(myBean, entityHeaders);
 		parts.add("part2", entity);
 
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		this.converter.setMultipartCharset(StandardCharsets.UTF_8);
 		this.converter.write(parts, new MediaType("multipart", "form-data", StandardCharsets.UTF_8), outputMessage);
 
@@ -356,12 +389,20 @@ public class FormHttpMessageConverterTests {
 	}
 
 	@Test
-	public void writeMultipartCharset() throws Exception {
+	public void writeMultipartCharset() throws IOException {
+		writeMultipartCharsetInternal(new MockHttpOutputMessage());
+	}
+
+	@Test
+	public void writeMultipartCharsetStreaming() throws IOException {
+		writeMultipartCharsetInternal(new MockStreamingHttpOutputMessage());
+	}
+
+	private void writeMultipartCharsetInternal(MockHttpOutputMessage outputMessage) throws IOException {
 		MultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
 		Resource logo = new ClassPathResource("/org/springframework/http/converter/logo.jpg");
 		parts.add("logo", logo);
 
-		MockHttpOutputMessage outputMessage = new MockHttpOutputMessage();
 		this.converter.write(parts, MULTIPART_FORM_DATA, outputMessage);
 
 		MediaType contentType = outputMessage.getHeaders().getContentType();

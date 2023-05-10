@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.http.converter.xml;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
@@ -30,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -84,8 +86,18 @@ public abstract class AbstractXmlHttpMessageConverter<T> extends AbstractHttpMes
 	protected final void writeInternal(T t, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
 
+		HttpHeaders headers = outputMessage.getHeaders();
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream -> writeToOutputStream(t, headers, outputStream));
+		}
+		else {
+			writeToOutputStream(t, headers, outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(T t, HttpHeaders headers, OutputStream outputStream) throws IOException {
 		try {
-			writeToResult(t, outputMessage.getHeaders(), new StreamResult(outputMessage.getBody()));
+			writeToResult(t, headers, new StreamResult(outputStream));
 		}
 		catch (IOException | HttpMessageConversionException ex) {
 			throw ex;

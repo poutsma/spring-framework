@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,9 +35,11 @@ import com.google.protobuf.util.JsonFormat;
 import com.googlecode.protobuf.format.FormatFactory;
 import com.googlecode.protobuf.format.ProtobufFormatter;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -227,12 +229,23 @@ public class ProtobufHttpMessageConverter extends AbstractHttpMessageConverter<M
 				(this.protobufFormatSupport != null && this.protobufFormatSupport.supportsWriteOnly(mediaType)));
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	protected void writeInternal(Message message, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
 
-		MediaType contentType = outputMessage.getHeaders().getContentType();
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(message, outputMessage.getHeaders(), outputStream));
+		}
+		else {
+			writeToOutputStream(message, outputMessage.getHeaders(), outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(Message message, HttpHeaders headers, OutputStream outputStream)
+			throws IOException {
+
+		MediaType contentType = headers.getContentType();
 		if (contentType == null) {
 			contentType = getDefaultContentType(message);
 			Assert.state(contentType != null, "No content type");
@@ -243,32 +256,31 @@ public class ProtobufHttpMessageConverter extends AbstractHttpMessageConverter<M
 		}
 
 		if (PROTOBUF.isCompatibleWith(contentType)) {
-			setProtoHeader(outputMessage, message);
-			CodedOutputStream codedOutputStream = CodedOutputStream.newInstance(outputMessage.getBody());
+			setProtoHeader(headers, message);
+			CodedOutputStream codedOutputStream = CodedOutputStream.newInstance(outputStream);
 			message.writeTo(codedOutputStream);
 			codedOutputStream.flush();
 		}
 		else if (TEXT_PLAIN.isCompatibleWith(contentType)) {
-			OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputMessage.getBody(), charset);
-			TextFormat.print(message, outputStreamWriter);  // deprecated on Protobuf 3.9
+			OutputStreamWriter outputStreamWriter = new OutputStreamWriter(outputStream, charset);
+			TextFormat.printer().print(message, outputStreamWriter);
 			outputStreamWriter.flush();
-			outputMessage.getBody().flush();
 		}
 		else if (this.protobufFormatSupport != null) {
-			this.protobufFormatSupport.print(message, outputMessage.getBody(), contentType, charset);
-			outputMessage.getBody().flush();
+			this.protobufFormatSupport.print(message, outputStream, contentType, charset);
+			outputStream.flush();
 		}
 	}
 
 	/**
 	 * Set the "X-Protobuf-*" HTTP headers when responding with a message of
 	 * content type "application/x-protobuf"
-	 * <p><b>Note:</b> <code>outputMessage.getBody()</code> should not have been called
+	 * <p><b>Note:</b> {@code outputMessage.getBody()} should not have been called
 	 * before because it writes HTTP headers (making them read only).</p>
 	 */
-	private void setProtoHeader(HttpOutputMessage response, Message message) {
-		response.getHeaders().set(X_PROTOBUF_SCHEMA_HEADER, message.getDescriptorForType().getFile().getName());
-		response.getHeaders().set(X_PROTOBUF_MESSAGE_HEADER, message.getDescriptorForType().getFullName());
+	private void setProtoHeader(HttpHeaders headers, Message message) {
+		headers.set(X_PROTOBUF_SCHEMA_HEADER, message.getDescriptorForType().getFile().getName());
+		headers.set(X_PROTOBUF_MESSAGE_HEADER, message.getDescriptorForType().getFullName());
 	}
 
 

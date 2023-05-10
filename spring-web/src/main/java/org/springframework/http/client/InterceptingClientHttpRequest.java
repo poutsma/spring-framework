@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.http.client;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Iterator;
@@ -25,7 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.StreamingHttpOutputMessage;
-import org.springframework.util.StreamUtils;
+import org.springframework.lang.Nullable;
 
 /**
  * Wrapper for a {@link ClientHttpRequest} that has support for {@link ClientHttpRequestInterceptor
@@ -34,7 +35,7 @@ import org.springframework.util.StreamUtils;
  * @author Arjen Poutsma
  * @since 3.1
  */
-class InterceptingClientHttpRequest extends AbstractBufferingClientHttpRequest {
+class InterceptingClientHttpRequest extends AbstractStreamingClientHttpRequest {
 
 	private final ClientHttpRequestFactory requestFactory;
 
@@ -66,9 +67,19 @@ class InterceptingClientHttpRequest extends AbstractBufferingClientHttpRequest {
 	}
 
 	@Override
-	protected final ClientHttpResponse executeInternal(HttpHeaders headers, byte[] bufferedOutput) throws IOException {
+	protected ClientHttpResponse executeInternal(HttpHeaders headers, @Nullable Body body) throws IOException {
+		byte[] bytes;
+		if (body != null) {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
+			body.writeTo(bos);
+			bytes = bos.toByteArray();
+		}
+		else {
+			bytes = new byte[0];
+		}
+
 		InterceptingRequestExecution requestExecution = new InterceptingRequestExecution();
-		return requestExecution.execute(this, bufferedOutput);
+		return requestExecution.execute(this, bytes);
 	}
 
 
@@ -91,11 +102,11 @@ class InterceptingClientHttpRequest extends AbstractBufferingClientHttpRequest {
 				ClientHttpRequest delegate = requestFactory.createRequest(request.getURI(), method);
 				request.getHeaders().forEach((key, value) -> delegate.getHeaders().addAll(key, value));
 				if (body.length > 0) {
-					if (delegate instanceof StreamingHttpOutputMessage streamingOutputMessage) {
-						streamingOutputMessage.setBody(outputStream -> StreamUtils.copy(body, outputStream));
+					if (delegate instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+						streamingHttpOutputMessage.setBody(os -> os.write(body));
 					}
 					else {
-						StreamUtils.copy(body, delegate.getBody());
+						delegate.getBody().write(body);
 					}
 				}
 				return delegate.execute();

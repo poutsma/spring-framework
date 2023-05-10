@@ -524,7 +524,7 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 		for (HttpMessageConverter<?> messageConverter : this.partConverters) {
 			if (messageConverter.canWrite(partType, partContentType)) {
 				Charset charset = isFilenameCharsetSet() ? StandardCharsets.US_ASCII : this.charset;
-				HttpOutputMessage multipartMessage = new MultipartHttpOutputMessage(os, charset);
+				MultipartHttpOutputMessage multipartMessage = new MultipartHttpOutputMessage();
 				String filename = getFilename(partBody);
 				ContentDisposition.Builder cd = ContentDisposition.formData()
 						.name(name);
@@ -536,6 +536,10 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 					multipartMessage.getHeaders().putAll(partHeaders);
 				}
 				((HttpMessageConverter<Object>) messageConverter).write(partBody, partContentType, multipartMessage);
+				writePartHeaders(multipartMessage.getHeaders(), os, charset);
+				if (multipartMessage.body != null) {
+					multipartMessage.body.writeTo(os);
+				}
 				return;
 			}
 		}
@@ -602,58 +606,51 @@ public class FormHttpMessageConverter implements HttpMessageConverter<MultiValue
 		os.write('\n');
 	}
 
+	private static void writePartHeaders(HttpHeaders headers, OutputStream outputStream, Charset charset)
+			throws IOException {
+
+		for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+			byte[] headerName = entry.getKey().getBytes(charset);
+			for (String headerValueString : entry.getValue()) {
+				byte[] headerValue = headerValueString.getBytes(charset);
+				outputStream.write(headerName);
+				outputStream.write(':');
+				outputStream.write(' ');
+				outputStream.write(headerValue);
+				writeNewLine(outputStream);
+			}
+		}
+		writeNewLine(outputStream);
+	}
+
 
 	/**
 	 * Implementation of {@link org.springframework.http.HttpOutputMessage} used
 	 * to write a MIME multipart.
 	 */
-	private static class MultipartHttpOutputMessage implements HttpOutputMessage {
-
-		private final OutputStream outputStream;
-
-		private final Charset charset;
+	private static class MultipartHttpOutputMessage implements StreamingHttpOutputMessage {
 
 		private final HttpHeaders headers = new HttpHeaders();
 
-		private boolean headersWritten = false;
+		@Nullable
+		private Body body;
 
-		public MultipartHttpOutputMessage(OutputStream outputStream, Charset charset) {
-			this.outputStream = outputStream;
-			this.charset = charset;
-		}
 
 		@Override
 		public HttpHeaders getHeaders() {
-			return (this.headersWritten ? HttpHeaders.readOnlyHttpHeaders(this.headers) : this.headers);
+			return this.headers;
 		}
 
 		@Override
-		public OutputStream getBody() throws IOException {
-			writeHeaders();
-			return this.outputStream;
+		public OutputStream getBody() {
+			throw new UnsupportedOperationException();
 		}
 
-		private void writeHeaders() throws IOException {
-			if (!this.headersWritten) {
-				for (Map.Entry<String, List<String>> entry : this.headers.entrySet()) {
-					byte[] headerName = getBytes(entry.getKey());
-					for (String headerValueString : entry.getValue()) {
-						byte[] headerValue = getBytes(headerValueString);
-						this.outputStream.write(headerName);
-						this.outputStream.write(':');
-						this.outputStream.write(' ');
-						this.outputStream.write(headerValue);
-						writeNewLine(this.outputStream);
-					}
-				}
-				writeNewLine(this.outputStream);
-				this.headersWritten = true;
-			}
+		@Override
+		public void setBody(Body body) {
+			this.body = body;
 		}
 
-		private byte[] getBytes(String name) {
-			return name.getBytes(this.charset);
-		}
 	}
 
 }

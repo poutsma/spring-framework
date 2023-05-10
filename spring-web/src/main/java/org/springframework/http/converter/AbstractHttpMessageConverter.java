@@ -17,7 +17,6 @@
 package org.springframework.http.converter;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,7 +29,6 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpLogging;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
-import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -203,28 +201,13 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 	 * and then calls {@link #writeInternal}.
 	 */
 	@Override
-	public final void write(final T t, @Nullable MediaType contentType, HttpOutputMessage outputMessage)
+	public final void write(T t, @Nullable MediaType contentType, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
 
-		final HttpHeaders headers = outputMessage.getHeaders();
+		HttpHeaders headers = outputMessage.getHeaders();
 		addDefaultHeaders(headers, t, contentType);
 
-		if (outputMessage instanceof StreamingHttpOutputMessage streamingOutputMessage) {
-			streamingOutputMessage.setBody(outputStream -> writeInternal(t, new HttpOutputMessage() {
-				@Override
-				public OutputStream getBody() {
-					return outputStream;
-				}
-				@Override
-				public HttpHeaders getHeaders() {
-					return headers;
-				}
-			}));
-		}
-		else {
-			writeInternal(t, outputMessage);
-			outputMessage.getBody().flush();
-		}
+		writeInternal(t, outputMessage);
 	}
 
 	/**

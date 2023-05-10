@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ import org.xml.sax.XMLReader;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
@@ -256,8 +257,18 @@ public class SourceHttpMessageConverter<T extends Source> extends AbstractHttpMe
 	@Override
 	protected void writeInternal(T t, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
+
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream -> writeToOutputStream(t, outputStream));
+		}
+		else {
+			writeToOutputStream(t, outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(T t, OutputStream outputStream) {
 		try {
-			Result result = new StreamResult(outputMessage.getBody());
+			Result result = new StreamResult(outputStream);
 			transform(t, result);
 		}
 		catch (TransformerException ex) {

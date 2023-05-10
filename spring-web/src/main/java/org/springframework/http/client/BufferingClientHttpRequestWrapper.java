@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import java.net.URI;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.util.StreamUtils;
+import org.springframework.http.StreamingHttpOutputMessage;
+import org.springframework.lang.Nullable;
 
 /**
  * Simple implementation of {@link ClientHttpRequest} that wraps another request.
@@ -29,7 +30,7 @@ import org.springframework.util.StreamUtils;
  * @author Arjen Poutsma
  * @since 3.1
  */
-final class BufferingClientHttpRequestWrapper extends AbstractBufferingClientHttpRequest {
+final class BufferingClientHttpRequestWrapper extends AbstractStreamingClientHttpRequest {
 
 	private final ClientHttpRequest request;
 
@@ -50,9 +51,18 @@ final class BufferingClientHttpRequestWrapper extends AbstractBufferingClientHtt
 	}
 
 	@Override
-	protected ClientHttpResponse executeInternal(HttpHeaders headers, byte[] bufferedOutput) throws IOException {
+	protected ClientHttpResponse executeInternal(HttpHeaders headers, @Nullable Body body) throws IOException {
 		this.request.getHeaders().putAll(headers);
-		StreamUtils.copy(bufferedOutput, this.request.getBody());
+
+		if (body != null) {
+			if (this.request instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+				streamingHttpOutputMessage.setBody(body);
+			}
+			else {
+				body.writeTo(this.request.getBody());
+			}
+		}
+
 		ClientHttpResponse response = this.request.execute();
 		return new BufferingClientHttpResponseWrapper(response);
 	}

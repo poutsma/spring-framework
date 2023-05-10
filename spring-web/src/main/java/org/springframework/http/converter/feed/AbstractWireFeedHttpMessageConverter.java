@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.http.converter.feed;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
@@ -30,9 +31,11 @@ import com.rometools.rome.io.FeedException;
 import com.rometools.rome.io.WireFeedInput;
 import com.rometools.rome.io.WireFeedOutput;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
@@ -89,17 +92,28 @@ public abstract class AbstractWireFeedHttpMessageConverter<T extends WireFeed>
 	protected void writeInternal(T wireFeed, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
 
+		HttpHeaders headers = outputMessage.getHeaders();
 		Charset charset = (StringUtils.hasLength(wireFeed.getEncoding()) ?
 				Charset.forName(wireFeed.getEncoding()) : DEFAULT_CHARSET);
-		MediaType contentType = outputMessage.getHeaders().getContentType();
+		MediaType contentType = headers.getContentType();
 		if (contentType != null) {
 			contentType = new MediaType(contentType, charset);
-			outputMessage.getHeaders().setContentType(contentType);
+			headers.setContentType(contentType);
 		}
 
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(wireFeed, charset, outputStream));
+		}
+		else {
+			writeToOutputStream(wireFeed, charset, outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(T wireFeed, Charset charset, OutputStream outputStream) throws IOException {
 		WireFeedOutput feedOutput = new WireFeedOutput();
 		try {
-			Writer writer = new OutputStreamWriter(outputMessage.getBody(), charset);
+			Writer writer = new OutputStreamWriter(outputStream, charset);
 			feedOutput.output(wireFeed, writer);
 		}
 		catch (FeedException ex) {

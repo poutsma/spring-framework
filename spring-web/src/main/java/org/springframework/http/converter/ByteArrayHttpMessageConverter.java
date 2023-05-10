@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.lang.Nullable;
 import org.springframework.util.StreamUtils;
 
@@ -64,7 +65,12 @@ public class ByteArrayHttpMessageConverter extends AbstractHttpMessageConverter<
 
 	@Override
 	protected void writeInternal(byte[] bytes, HttpOutputMessage outputMessage) throws IOException {
-		StreamUtils.copy(bytes, outputMessage.getBody());
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(os -> StreamUtils.copy(bytes, os));
+		}
+		else {
+			StreamUtils.copy(bytes, outputMessage.getBody());
+		}
 	}
 
 }

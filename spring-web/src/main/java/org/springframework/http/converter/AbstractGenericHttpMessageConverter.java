@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,11 @@
 package org.springframework.http.converter;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Type;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
-import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.lang.Nullable;
 
 /**
@@ -84,25 +82,10 @@ public abstract class AbstractGenericHttpMessageConverter<T> extends AbstractHtt
 	public final void write(final T t, @Nullable final Type type, @Nullable MediaType contentType,
 			HttpOutputMessage outputMessage) throws IOException, HttpMessageNotWritableException {
 
-		final HttpHeaders headers = outputMessage.getHeaders();
+		HttpHeaders headers = outputMessage.getHeaders();
 		addDefaultHeaders(headers, t, contentType);
 
-		if (outputMessage instanceof StreamingHttpOutputMessage streamingOutputMessage) {
-			streamingOutputMessage.setBody(outputStream -> writeInternal(t, type, new HttpOutputMessage() {
-				@Override
-				public OutputStream getBody() {
-					return outputStream;
-				}
-				@Override
-				public HttpHeaders getHeaders() {
-					return headers;
-				}
-			}));
-		}
-		else {
-			writeInternal(t, type, outputMessage);
-			outputMessage.getBody().flush();
-		}
+		writeInternal(t, type, outputMessage);
 	}
 
 	@Override

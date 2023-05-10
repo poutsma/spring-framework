@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@
 package org.springframework.http.converter;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
@@ -24,10 +27,11 @@ import kotlinx.serialization.KSerializer;
 import kotlinx.serialization.SerializationException;
 import kotlinx.serialization.StringFormat;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.util.StreamUtils;
 
 /**
@@ -58,7 +62,7 @@ public abstract class KotlinSerializationStringHttpMessageConverter<T extends St
 	protected Object readInternal(KSerializer<Object> serializer, T format, HttpInputMessage inputMessage)
 			throws IOException, HttpMessageNotReadableException {
 
-		Charset charset = charset(inputMessage.getHeaders().getContentType());
+		Charset charset = charset(inputMessage.getHeaders());
 		String s = StreamUtils.copyToString(inputMessage.getBody(), charset);
 		try {
 			return format.decodeFromString(serializer, s);
@@ -73,21 +77,38 @@ public abstract class KotlinSerializationStringHttpMessageConverter<T extends St
 	protected void writeInternal(Object object, KSerializer<Object> serializer, T format,
 			HttpOutputMessage outputMessage) throws IOException, HttpMessageNotWritableException {
 
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(object, serializer, format, outputMessage.getHeaders(), outputStream));
+		}
+		else {
+			writeToOutputStream(object, serializer, format, outputMessage.getHeaders(), outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(Object object, KSerializer<Object> serializer, T format, HttpHeaders headers,
+			OutputStream outputStream) throws IOException {
+
 		try {
 			String s = format.encodeToString(serializer, object);
-			Charset charset = charset(outputMessage.getHeaders().getContentType());
-			outputMessage.getBody().write(s.getBytes(charset));
-			outputMessage.getBody().flush();
+			Charset charset = charset(headers);
+			Writer writer = new OutputStreamWriter(outputStream, charset);
+			writer.write(s);
+			writer.flush();
 		}
 		catch (SerializationException ex) {
 			throw new HttpMessageNotWritableException("Could not write " + format + ": " + ex.getMessage(), ex);
 		}
+
 	}
 
-	private static Charset charset(@Nullable MediaType contentType) {
+	private static Charset charset(HttpHeaders headers) {
+		MediaType contentType = headers.getContentType();
 		if (contentType != null && contentType.getCharset() != null) {
 			return contentType.getCharset();
 		}
-		return StandardCharsets.UTF_8;
+		else {
+			return StandardCharsets.UTF_8;
+		}
 	}
 }

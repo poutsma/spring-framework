@@ -20,23 +20,26 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.FastByteArrayOutputStream;
 
 /**
- * Abstract base for {@link ClientHttpRequest} that makes sure that headers
- * and body are not written multiple times.
- *
  * @author Arjen Poutsma
- * @since 3.0
- * @deprecated as of 6.1, in favor of {@link AbstractStreamingClientHttpRequest}
+ * @since 6.1
  */
-@Deprecated(since = "6.1")
-public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
+public abstract class AbstractStreamingClientHttpRequest implements ClientHttpRequest, StreamingHttpOutputMessage {
 
 	private final HttpHeaders headers = new HttpHeaders();
 
 	private boolean executed = false;
+
+	@Nullable
+	private Body body;
+
+	@Nullable
+	private FastByteArrayOutputStream bodyStream;
 
 	@Nullable
 	private HttpHeaders readOnlyHeaders;
@@ -59,13 +62,30 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 	@Override
 	public final OutputStream getBody() throws IOException {
 		assertNotExecuted();
-		return getBodyInternal(this.headers);
+		Assert.state(this.body == null, "Invoke either getBody or setBody; not both");
+
+		if (this.bodyStream == null) {
+			this.bodyStream = new FastByteArrayOutputStream(1024);
+		}
+		return this.bodyStream;
+	}
+
+	@Override
+	public final void setBody(Body body) {
+		Assert.notNull(body, "Body must not be null");
+		assertNotExecuted();
+		Assert.state(this.bodyStream == null, "Invoke either getBody or setBody; not both");
+
+		this.body = body;
 	}
 
 	@Override
 	public final ClientHttpResponse execute() throws IOException {
 		assertNotExecuted();
-		ClientHttpResponse result = executeInternal(this.headers);
+		if (this.body == null && this.bodyStream != null) {
+			this.body = outputStream -> this.bodyStream.writeTo(outputStream);
+		}
+		ClientHttpResponse result = executeInternal(this.headers, this.body);
 		this.executed = true;
 		return result;
 	}
@@ -78,19 +98,13 @@ public abstract class AbstractClientHttpRequest implements ClientHttpRequest {
 		Assert.state(!this.executed, "ClientHttpRequest already executed");
 	}
 
-
-	/**
-	 * Abstract template method that returns the body.
-	 * @param headers the HTTP headers
-	 * @return the body output stream
-	 */
-	protected abstract OutputStream getBodyInternal(HttpHeaders headers) throws IOException;
-
 	/**
 	 * Abstract template method that writes the given headers and content to the HTTP request.
 	 * @param headers the HTTP headers
+	 * @param body the HTTP body, may be {@code null} if no body was {@linkplain #setBody(Body) set}
 	 * @return the response object for the executed request
+	 * @since 6.1
 	 */
-	protected abstract ClientHttpResponse executeInternal(HttpHeaders headers) throws IOException;
+	protected abstract ClientHttpResponse executeInternal(HttpHeaders headers, @Nullable Body body) throws IOException;
 
 }

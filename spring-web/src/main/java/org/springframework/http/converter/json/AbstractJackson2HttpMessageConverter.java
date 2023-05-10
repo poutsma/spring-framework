@@ -55,6 +55,7 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractGenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -448,7 +449,19 @@ public abstract class AbstractJackson2HttpMessageConverter extends AbstractGener
 		ObjectMapper objectMapper = selectObjectMapper(clazz, contentType);
 		Assert.state(objectMapper != null, () -> "No ObjectMapper for " + clazz.getName());
 
-		OutputStream outputStream = StreamUtils.nonClosing(outputMessage.getBody());
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(outputStream, objectMapper, encoding, object, type, contentType));
+		}
+		else {
+			writeToOutputStream(outputMessage.getBody(), objectMapper, encoding, object, type, contentType);
+		}
+	}
+
+	private void writeToOutputStream(OutputStream outputStream, ObjectMapper objectMapper, JsonEncoding encoding,
+			Object object, @Nullable Type type, @Nullable MediaType contentType) throws IOException {
+
+		outputStream = StreamUtils.nonClosing(outputStream);
 		try (JsonGenerator generator = objectMapper.getFactory().createGenerator(outputStream, encoding)) {
 			writePrefix(generator, object);
 

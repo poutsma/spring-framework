@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.http.converter.json;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
@@ -30,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.MediaType;
+import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.converter.AbstractGenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
@@ -117,7 +119,17 @@ public abstract class AbstractJsonHttpMessageConverter extends AbstractGenericHt
 	protected final void writeInternal(Object object, @Nullable Type type, HttpOutputMessage outputMessage)
 			throws IOException, HttpMessageNotWritableException {
 
-		Writer writer = getWriter(outputMessage);
+		if (outputMessage instanceof StreamingHttpOutputMessage streamingHttpOutputMessage) {
+			streamingHttpOutputMessage.setBody(outputStream ->
+					writeToOutputStream(object, type, outputMessage.getHeaders(), outputStream));
+		}
+		else {
+			writeToOutputStream(object, type, outputMessage.getHeaders(), outputMessage.getBody());
+		}
+	}
+
+	private void writeToOutputStream(Object object, @Nullable Type type, HttpHeaders headers, OutputStream outputStream) throws IOException {
+		Writer writer = getWriter(headers, outputStream);
 		if (this.jsonPrefix != null) {
 			writer.append(this.jsonPrefix);
 		}
@@ -154,8 +166,8 @@ public abstract class AbstractJsonHttpMessageConverter extends AbstractGenericHt
 		return new InputStreamReader(inputMessage.getBody(), getCharset(inputMessage.getHeaders()));
 	}
 
-	private static Writer getWriter(HttpOutputMessage outputMessage) throws IOException {
-		return new OutputStreamWriter(outputMessage.getBody(), getCharset(outputMessage.getHeaders()));
+	private static Writer getWriter(HttpHeaders headers, OutputStream outputStream) {
+		return new OutputStreamWriter(outputStream, getCharset(headers));
 	}
 
 	private static Charset getCharset(HttpHeaders headers) {
