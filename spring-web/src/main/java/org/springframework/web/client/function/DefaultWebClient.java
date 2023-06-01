@@ -43,13 +43,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInitializer;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.http.converter.GenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.client.UnknownContentTypeException;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
@@ -64,6 +66,15 @@ final class DefaultWebClient implements WebClient {
 
 	private final ClientHttpRequestFactory clientRequestFactory;
 
+	@Nullable
+	private volatile ClientHttpRequestFactory interceptingRequestFactory;
+
+	@Nullable
+	private final List<ClientHttpRequestInitializer> initializers;
+
+	@Nullable
+	private final List<ClientHttpRequestInterceptor> interceptors;
+
 	private final UriBuilderFactory uriBuilderFactory;
 
 	@Nullable
@@ -76,12 +87,18 @@ final class DefaultWebClient implements WebClient {
 	private final List<HttpMessageConverter<?>> messageConverters;
 
 
-	DefaultWebClient(ClientHttpRequestFactory clientRequestFactory, UriBuilderFactory uriBuilderFactory,
-			@Nullable HttpHeaders defaultHeaders, @Nullable Map<Predicate<HttpStatusCode>,
-			Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
-			List<HttpMessageConverter<?>> messageConverters, DefaultWebClientBuilder builder) {
+	DefaultWebClient(ClientHttpRequestFactory clientRequestFactory,
+					 @Nullable List<ClientHttpRequestInterceptor> interceptors,
+					 @Nullable List<ClientHttpRequestInitializer> initializers,
+					 UriBuilderFactory uriBuilderFactory,
+					 @Nullable HttpHeaders defaultHeaders,
+					 @Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
+					 List<HttpMessageConverter<?>> messageConverters,
+					 DefaultWebClientBuilder builder) {
 
 		this.clientRequestFactory = clientRequestFactory;
+		this.initializers = initializers;
+		this.interceptors = interceptors;
 		this.uriBuilderFactory = uriBuilderFactory;
 		this.defaultHeaders = defaultHeaders;
 		this.defaultStatusHandlers = initStatusHandlers(statusHandlerMap);
@@ -345,8 +362,7 @@ final class DefaultWebClient implements WebClient {
 			try {
 				uri = initUri();
 				headers = initHeaders();
-				ClientHttpRequest clientRequest =
-						DefaultWebClient.this.clientRequestFactory.createRequest(uri, this.httpMethod);
+				ClientHttpRequest clientRequest = createRequest(uri);
 				clientRequest.getHeaders().addAll(headers);
 				if (this.body != null) {
 					this.body.writeTo(clientRequest);
@@ -363,7 +379,7 @@ final class DefaultWebClient implements WebClient {
 				}
 				else {
 					try {
-						byte[] body = StreamUtils.copyToByteArray(clientResponse.getBody());
+						byte[] body = WebClientUtils.getBody(clientResponse);
 						Charset charset = null;
 
 						MediaType contentType = clientResponse.getHeaders().getContentType();
@@ -374,7 +390,7 @@ final class DefaultWebClient implements WebClient {
 								clientResponse.getStatusCode(), clientResponse.getStatusText(),
 								clientResponse.getHeaders(), body, charset, null);
 					}
-					catch (IOException ex2) {
+					catch (IOException ignored) {
 						throw new WebClientException("Could not execute request: " + ex.getMessage(), ex);
 					}
 				}
@@ -404,6 +420,25 @@ final class DefaultWebClient implements WebClient {
 				result.putAll(this.headers);
 				return result;
 			}
+		}
+
+		private ClientHttpRequest createRequest(URI uri) throws IOException {
+			ClientHttpRequestFactory factory;
+			if (DefaultWebClient.this.interceptors != null) {
+				factory = DefaultWebClient.this.interceptingRequestFactory;
+				if (factory == null) {
+					factory = new InterceptingClientHttpRequestFactory(DefaultWebClient.this.clientRequestFactory, DefaultWebClient.this.interceptors);
+					DefaultWebClient.this.interceptingRequestFactory = factory;
+				}
+			}
+			else {
+				factory = DefaultWebClient.this.clientRequestFactory;
+			}
+			ClientHttpRequest request = factory.createRequest(uri, this.httpMethod);
+			if (DefaultWebClient.this.initializers != null) {
+				DefaultWebClient.this.initializers.forEach(initializer -> initializer.initialize(request));
+			}
+			return request;
 		}
 
 

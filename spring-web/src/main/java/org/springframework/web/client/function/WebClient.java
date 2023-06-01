@@ -37,8 +37,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.StreamingHttpOutputMessage;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInitializer;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
@@ -245,6 +248,35 @@ public interface WebClient {
 		Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
 				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction);
 
+		/**
+		 * Add the given request interceptor to the end of the interceptor chain.
+		 * @param interceptor the interceptor to be added to the chain
+		 */
+		Builder requestInterceptor(ClientHttpRequestInterceptor interceptor);
+
+		/**
+		 * Manipulate the interceptors with the given consumer. The list provided to
+		 * the consumer is "live", so that the consumer can be used to remove
+		 * interceptors, change ordering, etc.
+		 * @param interceptorsConsumer a function that consumes the interceptors list
+		 * @return this builder
+		 */
+		Builder requestInterceptors(Consumer<List<ClientHttpRequestInterceptor>> interceptorsConsumer);
+
+		/**
+		 * Add the given request initializer to the end of the initializer chain.
+		 * @param initializer the initializer to be added to the chain
+		 */
+		Builder requestInitializer(ClientHttpRequestInitializer initializer);
+
+		/**
+		 * Manipulate the initializers with the given consumer. The list provided to
+		 * the consumer is "live", so that the consumer can be used to remove
+		 * initializers, change ordering, etc.
+		 * @param initializersConsumer a function that consumes the initializers list
+		 * @return this builder
+		 */
+		Builder requestInitializers(Consumer<List<ClientHttpRequestInitializer>> initializersConsumer);
 
 		/**
 		 * Configure the {@link ClientHttpRequestFactory} to use. This is useful
@@ -562,16 +594,18 @@ public interface WebClient {
 		 * Extract the body as an object of the given type.
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
-		 * @return the body
+		 * @return the body, or {@code null} if no response body was available
 		 */
+		@Nullable
 		<T> T body(Class<T> bodyType);
 
 		/**
 		 * Extract the body as an object of the given type.
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
-		 * @return the body
+		 * @return the body, or {@code null} if no response body was available
 		 */
+		@Nullable
 		<T> T body(ParameterizedTypeReference<T> bodyType);
 
 		/**

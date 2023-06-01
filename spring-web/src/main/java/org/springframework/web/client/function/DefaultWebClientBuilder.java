@@ -29,6 +29,8 @@ import java.util.function.Predicate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestInitializer;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -109,6 +111,11 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	@Nullable
 	private List<HttpMessageConverter<?>> messageConverters;
 
+	@Nullable
+	private List<ClientHttpRequestInterceptor> interceptors;
+
+	@Nullable
+	private List<ClientHttpRequestInitializer> initializers;
 
 
 	public DefaultWebClientBuilder() {
@@ -192,6 +199,47 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	}
 
 	@Override
+	public WebClient.Builder requestInterceptor(ClientHttpRequestInterceptor interceptor) {
+		Assert.notNull(interceptor, "Interceptor must not be null");
+		initInterceptors().add(interceptor);
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder requestInterceptors(Consumer<List<ClientHttpRequestInterceptor>> interceptorsConsumer) {
+		interceptorsConsumer.accept(initInterceptors());
+		return this;
+	}
+
+	private List<ClientHttpRequestInterceptor> initInterceptors() {
+		if (this.interceptors == null) {
+			this.interceptors = new ArrayList<>();
+		}
+		return this.interceptors;
+	}
+
+	@Override
+	public WebClient.Builder requestInitializer(ClientHttpRequestInitializer initializer) {
+		Assert.notNull(initializer, "Initializer must not be null");
+		initInitializers().add(initializer);
+		return this;
+	}
+
+	@Override
+	public WebClient.Builder requestInitializers(Consumer<List<ClientHttpRequestInitializer>> initializersConsumer) {
+		initializersConsumer.accept(initInitializers());
+		return this;
+	}
+
+	private List<ClientHttpRequestInitializer> initInitializers() {
+		if (this.initializers == null) {
+			this.initializers = new ArrayList<>();
+		}
+		return this.initializers;
+	}
+
+
+	@Override
 	public WebClient.Builder requestFactory(ClientHttpRequestFactory requestFactory) {
 		this.requestFactory = requestFactory;
 		return this;
@@ -253,7 +301,7 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 		List<HttpMessageConverter<?>> messageConverters = (this.messageConverters != null ?
 				this.messageConverters : initMessageConverters());
 		return new DefaultWebClient(requestFactory,
-				uriBuilderFactory,
+				interceptors, initializers, uriBuilderFactory,
 				defaultHeaders,
 				this.statusHandlers,
 				messageConverters,
