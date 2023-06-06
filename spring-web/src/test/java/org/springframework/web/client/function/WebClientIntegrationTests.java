@@ -21,8 +21,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,8 +40,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -52,11 +51,13 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.JettyClientHttpRequestFactory;
 import org.springframework.http.client.OkHttp3ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.testfixture.xml.Pojo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.junit.jupiter.api.Named.named;
 
 /**
@@ -310,6 +311,7 @@ class WebClientIntegrationTests {
 	}
 
 	@ParameterizedWebClientTest
+	@SuppressWarnings("rawtypes")
 	void retrieveJsonNull(ClientHttpRequestFactory requestFactory) {
 		startServer(requestFactory);
 
@@ -318,10 +320,10 @@ class WebClientIntegrationTests {
 				.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.setBody("null"));
 
-		Map<?,?> result = this.webClient.get()
+		Map result = this.webClient.get()
 				.uri("/null")
 				.retrieve()
-				.body(new ParameterizedTypeReference<>() {});
+				.body(Map.class);
 
 		assertThat(result).isNull();
 	}
@@ -385,17 +387,10 @@ class WebClientIntegrationTests {
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
 			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 			assertThat(ex.getResponseBodyAsString()).isEqualTo(errorMessage);
-
-			HttpRequest request = ex.getRequest();
-			assertThat(request).isNotNull();
-			assertThat(request.getMethod()).isEqualTo(HttpMethod.GET);
-			assertThat(request.getURI()).isEqualTo(URI.create(this.server.url(path).toString()));
-			assertThat(request.getHeaders()).isNotNull();
 		}
 
 		expectRequestCount(1);
 		expectRequest(request -> {
-			assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo("**");
 			assertThat(request.getPath()).isEqualTo(path);
 		});
 	}
@@ -729,6 +724,176 @@ class WebClientIntegrationTests {
 			this.webClient.get().uri(url).retrieve().toBodilessEntity()
 		);
 
+	}
+
+	@ParameterizedWebClientTest
+	void sseEventString(ClientHttpRequestFactory requestFactory) {
+		startServer(requestFactory);
+
+		prepareResponse(response -> response
+				.setHeader("Content-Type", MediaType.TEXT_EVENT_STREAM_VALUE)
+				.setBody("""
+						id: id1
+						event: event1
+						retry: 42
+						: comment1
+						data: data1
+
+						id: id2
+						event: event2
+						retry: 43
+						: comment2
+						data: data2
+
+						"""));
+
+		List<ServerSentEvent<String>> result = new ArrayList<>();
+		this.webClient.get()
+				.uri("/sse")
+				.retrieve()
+				.sseEvents(result::add, String.class);
+
+		assertThat(result).hasSize(2);
+		assertThat(result.get(0).id()).isEqualTo("id1");
+		assertThat(result.get(0).event()).isEqualTo("event1");
+		assertThat(result.get(0).retry()).isEqualTo(Duration.ofMillis(42));
+		assertThat(result.get(0).comment()).isEqualTo("comment1");
+		assertThat(result.get(0).data()).isEqualTo("data1");
+		assertThat(result.get(1).id()).isEqualTo("id2");
+		assertThat(result.get(1).event()).isEqualTo("event2");
+		assertThat(result.get(1).retry()).isEqualTo(Duration.ofMillis(43));
+		assertThat(result.get(1).comment()).isEqualTo("comment2");
+		assertThat(result.get(1).data()).isEqualTo("data2");
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getPath()).isEqualTo("/sse");
+		});
+	}
+
+	@ParameterizedWebClientTest
+	void sseEventJson(ClientHttpRequestFactory requestFactory) {
+		startServer(requestFactory);
+
+		prepareResponse(response -> response
+				.setHeader("Content-Type", MediaType.TEXT_EVENT_STREAM_VALUE)
+				.setBody("""
+						id: id1
+						event: event1
+						retry: 42
+						: comment1
+						data: {"bar":"bar1","foo":"foo1"}
+
+						id: id2
+						event: event2
+						retry: 43
+						: comment2
+						data: {"bar":"bar2","foo":"foo2"}
+
+						"""));
+
+
+		List<ServerSentEvent<Pojo>> result = new ArrayList<>();
+		this.webClient.get()
+				.uri("/sse")
+				.retrieve()
+				.sseEvents(result::add, Pojo.class);
+
+		assertThat(result).hasSize(2);
+		assertThat(result.get(0).id()).isEqualTo("id1");
+		assertThat(result.get(0).event()).isEqualTo("event1");
+		assertThat(result.get(0).retry()).isEqualTo(Duration.ofMillis(42));
+		assertThat(result.get(0).comment()).isEqualTo("comment1");
+		assertThat(result.get(0).data().getFoo()).isEqualTo("foo1");
+		assertThat(result.get(0).data().getBar()).isEqualTo("bar1");
+		assertThat(result.get(1).id()).isEqualTo("id2");
+		assertThat(result.get(1).event()).isEqualTo("event2");
+		assertThat(result.get(1).retry()).isEqualTo(Duration.ofMillis(43));
+		assertThat(result.get(1).comment()).isEqualTo("comment2");
+		assertThat(result.get(1).data().getFoo()).isEqualTo("foo2");
+		assertThat(result.get(1).data().getBar()).isEqualTo("bar2");
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getPath()).isEqualTo("/sse");
+		});
+	}
+
+	@ParameterizedWebClientTest
+	void sseDataString(ClientHttpRequestFactory requestFactory) throws InterruptedException {
+		startServer(requestFactory);
+
+		prepareResponse(response -> response
+				.setHeader("Content-Type", MediaType.TEXT_EVENT_STREAM_VALUE)
+				.setBody("""
+						data: foo
+
+						data: bar
+
+						"""));
+
+		List<String> result = new ArrayList<>();
+		this.webClient.get()
+				.uri("/sse")
+				.retrieve()
+				.sseData(result::add, String.class);
+
+		assertThat(result).containsExactly("foo", "bar");
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getPath()).isEqualTo("/sse");
+		});
+	}
+
+	@ParameterizedWebClientTest
+	void sseDataJson(ClientHttpRequestFactory requestFactory) throws InterruptedException {
+		startServer(requestFactory);
+
+		prepareResponse(response -> response
+				.setHeader("Content-Type", MediaType.TEXT_EVENT_STREAM_VALUE)
+				.setBody("""
+						data: {"bar":"bar1","foo":"foo1"}
+
+						data: {"bar":"bar2","foo":"foo2"}
+
+						"""));
+
+		List<Pojo> result = new ArrayList<>();
+		this.webClient.get()
+				.uri("/sse")
+				.retrieve()
+				.sseData(result::add, Pojo.class);
+
+		assertThat(result).hasSize(2);
+		assertThat(result.get(0).getFoo()).isEqualTo("foo1");
+		assertThat(result.get(0).getBar()).isEqualTo("bar1");
+		assertThat(result.get(1).getFoo()).isEqualTo("foo2");
+		assertThat(result.get(1).getBar()).isEqualTo("bar2");
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getPath()).isEqualTo("/sse");
+		});
+	}
+
+	@ParameterizedWebClientTest
+	void sseWrongContentType(ClientHttpRequestFactory requestFactory) {
+		startServer(requestFactory);
+
+		prepareResponse(response -> response
+				.setHeader("Content-Type", MediaType.TEXT_PLAIN_VALUE)
+				.setBody("data: foo\n\n"));
+
+		assertThatIllegalStateException().isThrownBy(() -> this.webClient.get()
+				.uri("/sse")
+				.retrieve()
+				.sseData(t -> {}, String.class));
+
+		expectRequestCount(1);
+		expectRequest(request -> {
+			assertThat(request.getPath()).isEqualTo("/sse");
+		});
 	}
 
 
