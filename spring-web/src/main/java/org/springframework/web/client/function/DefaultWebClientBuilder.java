@@ -52,6 +52,8 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilderFactory;
 
 /**
+ * Default implementation of {@link WebClient.Builder}.
+ *
  * @author Arjen Poutsma
  * @since 6.1
  */
@@ -96,9 +98,6 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	@Nullable
 	private HttpHeaders defaultHeaders;
 
-//	@Nullable
-//	private MultiValueMap<String, String> defaultCookies;
-
 	@Nullable
 	private Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest;
 
@@ -136,8 +135,6 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 		else {
 			this.defaultHeaders = null;
 		}
-//		this.defaultCookies = (other.defaultCookies != null ?
-//				new LinkedMultiValueMap<>(other.defaultCookies) : null);
 		this.defaultRequest = other.defaultRequest;
 		this.statusHandlers = (other.statusHandlers != null ? new LinkedHashMap<>(other.statusHandlers) : null);
 
@@ -301,7 +298,7 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 		List<HttpMessageConverter<?>> messageConverters = (this.messageConverters != null ?
 				this.messageConverters : initMessageConverters());
 		return new DefaultWebClient(requestFactory,
-				interceptors, initializers, uriBuilderFactory,
+				this.interceptors, this.initializers, uriBuilderFactory,
 				defaultHeaders,
 				this.statusHandlers,
 				messageConverters,

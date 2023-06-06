@@ -57,13 +57,13 @@ import org.springframework.web.util.UriBuilderFactory;
  * <p>For examples with a response body see:
  * <ul>
  * <li>{@link RequestHeadersSpec#retrieve() retrieve()}
- * <li>{@link RequestHeadersSpec#exchange(RequestHeadersSpec.ExchangeFunction) exchange(Function<ClientHttpRequest, T>)}
+ * <li>{@link RequestHeadersSpec#exchange(RequestHeadersSpec.ExchangeFunction) exchange(Function&lt;ClientHttpRequest, T&gt;)}
  * </ul>
  * <p>For examples with a request body see:
  * <ul>
  * <li>{@link RequestBodySpec#body(Object) body(Object)}
  * <li>{@link RequestBodySpec#body(Object, ParameterizedTypeReference) body(Object, ParameterizedTypeReference)}
- * <li>{@link RequestBodySpec#body(StreamingHttpOutputMessage.Body) body(Consumer<OutputStream>}
+ * <li>{@link RequestBodySpec#body(StreamingHttpOutputMessage.Body) body(Consumer&lt;OutputStream&gt;}
  * </ul>
  *
  * @author Rossen Stoyanchev
@@ -484,7 +484,7 @@ public interface WebClient {
 
 
 		/**
-		 * Defines the contract for {@link #exchange(ExchangeFunction)}
+		 * Defines the contract for {@link #exchange(ExchangeFunction)}.
 		 * @param <T> the type the response will be transformed to
 		 */
 		@FunctionalInterface

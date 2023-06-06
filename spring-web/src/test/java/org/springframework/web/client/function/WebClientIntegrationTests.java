@@ -342,9 +342,7 @@ class WebClientIntegrationTests {
 		);
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 
 	}
 
@@ -363,9 +361,7 @@ class WebClientIntegrationTests {
 		);
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 	}
 
 	@ParameterizedWebClientTest
@@ -382,7 +378,8 @@ class WebClientIntegrationTests {
 					.uri(path)
 					.retrieve()
 					.body(String.class);
-		} catch (WebClientResponseException ex) {
+		}
+		catch (WebClientResponseException ex) {
 			assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
 			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
@@ -390,9 +387,7 @@ class WebClientIntegrationTests {
 		}
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo(path);
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo(path));
 	}
 
 	@ParameterizedWebClientTest
@@ -453,7 +448,8 @@ class WebClientIntegrationTests {
 					.retrieve()
 					.body(String.class);
 
-		} catch (WebClientResponseException ex) {
+		}
+		catch (WebClientResponseException ex) {
 			assertThat(ex.getMessage()).isEqualTo("555 Server Error");
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
 			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
@@ -461,9 +457,7 @@ class WebClientIntegrationTests {
 		}
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/unknownPage");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/unknownPage"));
 	}
 
 	@ParameterizedWebClientTest
@@ -511,9 +505,7 @@ class WebClientIntegrationTests {
 		);
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 	}
 
 	@ParameterizedWebClientTest
@@ -533,9 +525,7 @@ class WebClientIntegrationTests {
 		);
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 	}
 
 	@ParameterizedWebClientTest
@@ -554,9 +544,7 @@ class WebClientIntegrationTests {
 		assertThat(result).isEqualTo("Internal Server error");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 	}
 
 	@ParameterizedWebClientTest
@@ -618,9 +606,7 @@ class WebClientIntegrationTests {
 		assertThat(result).isEqualTo("Not Found");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/greeting");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/greeting"));
 	}
 
 	@ParameterizedWebClientTest
@@ -681,7 +667,8 @@ class WebClientIntegrationTests {
 			List<String> headerValues = response.getHeaders().get("Foo");
 			if (CollectionUtils.isEmpty(headerValues)) {
 				throw new MyException("Response does not contain Foo header");
-			} else {
+			}
+			else {
 				return response;
 			}
 		};
@@ -766,9 +753,7 @@ class WebClientIntegrationTests {
 		assertThat(result.get(1).data()).isEqualTo("data2");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/sse");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/sse"));
 	}
 
 	@ParameterizedWebClientTest
@@ -814,9 +799,7 @@ class WebClientIntegrationTests {
 		assertThat(result.get(1).data().getBar()).isEqualTo("bar2");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/sse");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/sse"));
 	}
 
 	@ParameterizedWebClientTest
@@ -841,9 +824,7 @@ class WebClientIntegrationTests {
 		assertThat(result).containsExactly("foo", "bar");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/sse");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/sse"));
 	}
 
 	@ParameterizedWebClientTest
@@ -872,9 +853,7 @@ class WebClientIntegrationTests {
 		assertThat(result.get(1).getBar()).isEqualTo("bar2");
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/sse");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/sse"));
 	}
 
 	@ParameterizedWebClientTest
@@ -891,9 +870,7 @@ class WebClientIntegrationTests {
 				.sseData(t -> {}, String.class));
 
 		expectRequestCount(1);
-		expectRequest(request -> {
-			assertThat(request.getPath()).isEqualTo("/sse");
-		});
+		expectRequest(request -> assertThat(request.getPath()).isEqualTo("/sse"));
 	}
 
 

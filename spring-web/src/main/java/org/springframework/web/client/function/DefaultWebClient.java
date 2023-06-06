@@ -40,8 +40,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.jetbrains.annotations.NotNull;
-
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
@@ -67,6 +65,8 @@ import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
 
 /**
+ * Default implementation of {@link WebClient}.
+ *
  * @author Arjen Poutsma
  * @since 6.1
  */
@@ -98,13 +98,13 @@ final class DefaultWebClient implements WebClient {
 
 
 	DefaultWebClient(ClientHttpRequestFactory clientRequestFactory,
-					 @Nullable List<ClientHttpRequestInterceptor> interceptors,
-					 @Nullable List<ClientHttpRequestInitializer> initializers,
-					 UriBuilderFactory uriBuilderFactory,
-					 @Nullable HttpHeaders defaultHeaders,
-					 @Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
-					 List<HttpMessageConverter<?>> messageConverters,
-					 DefaultWebClientBuilder builder) {
+					@Nullable List<ClientHttpRequestInterceptor> interceptors,
+					@Nullable List<ClientHttpRequestInitializer> initializers,
+					UriBuilderFactory uriBuilderFactory,
+					@Nullable HttpHeaders defaultHeaders,
+					@Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
+					List<HttpMessageConverter<?>> messageConverters,
+					DefaultWebClientBuilder builder) {
 
 		this.clientRequestFactory = clientRequestFactory;
 		this.initializers = initializers;
@@ -634,14 +634,18 @@ final class DefaultWebClient implements WebClient {
 							data.append('\n');
 						}
 					}
-				} else {
+				}
+				else {
 					if (line.startsWith("id:")) {
 						sseBuilder.id(line.substring(3).trim());
-					} else if (line.startsWith("event:")) {
+					}
+					else if (line.startsWith("event:")) {
 						sseBuilder.event(line.substring(6).trim());
-					} else if (line.startsWith("retry:")) {
+					}
+					else if (line.startsWith("retry:")) {
 						sseBuilder.retry(Duration.ofMillis(Long.parseLong(line.substring(6).trim())));
-					} else if (line.startsWith(":")) {
+					}
+					else if (line.startsWith(":")) {
 						comment = (comment != null ? comment : new StringBuilder());
 						comment.append(line.substring(1).trim()).append('\n');
 					}
@@ -744,7 +748,6 @@ final class DefaultWebClient implements WebClient {
 			}
 		}
 
-		@NotNull
 		private MediaType getContentType() {
 			MediaType contentType = this.clientResponse.getHeaders().getContentType();
 			if (contentType == null) {
