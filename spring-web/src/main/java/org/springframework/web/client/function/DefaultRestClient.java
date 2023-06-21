@@ -21,7 +21,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URI;
@@ -65,14 +64,14 @@ import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
 
 /**
- * Default implementation of {@link WebClient}.
+ * Default implementation of {@link RestClient}.
  *
  * @author Arjen Poutsma
  * @since 6.1
  */
-final class DefaultWebClient implements WebClient {
+final class DefaultRestClient implements RestClient {
 
-	private static final String URI_TEMPLATE_ATTRIBUTE = WebClient.class.getName() + ".uriTemplate";
+	private static final String URI_TEMPLATE_ATTRIBUTE = RestClient.class.getName() + ".uriTemplate";
 
 	private final ClientHttpRequestFactory clientRequestFactory;
 
@@ -92,19 +91,18 @@ final class DefaultWebClient implements WebClient {
 
 	private final List<DefaultResponseSpec.StatusHandler> defaultStatusHandlers;
 
-	private final DefaultWebClientBuilder builder;
+	private final DefaultRestClientBuilder builder;
 
 	private final List<HttpMessageConverter<?>> messageConverters;
 
 
-	DefaultWebClient(ClientHttpRequestFactory clientRequestFactory,
-					@Nullable List<ClientHttpRequestInterceptor> interceptors,
-					@Nullable List<ClientHttpRequestInitializer> initializers,
-					UriBuilderFactory uriBuilderFactory,
-					@Nullable HttpHeaders defaultHeaders,
-					@Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
-					List<HttpMessageConverter<?>> messageConverters,
-					DefaultWebClientBuilder builder) {
+	DefaultRestClient(ClientHttpRequestFactory clientRequestFactory, @Nullable List<ClientHttpRequestInterceptor> interceptors,
+			@Nullable List<ClientHttpRequestInitializer> initializers,
+			UriBuilderFactory uriBuilderFactory,
+			@Nullable HttpHeaders defaultHeaders,
+			@Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
+			List<HttpMessageConverter<?>> messageConverters,
+			DefaultRestClientBuilder builder) {
 
 		this.clientRequestFactory = clientRequestFactory;
 		this.initializers = initializers;
@@ -177,7 +175,7 @@ final class DefaultWebClient implements WebClient {
 
 	@Override
 	public Builder mutate() {
-		return new DefaultWebClientBuilder(this.builder);
+		return new DefaultRestClientBuilder(this.builder);
 	}
 
 
@@ -207,24 +205,24 @@ final class DefaultWebClient implements WebClient {
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Object... uriVariables) {
 			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
-			return uri(DefaultWebClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
+			return uri(DefaultRestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
 
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Map<String, ?> uriVariables) {
 			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
-			return uri(DefaultWebClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
+			return uri(DefaultRestClient.this.uriBuilderFactory.expand(uriTemplate, uriVariables));
 		}
 
 		@Override
 		public RequestBodySpec uri(String uriTemplate, Function<UriBuilder, URI> uriFunction) {
 			attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
-			return uri(uriFunction.apply(DefaultWebClient.this.uriBuilderFactory.uriString(uriTemplate)));
+			return uri(uriFunction.apply(DefaultRestClient.this.uriBuilderFactory.uriString(uriTemplate)));
 		}
 
 		@Override
 		public RequestBodySpec uri(Function<UriBuilder, URI> uriFunction) {
-			return uri(uriFunction.apply(DefaultWebClient.this.uriBuilderFactory.builder()));
+			return uri(uriFunction.apply(DefaultRestClient.this.uriBuilderFactory.builder()));
 		}
 
 		@Override
@@ -334,7 +332,7 @@ final class DefaultWebClient implements WebClient {
 			MediaType contentType = clientRequest.getHeaders().getContentType();
 			Class<?> bodyClass = body.getClass();
 
-			for (HttpMessageConverter messageConverter : DefaultWebClient.this.messageConverters) {
+			for (HttpMessageConverter messageConverter : DefaultRestClient.this.messageConverters) {
 				if (messageConverter instanceof GenericHttpMessageConverter genericMessageConverter) {
 					if (genericMessageConverter.canWrite(bodyType, bodyClass, contentType)) {
 						genericMessageConverter.write(body, bodyType, contentType, clientRequest);
@@ -350,7 +348,7 @@ final class DefaultWebClient implements WebClient {
 			if (contentType != null) {
 				message += " and content type \"" + contentType + "\"";
 			}
-			throw new WebClientRequestException(message, this.httpMethod, initUri(), initHeaders());
+			throw new RestClientRequestException(message, this.httpMethod, initUri(), initHeaders());
 		}
 
 		@Override
@@ -385,23 +383,23 @@ final class DefaultWebClient implements WebClient {
 			}
 			catch (IOException ex) {
 				if (clientResponse == null) {
-					throw new WebClientRequestException(ex, this.httpMethod, uri, headers);
+					throw new RestClientRequestException(ex, this.httpMethod, uri, headers);
 				}
 				else {
 					try {
-						byte[] body = WebClientUtils.getBody(clientResponse);
+						byte[] body = RestClientUtils.getBody(clientResponse);
 						Charset charset = null;
 
 						MediaType contentType = clientResponse.getHeaders().getContentType();
 						if (contentType != null) {
 							charset = contentType.getCharset();
 						}
-						throw new WebClientResponseException("Could not execute request: " + ex.getMessage(),
+						throw new RestClientResponseException("Could not execute request: " + ex.getMessage(),
 								clientResponse.getStatusCode(), clientResponse.getStatusText(),
 								clientResponse.getHeaders(), body, charset, null);
 					}
 					catch (IOException ignored) {
-						throw new WebClientException("Could not execute request: " + ex.getMessage(), ex);
+						throw new RestClientException("Could not execute request: " + ex.getMessage(), ex);
 					}
 				}
 			}
@@ -413,11 +411,11 @@ final class DefaultWebClient implements WebClient {
 		}
 
 		private URI initUri() {
-			return (this.uri != null ? this.uri : DefaultWebClient.this.uriBuilderFactory.expand(""));
+			return (this.uri != null ? this.uri : DefaultRestClient.this.uriBuilderFactory.expand(""));
 		}
 
 		private HttpHeaders initHeaders() {
-			HttpHeaders defaultHeaders = DefaultWebClient.this.defaultHeaders;
+			HttpHeaders defaultHeaders = DefaultRestClient.this.defaultHeaders;
 			if (CollectionUtils.isEmpty(this.headers)) {
 				return (defaultHeaders != null ? defaultHeaders : new HttpHeaders());
 			}
@@ -434,19 +432,19 @@ final class DefaultWebClient implements WebClient {
 
 		private ClientHttpRequest createRequest(URI uri) throws IOException {
 			ClientHttpRequestFactory factory;
-			if (DefaultWebClient.this.interceptors != null) {
-				factory = DefaultWebClient.this.interceptingRequestFactory;
+			if (DefaultRestClient.this.interceptors != null) {
+				factory = DefaultRestClient.this.interceptingRequestFactory;
 				if (factory == null) {
-					factory = new InterceptingClientHttpRequestFactory(DefaultWebClient.this.clientRequestFactory, DefaultWebClient.this.interceptors);
-					DefaultWebClient.this.interceptingRequestFactory = factory;
+					factory = new InterceptingClientHttpRequestFactory(DefaultRestClient.this.clientRequestFactory, DefaultRestClient.this.interceptors);
+					DefaultRestClient.this.interceptingRequestFactory = factory;
 				}
 			}
 			else {
-				factory = DefaultWebClient.this.clientRequestFactory;
+				factory = DefaultRestClient.this.clientRequestFactory;
 			}
 			ClientHttpRequest request = factory.createRequest(uri, this.httpMethod);
-			if (DefaultWebClient.this.initializers != null) {
-				DefaultWebClient.this.initializers.forEach(initializer -> initializer.initialize(request));
+			if (DefaultRestClient.this.initializers != null) {
+				DefaultRestClient.this.initializers.forEach(initializer -> initializer.initialize(request));
 			}
 			return request;
 		}
@@ -465,7 +463,7 @@ final class DefaultWebClient implements WebClient {
 
 		private static final StatusHandler DEFAULT_STATUS_HANDLER =
 				new StatusHandler(STATUS_CODE_ERROR,
-						clientResponse -> Optional.of(WebClientResponseException.create(clientResponse)));
+						clientResponse -> Optional.of(RestClientResponseException.create(clientResponse)));
 
 
 		private final ClientHttpResponse clientResponse;
@@ -477,7 +475,7 @@ final class DefaultWebClient implements WebClient {
 
 		DefaultResponseSpec(ClientHttpResponse clientResponse) {
 			this.clientResponse = clientResponse;
-			this.statusHandlers.addAll(DefaultWebClient.this.defaultStatusHandlers);
+			this.statusHandlers.addAll(DefaultRestClient.this.defaultStatusHandlers);
 			this.statusHandlers.add(DEFAULT_STATUS_HANDLER);
 			this.defaultStatusHandlerCount = this.statusHandlers.size();
 		}
@@ -525,7 +523,7 @@ final class DefaultWebClient implements WebClient {
 						.body(body);
 			}
 			catch (IOException ex) {
-				throw new UncheckedIOException("Could not retrieve response status code", ex);
+				throw new RestClientException("Could not retrieve response status code", ex);
 			}
 		}
 
@@ -538,7 +536,7 @@ final class DefaultWebClient implements WebClient {
 						.build();
 			}
 			catch (IOException ex) {
-				WebClientResponseException responseEx = WebClientResponseException.create(this.clientResponse);
+				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
 				responseEx.initCause(ex);
 				throw responseEx;
 			}
@@ -610,7 +608,7 @@ final class DefaultWebClient implements WebClient {
 				}
 			}
 			catch (IOException ex) {
-				WebClientResponseException responseEx = WebClientResponseException.create(this.clientResponse);
+				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
 				responseEx.initCause(ex);
 				throw responseEx;
 			}
@@ -669,7 +667,7 @@ final class DefaultWebClient implements WebClient {
 				return data.substring(0, data.length() - 1);
 			}
 			HttpInputMessage inputMessage = toInputMessage(data);
-			for (HttpMessageConverter<?> messageConverter : DefaultWebClient.this.messageConverters) {
+			for (HttpMessageConverter<?> messageConverter : DefaultRestClient.this.messageConverters) {
 				if (messageConverter instanceof GenericHttpMessageConverter) {
 					GenericHttpMessageConverter<T> theConverter = (GenericHttpMessageConverter<T>) messageConverter;
 					if (theConverter.canRead(eventType, eventClass, MediaType.APPLICATION_JSON)) {
@@ -681,7 +679,7 @@ final class DefaultWebClient implements WebClient {
 					return theConverter.read(eventClass, inputMessage);
 				}
 			}
-			throw new WebClientException("Could not read SSE data as JSON");
+			throw new RestClientException("Could not read SSE data as JSON");
 		}
 
 		private static HttpInputMessage toInputMessage(StringBuilder builder) {
@@ -725,7 +723,7 @@ final class DefaultWebClient implements WebClient {
 
 				MediaType contentType = getContentType();
 
-				for (HttpMessageConverter<?> messageConverter : DefaultWebClient.this.messageConverters) {
+				for (HttpMessageConverter<?> messageConverter : DefaultRestClient.this.messageConverters) {
 					if (messageConverter instanceof GenericHttpMessageConverter) {
 						GenericHttpMessageConverter<T> theConverter = (GenericHttpMessageConverter<T>) messageConverter;
 						if (theConverter.canRead(bodyType, bodyClass, contentType)) {
@@ -739,10 +737,10 @@ final class DefaultWebClient implements WebClient {
 				}
 				throw new UnknownContentTypeException(bodyType, contentType,
 						this.clientResponse.getStatusCode(), this.clientResponse.getStatusText(),
-						this.clientResponse.getHeaders(), WebClientUtils.getBody(this.clientResponse));
+						this.clientResponse.getHeaders(), RestClientUtils.getBody(this.clientResponse));
 			}
 			catch (IOException ex) {
-				WebClientResponseException responseEx = WebClientResponseException.create(this.clientResponse);
+				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
 				responseEx.initCause(ex);
 				throw responseEx;
 			}

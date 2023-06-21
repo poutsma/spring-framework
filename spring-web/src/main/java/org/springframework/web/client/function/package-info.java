@@ -1,5 +1,5 @@
 /**
- * Provides the non-reactive WebClient.
+ * Provides the synchronous RestClient.
  */
 @NonNullApi
 @NonNullFields

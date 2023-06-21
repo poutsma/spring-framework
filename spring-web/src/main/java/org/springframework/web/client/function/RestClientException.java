@@ -16,25 +16,34 @@
 
 package org.springframework.web.client.function;
 
-import java.io.IOException;
-
-import org.springframework.http.HttpInputMessage;
-import org.springframework.util.FileCopyUtils;
+import org.springframework.core.NestedRuntimeException;
 
 /**
- * Internal methods shared between types in this package.
+ * Base class for exception published by {@link RestClient} in case of errors.
  *
  * @author Arjen Poutsma
  * @since 6.1
  */
-abstract class WebClientUtils {
+public class RestClientException extends NestedRuntimeException {
 
-	public static byte[] getBody(HttpInputMessage message) {
-		try {
-			return FileCopyUtils.copyToByteArray(message.getBody());
-		}
-		catch (IOException ignore) {
-		}
-		return new byte[0];
+	private static final long serialVersionUID = 472776714118912856L;
+
+	/**
+	 * Construct a new instance of {@code RestClientException} with the given message.
+	 * @param msg the message
+	 */
+	public RestClientException(String msg) {
+		super(msg);
 	}
+
+	/**
+	 * Construct a new instance of {@code RestClientException} with the given message
+	 * and exception.
+	 * @param msg the message
+	 * @param ex the exception
+	 */
+	public RestClientException(String msg, Throwable ex) {
+		super(msg, ex);
+	}
+
 }

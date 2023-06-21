@@ -52,12 +52,12 @@ import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilderFactory;
 
 /**
- * Default implementation of {@link WebClient.Builder}.
+ * Default implementation of {@link RestClient.Builder}.
  *
  * @author Arjen Poutsma
  * @since 6.1
  */
-final class DefaultWebClientBuilder implements WebClient.Builder {
+final class DefaultRestClientBuilder implements RestClient.Builder {
 
 	private static final boolean httpComponentsClientPresent;
 
@@ -75,7 +75,7 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
 
 	static {
-		ClassLoader loader = DefaultWebClientBuilder.class.getClassLoader();
+		ClassLoader loader = DefaultRestClientBuilder.class.getClassLoader();
 		httpComponentsClientPresent = ClassUtils.isPresent("org.apache.hc.client5.http.classic.HttpClient", loader);
 		jackson2Present = ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", loader) &&
 				ClassUtils.isPresent("com.fasterxml.jackson.core.JsonGenerator", loader);
@@ -99,7 +99,7 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	private HttpHeaders defaultHeaders;
 
 	@Nullable
-	private Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest;
+	private Consumer<RestClient.RequestHeadersSpec<?>> defaultRequest;
 
 	@Nullable
 	private Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlers;
@@ -117,10 +117,10 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	private List<ClientHttpRequestInitializer> initializers;
 
 
-	public DefaultWebClientBuilder() {
+	public DefaultRestClientBuilder() {
 	}
 
-	public DefaultWebClientBuilder(DefaultWebClientBuilder other) {
+	public DefaultRestClientBuilder(DefaultRestClientBuilder other) {
 		Assert.notNull(other, "Other must not be null");
 
 		this.baseUrl = other.baseUrl;
@@ -144,31 +144,31 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	}
 
 	@Override
-	public WebClient.Builder baseUrl(String baseUrl) {
+	public RestClient.Builder baseUrl(String baseUrl) {
 		this.baseUrl = baseUrl;
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder defaultUriVariables(Map<String, ?> defaultUriVariables) {
+	public RestClient.Builder defaultUriVariables(Map<String, ?> defaultUriVariables) {
 		this.defaultUriVariables = defaultUriVariables;
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder uriBuilderFactory(UriBuilderFactory uriBuilderFactory) {
+	public RestClient.Builder uriBuilderFactory(UriBuilderFactory uriBuilderFactory) {
 		this.uriBuilderFactory = uriBuilderFactory;
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder defaultHeader(String header, String... values) {
+	public RestClient.Builder defaultHeader(String header, String... values) {
 		initHeaders().put(header, Arrays.asList(values));
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder defaultHeaders(Consumer<HttpHeaders> headersConsumer) {
+	public RestClient.Builder defaultHeaders(Consumer<HttpHeaders> headersConsumer) {
 		headersConsumer.accept(initHeaders());
 		return this;
 	}
@@ -181,14 +181,14 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	}
 
 	@Override
-	public WebClient.Builder defaultRequest(Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest) {
+	public RestClient.Builder defaultRequest(Consumer<RestClient.RequestHeadersSpec<?>> defaultRequest) {
 		this.defaultRequest = this.defaultRequest != null ?
 				this.defaultRequest.andThen(defaultRequest) : defaultRequest;
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
+	public RestClient.Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
 			Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction) {
 		this.statusHandlers = (this.statusHandlers != null ? this.statusHandlers : new LinkedHashMap<>());
 		this.statusHandlers.put(statusPredicate, exceptionFunction);
@@ -196,14 +196,14 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	}
 
 	@Override
-	public WebClient.Builder requestInterceptor(ClientHttpRequestInterceptor interceptor) {
+	public RestClient.Builder requestInterceptor(ClientHttpRequestInterceptor interceptor) {
 		Assert.notNull(interceptor, "Interceptor must not be null");
 		initInterceptors().add(interceptor);
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder requestInterceptors(Consumer<List<ClientHttpRequestInterceptor>> interceptorsConsumer) {
+	public RestClient.Builder requestInterceptors(Consumer<List<ClientHttpRequestInterceptor>> interceptorsConsumer) {
 		interceptorsConsumer.accept(initInterceptors());
 		return this;
 	}
@@ -216,14 +216,14 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 	}
 
 	@Override
-	public WebClient.Builder requestInitializer(ClientHttpRequestInitializer initializer) {
+	public RestClient.Builder requestInitializer(ClientHttpRequestInitializer initializer) {
 		Assert.notNull(initializer, "Initializer must not be null");
 		initInitializers().add(initializer);
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder requestInitializers(Consumer<List<ClientHttpRequestInitializer>> initializersConsumer) {
+	public RestClient.Builder requestInitializers(Consumer<List<ClientHttpRequestInitializer>> initializersConsumer) {
 		initializersConsumer.accept(initInitializers());
 		return this;
 	}
@@ -237,19 +237,19 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
 
 	@Override
-	public WebClient.Builder requestFactory(ClientHttpRequestFactory requestFactory) {
+	public RestClient.Builder requestFactory(ClientHttpRequestFactory requestFactory) {
 		this.requestFactory = requestFactory;
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder messageConverters(Consumer<List<HttpMessageConverter<?>>> configurer) {
+	public RestClient.Builder messageConverters(Consumer<List<HttpMessageConverter<?>>> configurer) {
 		configurer.accept(initMessageConverters());
 		return this;
 	}
 
 	@Override
-	public WebClient.Builder apply(Consumer<WebClient.Builder> builderConsumer) {
+	public RestClient.Builder apply(Consumer<RestClient.Builder> builderConsumer) {
 		builderConsumer.accept(this);
 		return this;
 	}
@@ -286,23 +286,23 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
 
 	@Override
-	public WebClient.Builder clone() {
-		return new DefaultWebClientBuilder(this);
+	public RestClient.Builder clone() {
+		return new DefaultRestClientBuilder(this);
 	}
 
 	@Override
-	public WebClient build() {
+	public RestClient build() {
 		ClientHttpRequestFactory requestFactory = initRequestFactory();
 		UriBuilderFactory uriBuilderFactory = initUriBuilderFactory();
 		HttpHeaders defaultHeaders = copyDefaultHeaders();
 		List<HttpMessageConverter<?>> messageConverters = (this.messageConverters != null ?
 				this.messageConverters : initMessageConverters());
-		return new DefaultWebClient(requestFactory,
+		return new DefaultRestClient(requestFactory,
 				this.interceptors, this.initializers, uriBuilderFactory,
 				defaultHeaders,
 				this.statusHandlers,
 				messageConverters,
-				new DefaultWebClientBuilder(this)
+				new DefaultRestClientBuilder(this)
 				);
 	}
 

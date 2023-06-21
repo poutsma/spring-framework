@@ -29,7 +29,7 @@ import org.springframework.http.HttpMethod;
  * @author Arjen Poutsma
  * @since 6.1
  */
-public class WebClientRequestException extends WebClientException {
+public class RestClientRequestException extends RestClientException {
 
 	private static final long serialVersionUID = -5139991985321385006L;
 
@@ -44,7 +44,7 @@ public class WebClientRequestException extends WebClientException {
 	/**
 	 * Constructor for throwable.
 	 */
-	public WebClientRequestException(Throwable ex, HttpMethod method, URI uri, HttpHeaders headers) {
+	public RestClientRequestException(Throwable ex, HttpMethod method, URI uri, HttpHeaders headers) {
 		super(ex.getMessage(), ex);
 
 		this.method = method;
@@ -52,7 +52,7 @@ public class WebClientRequestException extends WebClientException {
 		this.headers = copy(headers);
 	}
 
-	public WebClientRequestException(String msg, HttpMethod method, URI uri, HttpHeaders headers) {
+	public RestClientRequestException(String msg, HttpMethod method, URI uri, HttpHeaders headers) {
 		super(msg);
 
 		this.method = method;
@@ -62,7 +62,7 @@ public class WebClientRequestException extends WebClientException {
 
 	/**
 	 * Not all {@code HttpHeaders} implementations are serializable, so we
-	 * make a copy to ensure that {@code WebClientRequestException} is.
+	 * make a copy to ensure that {@code RestClientRequestException} is.
 	 */
 	private static HttpHeaders copy(HttpHeaders headers) {
 		HttpHeaders result = new HttpHeaders();

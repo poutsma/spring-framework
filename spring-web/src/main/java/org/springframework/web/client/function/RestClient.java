@@ -48,11 +48,12 @@ import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
 
 /**
- * Non-blocking, reactive client to perform HTTP requests, exposing a fluent,
- * reactive API over underlying HTTP client libraries such as Reactor Netty.
+ * Client to perform HTTP requests, exposing a fluent, synchronous API over
+ * underlying HTTP client libraries such the JDK {@code HttpClient}, Apache
+ * HttpComponents, and others.
  *
  * <p>Use static factory methods {@link #create()} or {@link #create(String)},
- * or {@link WebClient#builder()} to prepare an instance.
+ * or {@link RestClient#builder()} to prepare an instance.
  *
  * <p>For examples with a response body see:
  * <ul>
@@ -66,13 +67,10 @@ import org.springframework.web.util.UriBuilderFactory;
  * <li>{@link RequestBodySpec#body(StreamingHttpOutputMessage.Body) body(Consumer&lt;OutputStream&gt;}
  * </ul>
  *
- * @author Rossen Stoyanchev
  * @author Arjen Poutsma
- * @author Sebastien Deleuze
- * @author Brian Clozel
  * @since 6.1
  */
-public interface WebClient {
+public interface RestClient {
 
 	/**
 	 * Start building an HTTP GET request.
@@ -124,8 +122,8 @@ public interface WebClient {
 
 
 	/**
-	 * Return a builder to create a new {@code WebClient} whose settings are
-	 * replicated from the current {@code WebClient}.
+	 * Return a builder to create a new {@code RestClient} whose settings are
+	 * replicated from the current {@code RestClient}.
 	 */
 	Builder mutate();
 
@@ -133,12 +131,12 @@ public interface WebClient {
 	// Static, factory methods
 
 	/**
-	 * Create a new {@code WebClient} with Reactor Netty by default.
+	 * Create a new {@code RestClient} with Reactor Netty by default.
 	 * @see #create(String)
 	 * @see #builder()
 	 */
-	static WebClient create() {
-		return new DefaultWebClientBuilder().build();
+	static RestClient create() {
+		return new DefaultRestClientBuilder().build();
 	}
 
 	/**
@@ -147,20 +145,20 @@ public interface WebClient {
 	 * @param baseUrl the base URI for all requests
 	 * @see #builder()
 	 */
-	static WebClient create(String baseUrl) {
-		return new DefaultWebClientBuilder().baseUrl(baseUrl).build();
+	static RestClient create(String baseUrl) {
+		return new DefaultRestClientBuilder().baseUrl(baseUrl).build();
 	}
 
 	/**
-	 * Obtain a {@code WebClient} builder.
+	 * Obtain a {@code RestClient} builder.
 	 */
-	static WebClient.Builder builder() {
-		return new DefaultWebClientBuilder();
+	static RestClient.Builder builder() {
+		return new DefaultRestClientBuilder();
 	}
 
 
 	/**
-	 * A mutable builder for creating a {@link WebClient}.
+	 * A mutable builder for creating a {@link RestClient}.
 	 */
 	interface Builder {
 
@@ -170,7 +168,7 @@ public interface WebClient {
 		 * <pre class="code">
 		 * String baseUrl = "https://abc.go.com/v1";
 		 * DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(baseUrl);
-		 * WebClient client = WebClient.builder().uriBuilderFactory(factory).build();
+		 * RestClient client = RestClient.builder().uriBuilderFactory(factory).build();
 		 * </pre>
 		 * <p>The {@code DefaultUriBuilderFactory} is used to prepare the URL
 		 * for every request with the given base URL, unless the URL request
@@ -191,7 +189,7 @@ public interface WebClient {
 		 * Map&lt;String, ?&gt; defaultVars = ...;
 		 * DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory();
 		 * factory.setDefaultVariables(defaultVars);
-		 * WebClient client = WebClient.builder().uriBuilderFactory(factory).build();
+		 * RestClient client = RestClient.builder().uriBuilderFactory(factory).build();
 		 * </pre>
 		 * <p><strong>Note:</strong> this method is mutually exclusive with
 		 * {@link #uriBuilderFactory(UriBuilderFactory)}. If both are used, the
@@ -288,7 +286,7 @@ public interface WebClient {
 		Builder requestFactory(ClientHttpRequestFactory requestFactory);
 
 		/**
-		 * Configure the message converters for the {@code WebClient} to use.
+		 * Configure the message converters for the {@code RestClient} to use.
 		 * @param configurer the configurer to apply
 		 */
 		Builder messageConverters(Consumer<List<HttpMessageConverter<?>>> configurer);
@@ -301,14 +299,14 @@ public interface WebClient {
 		Builder apply(Consumer<Builder> builderConsumer);
 
 		/**
-		 * Clone this {@code WebClient.Builder}.
+		 * Clone this {@code RestClient.Builder}.
 		 */
 		Builder clone();
 
 		/**
-		 * Build the {@link WebClient} instance.
+		 * Build the {@link RestClient} instance.
 		 */
-		WebClient build();
+		RestClient build();
 	}
 
 
@@ -436,7 +434,7 @@ public interface WebClient {
 		 * Proceed to declare how to extract the response. For example to extract
 		 * a {@link ResponseEntity} with status, headers, and body:
 		 * <p><pre>
-		 * Mono&lt;ResponseEntity&lt;Person&gt;&gt; entityMono = client.get()
+		 * ResponseEntity&lt;Person&gt; entity = client.get()
 		 *     .uri("/persons/1")
 		 *     .accept(MediaType.APPLICATION_JSON)
 		 *     .retrieve()
@@ -444,14 +442,14 @@ public interface WebClient {
 		 * </pre>
 		 * <p>Or if interested only in the body:
 		 * <p><pre>
-		 * Mono&lt;Person&gt; entityMono = client.get()
+		 * Person person = client.get()
 		 *     .uri("/persons/1")
 		 *     .accept(MediaType.APPLICATION_JSON)
 		 *     .retrieve()
-		 *     .bodyToMono(Person.class);
+		 *     .body(Person.class);
 		 * </pre>
 		 * <p>By default, 4xx and 5xx responses result in a
-		 * {@link WebClientResponseException}. To customize error handling, use
+		 * {@link RestClientResponseException}. To customize error handling, use
 		 * {@link ResponseSpec#onStatus(Predicate, Function) onStatus} handlers.
 		 */
 		ResponseSpec retrieve();
@@ -577,12 +575,11 @@ public interface WebClient {
 		 * signal to be propagated downstream instead of the response.
 		 * <p>By default, if there are no matching status handlers, responses
 		 * with status codes &gt;= 400 are mapped to
-		 * {@link WebClientResponseException} which is created with
+		 * {@link RestClientResponseException} which is created with
 		 * {@link ClientResponse#createException()}.
 		 * <p>To suppress the treatment of a status code as an error and process
 		 * it as a normal response, return {@code Optional.empty()} from the
 		 * function.
-		 * The response will then propagate downstream to be processed.
 		 * @param statusPredicate to match responses with
 		 * @param exceptionFunction to map the response to an error signal
 		 * @return this builder
@@ -596,6 +593,10 @@ public interface WebClient {
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
 		 * @return the body, or {@code null} if no response body was available
+		 * @throws RestClientException by default when receiving a
+		 * response with a status code of 4xx or 5xx. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * handling.
 		 */
 		@Nullable
 		<T> T body(Class<T> bodyType);
@@ -605,38 +606,47 @@ public interface WebClient {
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
 		 * @return the body, or {@code null} if no response body was available
+		 * @throws RestClientException by default when receiving a
+		 * response with a status code of 4xx or 5xx. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * handling.
 		 */
 		@Nullable
 		<T> T body(ParameterizedTypeReference<T> bodyType);
 
 		/**
 		 * Return a {@code ResponseEntity} with the body decoded to an Object of
-		 * the given type. For an error response (status code of 4xx or 5xx), the
-		 * {@code Mono} emits a {@link WebClientException}. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response handling.
+		 * the given type.
 		 * @param bodyType the expected response body type
 		 * @param <T> response body type
 		 * @return the {@code ResponseEntity} with the decoded body
+		 * @throws RestClientException by default when receiving a
+		 * response with a status code of 4xx or 5xx. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * handling.
 		 */
 		<T> ResponseEntity<T> toEntity(Class<T> bodyType);
 
 		/**
 		 * Return a {@code ResponseEntity} with the body decoded to an Object of
-		 * the given type. For an error response (status code of 4xx or 5xx), the
-		 * {@code Mono} emits a {@link WebClientException}. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response handling.
+		 * the given type.
 		 * @param bodyType the expected response body type
 		 * @param <T> response body type
 		 * @return the {@code ResponseEntity} with the decoded body
+		 * @throws RestClientException by default when receiving a
+		 * response with a status code of 4xx or 5xx. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * handling.
 		 */
 		<T> ResponseEntity<T> toEntity(ParameterizedTypeReference<T> bodyType);
 
-		/*
-		 * Return a {@code ResponseEntity} without a body. For an error response
-		 * (status code of 4xx or 5xx), the {@code Mono} emits a
-		 * {@link WebClientException}. Use {@link #onStatus(Predicate, Function)}
-		 * to customize error response handling.
+		/**
+		 * Return a {@code ResponseEntity} without a body.
 		 * @return the {@code ResponseEntity}
+		 * @throws RestClientException by default when receiving a
+		 * response with a status code of 4xx or 5xx. Use
+		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * handling.
 		 */
 		ResponseEntity<Void> toBodilessEntity();
 

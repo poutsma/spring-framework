@@ -61,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.junit.jupiter.api.Named.named;
 
 /**
- * Integration tests for {@link WebClient}.
+ * Integration tests for {@link RestClient}.
  *
  * @author Brian Clozel
  * @author Rossen Stoyanchev
@@ -70,7 +70,7 @@ import static org.junit.jupiter.api.Named.named;
  * @author Sam Brannen
  * @author Martin Tarjányi
  */
-class WebClientIntegrationTests {
+class RestClientIntegrationTests {
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
@@ -91,12 +91,12 @@ class WebClientIntegrationTests {
 
 	private MockWebServer server;
 
-	private WebClient webClient;
+	private RestClient restClient;
 
 
 	private void startServer(ClientHttpRequestFactory requestFactory) {
 		this.server = new MockWebServer();
-		this.webClient = WebClient
+		this.restClient = RestClient
 				.builder()
 				.requestFactory(requestFactory)
 				.baseUrl(this.server.url("/").toString())
@@ -118,7 +118,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response ->
 				response.setHeader("Content-Type", "text/plain").setBody("Hello Spring!"));
 
-		String result = this.webClient.get()
+		String result = this.restClient.get()
 				.uri("/greeting")
 				.header("X-Test-Header", "testvalue")
 				.retrieve()
@@ -142,7 +142,7 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", "application/json")
 				.setBody("{\"bar\":\"barbar\",\"foo\":\"foofoo\"}"));
 
-		Pojo result = this.webClient.get()
+		Pojo result = this.restClient.get()
 				.uri("/pojo")
 				.accept(MediaType.APPLICATION_JSON)
 				.retrieve()
@@ -166,7 +166,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response
 				.setHeader("Content-Type", "application/json").setBody(content));
 
-		ValueContainer<Pojo> result = this.webClient.get()
+		ValueContainer<Pojo> result = this.restClient.get()
 				.uri("/json").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.body(new ParameterizedTypeReference<ValueContainer<Pojo>>() {});
@@ -191,7 +191,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response
 				.setHeader("Content-Type", "application/json").setBody(content));
 
-		ResponseEntity<String> result = this.webClient.get()
+		ResponseEntity<String> result = this.restClient.get()
 				.uri("/json").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.toEntity(String.class);
@@ -215,7 +215,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response
 				.setHeader("Content-Type", "application/json").setBody("{\"bar\":\"barbar\",\"foo\":\"foofoo\"}"));
 
-		ResponseEntity<Void> result = this.webClient.get()
+		ResponseEntity<Void> result = this.restClient.get()
 				.uri("/json").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.toBodilessEntity();
@@ -240,7 +240,7 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", "application/json")
 				.setBody("[{\"bar\":\"bar1\",\"foo\":\"foo1\"},{\"bar\":\"bar2\",\"foo\":\"foo2\"}]"));
 
-		List<Pojo> result = this.webClient.get()
+		List<Pojo> result = this.restClient.get()
 				.uri("/pojos")
 				.accept(MediaType.APPLICATION_JSON)
 				.retrieve()
@@ -267,7 +267,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response
 				.setHeader("Content-Type", "application/json").setBody(content));
 
-		ResponseEntity<List<Pojo>> result = this.webClient.get()
+		ResponseEntity<List<Pojo>> result = this.restClient.get()
 				.uri("/json").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.toEntity(new ParameterizedTypeReference<>() {});
@@ -296,7 +296,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response
 				.setHeader("Content-Type", "application/json").setBody(content));
 
-		String result = this.webClient.get()
+		String result = this.restClient.get()
 				.uri("/json").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.body(String.class);
@@ -320,7 +320,7 @@ class WebClientIntegrationTests {
 				.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.setBody("null"));
 
-		Map result = this.webClient.get()
+		Map result = this.restClient.get()
 				.uri("/null")
 				.retrieve()
 				.body(Map.class);
@@ -335,8 +335,8 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(404)
 				.setHeader("Content-Type", "text/plain"));
 
-		assertThatExceptionOfType(WebClientResponseException.class).isThrownBy(() ->
-				this.webClient.get().uri("/greeting")
+		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+				this.restClient.get().uri("/greeting")
 						.retrieve()
 						.body(String.class)
 		);
@@ -353,8 +353,8 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(404)
 				.setHeader("Content-Type", "text/plain").setBody("Not Found"));
 
-		assertThatExceptionOfType(WebClientResponseException.class).isThrownBy(() ->
-				this.webClient.get()
+		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
 						.body(String.class)
@@ -374,12 +374,12 @@ class WebClientIntegrationTests {
 
 		String path = "/greeting";
 		try {
-			this.webClient.get()
+			this.restClient.get()
 					.uri(path)
 					.retrieve()
 					.body(String.class);
 		}
-		catch (WebClientResponseException ex) {
+		catch (RestClientResponseException ex) {
 			assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
 			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
@@ -397,8 +397,8 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
-		assertThatExceptionOfType(WebClientResponseException.class).isThrownBy(() ->
-				this.webClient.get()
+		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+				this.restClient.get()
 						.uri("/").accept(MediaType.APPLICATION_JSON)
 						.retrieve()
 						.toEntity(String.class)
@@ -418,8 +418,8 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
-		assertThatExceptionOfType(WebClientResponseException.class).isThrownBy(() ->
-				this.webClient.get()
+		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+				this.restClient.get()
 						.uri("/").accept(MediaType.APPLICATION_JSON)
 						.retrieve()
 						.toBodilessEntity()
@@ -443,13 +443,13 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", "text/plain").setBody(errorMessage));
 
 		try {
-			this.webClient.get()
+			this.restClient.get()
 					.uri("/unknownPage")
 					.retrieve()
 					.body(String.class);
 
 		}
-		catch (WebClientResponseException ex) {
+		catch (RestClientResponseException ex) {
 			assertThat(ex.getMessage()).isEqualTo("555 Server Error");
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
 			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
@@ -467,7 +467,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setHeader("Content-Type", "application/json")
 				.setBody("{\"bar\":\"BARBAR\",\"foo\":\"FOOFOO\"}"));
 
-		Pojo result = this.webClient.post()
+		Pojo result = this.restClient.post()
 				.uri("/pojo/capitalize")
 				.accept(MediaType.APPLICATION_JSON)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -497,7 +497,7 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
 		assertThatExceptionOfType(MyException.class).isThrownBy(() ->
-				this.webClient.get()
+				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
 						.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.of(new MyException("500 error!")))
@@ -516,7 +516,7 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
 		assertThatExceptionOfType(MyException.class).isThrownBy(() ->
-				this.webClient.get()
+				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
 						.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.of(new MyException("500 error!")))
@@ -535,7 +535,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
-		String result = this.webClient.get()
+		String result = this.restClient.get()
 				.uri("/greeting")
 				.retrieve()
 				.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.empty())
@@ -555,7 +555,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody(content));
 
-		ResponseEntity<String> result = this.webClient.get()
+		ResponseEntity<String> result = this.restClient.get()
 				.uri("/").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
 				.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.empty())// use normal response
@@ -578,10 +578,10 @@ class WebClientIntegrationTests {
 
 		prepareResponse(response -> response.setBody("Hello Spring!"));
 
-		String result = this.webClient.get()
+		String result = this.restClient.get()
 				.uri("/greeting")
 				.header("X-Test-Header", "testvalue")
-				.exchange(clientResponse -> new String(WebClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
+				.exchange(clientResponse -> new String(RestClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
 
 		assertThat(result).isEqualTo("Hello Spring!");
 
@@ -599,9 +599,9 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(404)
 				.setHeader("Content-Type", "text/plain").setBody("Not Found"));
 
-		String result = this.webClient.get()
+		String result = this.restClient.get()
 				.uri("/greeting")
-				.exchange(clientResponse -> new String(WebClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
+				.exchange(clientResponse -> new String(RestClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
 
 		assertThat(result).isEqualTo("Not Found");
 
@@ -616,7 +616,7 @@ class WebClientIntegrationTests {
 		prepareResponse(response -> response.setHeader("Content-Type", "text/plain")
 				.setBody("Hello Spring!"));
 
-		WebClient initializedClient = this.webClient.mutate()
+		RestClient initializedClient = this.restClient.mutate()
 				.requestInitializer(request -> request.getHeaders().add("foo", "bar"))
 				.build();
 
@@ -639,7 +639,7 @@ class WebClientIntegrationTests {
 				.setBody("Hello Spring!"));
 
 
-		WebClient interceptedClient = this.webClient.mutate()
+		RestClient interceptedClient = this.restClient.mutate()
 				.requestInterceptor((request, body, execution) -> {
 					request.getHeaders().add("foo", "bar");
 					return execution.execute(request, body);
@@ -673,7 +673,7 @@ class WebClientIntegrationTests {
 			}
 		};
 
-		WebClient interceptedClient = this.webClient.mutate().requestInterceptor(interceptor).build();
+		RestClient interceptedClient = this.restClient.mutate().requestInterceptor(interceptor).build();
 
 		// header not present
 		prepareResponse(response -> response
@@ -707,8 +707,8 @@ class WebClientIntegrationTests {
 		startServer(requestFactory);
 
 		String url = "http://example.invalid";
-		assertThatExceptionOfType(WebClientRequestException.class).isThrownBy(() ->
-			this.webClient.get().uri(url).retrieve().toBodilessEntity()
+		assertThatExceptionOfType(RestClientRequestException.class).isThrownBy(() ->
+			this.restClient.get().uri(url).retrieve().toBodilessEntity()
 		);
 
 	}
@@ -735,7 +735,7 @@ class WebClientIntegrationTests {
 						"""));
 
 		List<ServerSentEvent<String>> result = new ArrayList<>();
-		this.webClient.get()
+		this.restClient.get()
 				.uri("/sse")
 				.retrieve()
 				.sseEvents(result::add, String.class);
@@ -779,7 +779,7 @@ class WebClientIntegrationTests {
 
 
 		List<ServerSentEvent<Pojo>> result = new ArrayList<>();
-		this.webClient.get()
+		this.restClient.get()
 				.uri("/sse")
 				.retrieve()
 				.sseEvents(result::add, Pojo.class);
@@ -816,7 +816,7 @@ class WebClientIntegrationTests {
 						"""));
 
 		List<String> result = new ArrayList<>();
-		this.webClient.get()
+		this.restClient.get()
 				.uri("/sse")
 				.retrieve()
 				.sseData(result::add, String.class);
@@ -841,7 +841,7 @@ class WebClientIntegrationTests {
 						"""));
 
 		List<Pojo> result = new ArrayList<>();
-		this.webClient.get()
+		this.restClient.get()
 				.uri("/sse")
 				.retrieve()
 				.sseData(result::add, Pojo.class);
@@ -864,7 +864,7 @@ class WebClientIntegrationTests {
 				.setHeader("Content-Type", MediaType.TEXT_PLAIN_VALUE)
 				.setBody("data: foo\n\n"));
 
-		assertThatIllegalStateException().isThrownBy(() -> this.webClient.get()
+		assertThatIllegalStateException().isThrownBy(() -> this.restClient.get()
 				.uri("/sse")
 				.retrieve()
 				.sseData(t -> {}, String.class));
