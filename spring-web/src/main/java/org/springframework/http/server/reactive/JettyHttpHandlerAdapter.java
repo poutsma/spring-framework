@@ -26,8 +26,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
+import org.eclipse.jetty.ee10.servlet.HttpOutput;
 import org.eclipse.jetty.http.HttpFields;
-import org.eclipse.jetty.server.HttpOutput;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Response;
 
@@ -106,7 +106,7 @@ public class JettyHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 
 		private static MultiValueMap<String, String> createHeaders(HttpServletRequest servletRequest) {
 			Request request = getRequest(servletRequest);
-			return new JettyHeadersAdapter(HttpFields.build(request.getHttpFields()));
+			return new JettyHeadersAdapter(HttpFields.build(request.getHeaders()));
 		}
 
 		private static Request getRequest(HttpServletRequest request) {
@@ -136,7 +136,7 @@ public class JettyHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 
 		private static HttpHeaders createHeaders(HttpServletResponse servletResponse) {
 			Response response = getResponse(servletResponse);
-			return new HttpHeaders(new JettyHeadersAdapter(response.getHttpFields()));
+			return new HttpHeaders(new JettyHeadersAdapter(response.getHeaders()));
 		}
 
 		private static Response getResponse(HttpServletResponse response) {

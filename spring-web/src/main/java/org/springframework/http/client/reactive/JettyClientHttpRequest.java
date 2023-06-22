@@ -16,13 +16,13 @@
 
 package org.springframework.http.client.reactive;
 
-import java.net.HttpCookie;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.function.Function;
 
-import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.Request;
+import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.reactive.client.ContentChunk;
 import org.eclipse.jetty.reactive.client.ReactiveRequest;
 import org.eclipse.jetty.util.Callback;
@@ -130,7 +130,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	@Override
 	protected void applyCookies() {
 		getCookies().values().stream().flatMap(Collection::stream)
-				.map(cookie -> new HttpCookie(cookie.getName(), cookie.getValue()))
+				.map(cookie -> HttpCookie.build(cookie.getName(), cookie.getValue()).build())
 				.forEach(this.jettyRequest::cookie);
 	}
 

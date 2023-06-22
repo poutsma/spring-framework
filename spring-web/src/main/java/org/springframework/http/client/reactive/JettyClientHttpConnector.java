@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.Request;
 import org.eclipse.jetty.reactive.client.ContentChunk;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
