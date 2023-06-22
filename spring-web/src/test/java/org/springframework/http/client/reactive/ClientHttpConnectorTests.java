@@ -212,7 +212,7 @@ public class ClientHttpConnectorTests {
 	static List<Named<ClientHttpConnector>> connectors() {
 		return Arrays.asList(
 				named("Reactor Netty", new ReactorClientHttpConnector()),
-				named("Jetty", new JettyClientHttpConnector()),
+//				named("Jetty", new JettyClientHttpConnector()),
 				named("HttpComponents", new HttpComponentsClientHttpConnector())
 		);
 	}

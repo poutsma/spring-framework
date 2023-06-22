@@ -33,7 +33,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.HttpComponentsClientHttpConnector;
 import org.springframework.http.client.reactive.JdkClientHttpConnector;
-import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorNetty2ClientHttpConnector;
 import org.springframework.http.codec.ClientCodecConfigurer;
@@ -341,9 +340,11 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 		else if (reactorNetty2ClientPresent) {
 			return new ReactorNetty2ClientHttpConnector();
 		}
+/*
 		else if (jettyClientPresent) {
 			return new JettyClientHttpConnector();
 		}
+*/
 		else if (httpComponentsClientPresent) {
 			return new HttpComponentsClientHttpConnector();
 		}
