@@ -25,11 +25,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import jakarta.servlet.MultipartConfigElement;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.NetworkConnector;
 import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -149,7 +149,7 @@ class RequestPartIntegrationTests {
 				"Content-Length: 7\r\n" +
 				"\r\n" +
 				"content\r\n" +
-				"--" + boundaryText + "--";
+				"--" + boundaryText + "--\r\n ";
 
 		RequestEntity<byte[]> requestEntity =
 				RequestEntity.post(URI.create(baseUrl + "/standard-resolver/spr13319"))
