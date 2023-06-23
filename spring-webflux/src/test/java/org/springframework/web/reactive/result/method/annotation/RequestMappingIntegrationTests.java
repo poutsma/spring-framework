@@ -43,8 +43,10 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 import org.springframework.web.server.adapter.ForwardedHeaderTransformer;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
+import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyHttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 /**
  * Integration tests with {@code @RequestMapping} handler methods.
@@ -84,6 +86,7 @@ class RequestMappingIntegrationTests extends AbstractRequestMappingIntegrationTe
 
 	@ParameterizedHttpServerTest
 	void httpHead(HttpServer httpServer) throws Exception {
+		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: https://github.com/eclipse/jetty.project/issues/9953");
 		startServer(httpServer);
 
 		String url = "http://localhost:" + this.port + "/text";
