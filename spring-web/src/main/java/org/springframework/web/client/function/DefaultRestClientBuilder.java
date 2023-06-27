@@ -21,9 +21,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.springframework.http.HttpHeaders;
@@ -31,7 +29,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInitializer;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
@@ -48,6 +45,9 @@ import org.springframework.http.converter.support.AllEncompassingFormHttpMessage
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.ResponseErrorHandler;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilderFactory;
 
@@ -102,7 +102,7 @@ final class DefaultRestClientBuilder implements RestClient.Builder {
 	private Consumer<RestClient.RequestHeadersSpec<?>> defaultRequest;
 
 	@Nullable
-	private Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlers;
+	private List<StatusHandler> statusHandlers;
 
 	@Nullable
 	private ClientHttpRequestFactory requestFactory;
@@ -136,12 +136,36 @@ final class DefaultRestClientBuilder implements RestClient.Builder {
 			this.defaultHeaders = null;
 		}
 		this.defaultRequest = other.defaultRequest;
-		this.statusHandlers = (other.statusHandlers != null ? new LinkedHashMap<>(other.statusHandlers) : null);
+		this.statusHandlers = (other.statusHandlers != null ? new ArrayList<>(other.statusHandlers) : null);
 
 		this.requestFactory = other.requestFactory;
 		this.messageConverters = (other.messageConverters != null ?
 				new ArrayList<>(other.messageConverters) : null);
+
+		this.interceptors = (other.interceptors != null) ? new ArrayList<>(other.interceptors) : null;
+		this.initializers = (other.initializers != null) ? new ArrayList<>(other.initializers) : null;
 	}
+
+	public DefaultRestClientBuilder(RestTemplate restTemplate) {
+		Assert.notNull(restTemplate, "RestTemplate must not be null");
+
+		if (restTemplate.getUriTemplateHandler() instanceof UriBuilderFactory builderFactory) {
+			this.uriBuilderFactory = builderFactory;
+		}
+		this.statusHandlers = new ArrayList<>();
+		this.statusHandlers.add(StatusHandler.fromErrorHandler(restTemplate.getErrorHandler()));
+
+		this.requestFactory = restTemplate.getRequestFactory();
+		this.messageConverters = new ArrayList<>(restTemplate.getMessageConverters());
+
+		if (!CollectionUtils.isEmpty(restTemplate.getInterceptors())) {
+			this.interceptors = new ArrayList<>(restTemplate.getInterceptors());
+		}
+		if (!CollectionUtils.isEmpty(restTemplate.getClientHttpRequestInitializers())) {
+			this.initializers = new ArrayList<>(restTemplate.getClientHttpRequestInitializers());
+		}
+	}
+
 
 	@Override
 	public RestClient.Builder baseUrl(String baseUrl) {
@@ -188,10 +212,20 @@ final class DefaultRestClientBuilder implements RestClient.Builder {
 	}
 
 	@Override
-	public RestClient.Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
-			Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction) {
-		this.statusHandlers = (this.statusHandlers != null ? this.statusHandlers : new LinkedHashMap<>());
-		this.statusHandlers.put(statusPredicate, exceptionFunction);
+	public RestClient.Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate, RestClient.ResponseSpec.ErrorHandler errorHandler) {
+		return defaultStatusHandlerInternal(StatusHandler.of(statusPredicate, errorHandler));
+	}
+
+	@Override
+	public RestClient.Builder defaultStatusHandler(ResponseErrorHandler errorHandler) {
+		return defaultStatusHandlerInternal(StatusHandler.fromErrorHandler(errorHandler));
+	}
+
+	private RestClient.Builder defaultStatusHandlerInternal(StatusHandler statusHandler) {
+		if (this.statusHandlers == null) {
+			this.statusHandlers = new ArrayList<>();
+		}
+		this.statusHandlers.add(statusHandler);
 		return this;
 	}
 

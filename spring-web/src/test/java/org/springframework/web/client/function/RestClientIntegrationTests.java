@@ -26,7 +26,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -53,6 +52,9 @@ import org.springframework.http.client.OkHttp3ClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.testfixture.xml.Pojo;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -335,7 +337,7 @@ class RestClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(404)
 				.setHeader("Content-Type", "text/plain"));
 
-		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+		assertThatExceptionOfType(HttpClientErrorException.NotFound.class).isThrownBy(() ->
 				this.restClient.get().uri("/greeting")
 						.retrieve()
 						.body(String.class)
@@ -353,7 +355,7 @@ class RestClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(404)
 				.setHeader("Content-Type", "text/plain").setBody("Not Found"));
 
-		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+		assertThatExceptionOfType(HttpClientErrorException.NotFound.class).isThrownBy(() ->
 				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
@@ -379,10 +381,10 @@ class RestClientIntegrationTests {
 					.retrieve()
 					.body(String.class);
 		}
-		catch (RestClientResponseException ex) {
+		catch (HttpServerErrorException ex) {
 			assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
-			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
+			assertThat(ex.getResponseHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 			assertThat(ex.getResponseBodyAsString()).isEqualTo(errorMessage);
 		}
 
@@ -397,7 +399,7 @@ class RestClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
-		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+		assertThatExceptionOfType(HttpServerErrorException.InternalServerError.class).isThrownBy(() ->
 				this.restClient.get()
 						.uri("/").accept(MediaType.APPLICATION_JSON)
 						.retrieve()
@@ -418,7 +420,7 @@ class RestClientIntegrationTests {
 		prepareResponse(response -> response.setResponseCode(500)
 				.setHeader("Content-Type", "text/plain").setBody("Internal Server error"));
 
-		assertThatExceptionOfType(RestClientResponseException.class).isThrownBy(() ->
+		assertThatExceptionOfType(HttpServerErrorException.InternalServerError.class).isThrownBy(() ->
 				this.restClient.get()
 						.uri("/").accept(MediaType.APPLICATION_JSON)
 						.retrieve()
@@ -449,10 +451,10 @@ class RestClientIntegrationTests {
 					.body(String.class);
 
 		}
-		catch (RestClientResponseException ex) {
-			assertThat(ex.getMessage()).isEqualTo("555 Server Error");
+		catch (HttpServerErrorException ex) {
+			assertThat(ex.getMessage()).isEqualTo("555 Server Error: \"Something went wrong\"");
 			assertThat(ex.getStatusText()).isEqualTo("Server Error");
-			assertThat(ex.getHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
+			assertThat(ex.getResponseHeaders().getContentType()).isEqualTo(MediaType.TEXT_PLAIN);
 			assertThat(ex.getResponseBodyAsString()).isEqualTo(errorMessage);
 		}
 
@@ -500,7 +502,9 @@ class RestClientIntegrationTests {
 				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
-						.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.of(new MyException("500 error!")))
+						.onStatus(HttpStatusCode::is5xxServerError, (request, response) -> {
+									throw new MyException("500 error!");
+								})
 						.body(String.class)
 		);
 
@@ -519,7 +523,9 @@ class RestClientIntegrationTests {
 				this.restClient.get()
 						.uri("/greeting")
 						.retrieve()
-						.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.of(new MyException("500 error!")))
+						.onStatus(HttpStatusCode::is5xxServerError, (request, response) -> {
+							throw new MyException("500 error!");
+						})
 						.body(new ParameterizedTypeReference<String>() {
 						})
 		);
@@ -538,7 +544,7 @@ class RestClientIntegrationTests {
 		String result = this.restClient.get()
 				.uri("/greeting")
 				.retrieve()
-				.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.empty())
+				.onStatus(HttpStatusCode::is5xxServerError, (request, response) -> {})
 				.body(String.class);
 
 		assertThat(result).isEqualTo("Internal Server error");
@@ -558,7 +564,7 @@ class RestClientIntegrationTests {
 		ResponseEntity<String> result = this.restClient.get()
 				.uri("/").accept(MediaType.APPLICATION_JSON)
 				.retrieve()
-				.onStatus(HttpStatusCode::is5xxServerError, response -> Optional.empty())// use normal response
+				.onStatus(HttpStatusCode::is5xxServerError, (request, response) -> {})
 				.toEntity(String.class);
 
 
@@ -581,7 +587,7 @@ class RestClientIntegrationTests {
 		String result = this.restClient.get()
 				.uri("/greeting")
 				.header("X-Test-Header", "testvalue")
-				.exchange(clientResponse -> new String(RestClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
+				.exchange((request, response) -> new String(RestClientUtils.getBody(response), StandardCharsets.UTF_8));
 
 		assertThat(result).isEqualTo("Hello Spring!");
 
@@ -601,7 +607,7 @@ class RestClientIntegrationTests {
 
 		String result = this.restClient.get()
 				.uri("/greeting")
-				.exchange(clientResponse -> new String(RestClientUtils.getBody(clientResponse), StandardCharsets.UTF_8));
+				.exchange((request, response) -> new String(RestClientUtils.getBody(response), StandardCharsets.UTF_8));
 
 		assertThat(result).isEqualTo("Not Found");
 
@@ -707,7 +713,7 @@ class RestClientIntegrationTests {
 		startServer(requestFactory);
 
 		String url = "http://example.invalid";
-		assertThatExceptionOfType(RestClientRequestException.class).isThrownBy(() ->
+		assertThatExceptionOfType(ResourceAccessException.class).isThrownBy(() ->
 			this.restClient.get().uri(url).retrieve().toBodilessEntity()
 		);
 

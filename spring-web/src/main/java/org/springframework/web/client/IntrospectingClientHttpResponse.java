@@ -23,6 +23,7 @@ import java.io.PushbackInputStream;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.ClientHttpResponseDecorator;
 import org.springframework.lang.Nullable;
 
 /**

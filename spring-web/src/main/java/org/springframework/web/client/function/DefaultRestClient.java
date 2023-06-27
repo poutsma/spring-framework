@@ -30,19 +30,22 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.ResolvableType;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,9 +59,13 @@ import org.springframework.http.client.InterceptingClientHttpRequestFactory;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.converter.GenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.ResponseErrorHandler;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.UnknownContentTypeException;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
@@ -71,7 +78,10 @@ import org.springframework.web.util.UriBuilderFactory;
  */
 final class DefaultRestClient implements RestClient {
 
+	private static final Log logger = LogFactory.getLog(DefaultRestClient.class);
+
 	private static final String URI_TEMPLATE_ATTRIBUTE = RestClient.class.getName() + ".uriTemplate";
+
 
 	private final ClientHttpRequestFactory clientRequestFactory;
 
@@ -89,7 +99,7 @@ final class DefaultRestClient implements RestClient {
 	@Nullable
 	private final HttpHeaders defaultHeaders;
 
-	private final List<DefaultResponseSpec.StatusHandler> defaultStatusHandlers;
+	private final List<StatusHandler> defaultStatusHandlers;
 
 	private final DefaultRestClientBuilder builder;
 
@@ -100,7 +110,7 @@ final class DefaultRestClient implements RestClient {
 			@Nullable List<ClientHttpRequestInitializer> initializers,
 			UriBuilderFactory uriBuilderFactory,
 			@Nullable HttpHeaders defaultHeaders,
-			@Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> statusHandlerMap,
+			@Nullable List<StatusHandler> statusHandlers,
 			List<HttpMessageConverter<?>> messageConverters,
 			DefaultRestClientBuilder builder) {
 
@@ -109,24 +119,10 @@ final class DefaultRestClient implements RestClient {
 		this.interceptors = interceptors;
 		this.uriBuilderFactory = uriBuilderFactory;
 		this.defaultHeaders = defaultHeaders;
-		this.defaultStatusHandlers = initStatusHandlers(statusHandlerMap);
+		this.defaultStatusHandlers = (statusHandlers != null) ? new ArrayList<>(statusHandlers) : new ArrayList<>();
 		this.messageConverters = messageConverters;
 		this.builder = builder;
 	}
-
-	private static List<DefaultResponseSpec.StatusHandler> initStatusHandlers(
-			@Nullable Map<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> handlerMap) {
-
-		if (CollectionUtils.isEmpty(handlerMap)) {
-			return Collections.emptyList();
-		}
-		List<DefaultResponseSpec.StatusHandler> result = new ArrayList<>();
-		for (Map.Entry<Predicate<HttpStatusCode>, Function<ClientHttpResponse, Optional<? extends RuntimeException>>> entry : handlerMap.entrySet()) {
-			result.add(new DefaultResponseSpec.StatusHandler(entry.getKey(), entry.getValue()));
-		}
-		return result;
-	}
-
 
 	@Override
 	public RequestHeadersUriSpec<?> get() {
@@ -335,11 +331,13 @@ final class DefaultRestClient implements RestClient {
 			for (HttpMessageConverter messageConverter : DefaultRestClient.this.messageConverters) {
 				if (messageConverter instanceof GenericHttpMessageConverter genericMessageConverter) {
 					if (genericMessageConverter.canWrite(bodyType, bodyClass, contentType)) {
+						logBody(body, contentType, genericMessageConverter);
 						genericMessageConverter.write(body, bodyType, contentType, clientRequest);
 						return;
 					}
 				}
 				if (messageConverter.canWrite(bodyClass, contentType)) {
+					logBody(body, contentType, messageConverter);
 					messageConverter.write(body, contentType, clientRequest);
 					return;
 				}
@@ -348,8 +346,25 @@ final class DefaultRestClient implements RestClient {
 			if (contentType != null) {
 				message += " and content type \"" + contentType + "\"";
 			}
-			throw new RestClientRequestException(message, this.httpMethod, initUri(), initHeaders());
+			throw new RestClientException(message);
 		}
+
+		private void logBody(Object body, @Nullable MediaType mediaType, HttpMessageConverter<?> converter) {
+			if (logger.isDebugEnabled()) {
+				StringBuilder msg = new StringBuilder("Writing [");
+				msg.append(body);
+				msg.append("] ");
+				if (mediaType != null) {
+					msg.append("as \"");
+					msg.append(mediaType);
+					msg.append("\" ");
+				}
+				msg.append("with ");
+				msg.append(converter.getClass().getName());
+				logger.debug(msg.toString());
+			}
+		}
+
 
 		@Override
 		public ResponseSpec retrieve() {
@@ -366,10 +381,9 @@ final class DefaultRestClient implements RestClient {
 
 			ClientHttpResponse clientResponse = null;
 			URI uri = null;
-			HttpHeaders headers = null;
 			try {
 				uri = initUri();
-				headers = initHeaders();
+				HttpHeaders headers = initHeaders();
 				ClientHttpRequest clientRequest = createRequest(uri);
 				clientRequest.getHeaders().addAll(headers);
 				if (this.body != null) {
@@ -379,29 +393,10 @@ final class DefaultRestClient implements RestClient {
 					this.httpRequestConsumer.accept(clientRequest);
 				}
 				clientResponse = clientRequest.execute();
-				return exchangeFunction.exchange(clientResponse);
+				return exchangeFunction.exchange(clientRequest, clientResponse);
 			}
 			catch (IOException ex) {
-				if (clientResponse == null) {
-					throw new RestClientRequestException(ex, this.httpMethod, uri, headers);
-				}
-				else {
-					try {
-						byte[] body = RestClientUtils.getBody(clientResponse);
-						Charset charset = null;
-
-						MediaType contentType = clientResponse.getHeaders().getContentType();
-						if (contentType != null) {
-							charset = contentType.getCharset();
-						}
-						throw new RestClientResponseException("Could not execute request: " + ex.getMessage(),
-								clientResponse.getStatusCode(), clientResponse.getStatusText(),
-								clientResponse.getHeaders(), body, charset, null);
-					}
-					catch (IOException ignored) {
-						throw new RestClientException("Could not execute request: " + ex.getMessage(), ex);
-					}
-				}
+				throw createResourceAccessException(uri, this.httpMethod, ex);
 			}
 			finally {
 				if (close && clientResponse != null) {
@@ -449,6 +444,24 @@ final class DefaultRestClient implements RestClient {
 			return request;
 		}
 
+		private static ResourceAccessException createResourceAccessException(URI url, HttpMethod method, IOException ex) {
+			StringBuilder msg = new StringBuilder("I/O error on ");
+			msg.append(method.name());
+			msg.append(" request for \"");
+			String urlString = url.toString();
+			int idx = urlString.indexOf('?');
+			if (idx != -1) {
+				msg.append(urlString, 0, idx);
+			}
+			else {
+				msg.append(urlString);
+			}
+			msg.append("\": ");
+			msg.append(ex.getMessage());
+			return new ResourceAccessException(msg.toString(), ex);
+		}
+
+
 
 		@FunctionalInterface
 		private interface InternalBody {
@@ -459,12 +472,7 @@ final class DefaultRestClient implements RestClient {
 
 	private class DefaultResponseSpec implements ResponseSpec {
 
-		private static final Predicate<HttpStatusCode> STATUS_CODE_ERROR = HttpStatusCode::isError;
-
-		private static final StatusHandler DEFAULT_STATUS_HANDLER =
-				new StatusHandler(STATUS_CODE_ERROR,
-						clientResponse -> Optional.of(RestClientResponseException.create(clientResponse)));
-
+		private final HttpRequest clientRequest;
 
 		private final ClientHttpResponse clientResponse;
 
@@ -473,21 +481,34 @@ final class DefaultRestClient implements RestClient {
 		private final int defaultStatusHandlerCount;
 
 
-		DefaultResponseSpec(ClientHttpResponse clientResponse) {
+		DefaultResponseSpec(HttpRequest clientRequest, ClientHttpResponse clientResponse) {
+			this.clientRequest = clientRequest;
 			this.clientResponse = clientResponse;
 			this.statusHandlers.addAll(DefaultRestClient.this.defaultStatusHandlers);
-			this.statusHandlers.add(DEFAULT_STATUS_HANDLER);
+			this.statusHandlers.add(StatusHandler.defaultHandler(DefaultRestClient.this.messageConverters));
 			this.defaultStatusHandlerCount = this.statusHandlers.size();
 		}
 
 		@Override
-		public ResponseSpec onStatus(Predicate<HttpStatusCode> statusCodePredicate,
-				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction) {
+		public ResponseSpec onStatus(Predicate<HttpStatusCode> statusPredicate, ErrorHandler errorHandler) {
+			Assert.notNull(statusPredicate, "StatusPredicate must not be null");
+			Assert.notNull(errorHandler, "ErrorHandler must not be null");
 
-			Assert.notNull(statusCodePredicate, "StatusCodePredicate must not be null");
-			Assert.notNull(exceptionFunction, "Function must not be null");
+			return onStatusInternal(StatusHandler.of(statusPredicate, errorHandler));
+		}
+
+		@Override
+		public ResponseSpec onStatus(ResponseErrorHandler errorHandler) {
+			Assert.notNull(errorHandler, "ErrorHandler must not be null");
+
+			return onStatusInternal(StatusHandler.fromErrorHandler(errorHandler));
+		}
+
+		private ResponseSpec onStatusInternal(StatusHandler statusHandler) {
+			Assert.notNull(statusHandler, "StatusHandler must not be null");
+
 			int index = this.statusHandlers.size() - this.defaultStatusHandlerCount;  // Default handlers always last
-			this.statusHandlers.add(index, new StatusHandler(statusCodePredicate, exceptionFunction));
+			this.statusHandlers.add(index, statusHandler);
 			return this;
 		}
 
@@ -523,22 +544,20 @@ final class DefaultRestClient implements RestClient {
 						.body(body);
 			}
 			catch (IOException ex) {
-				throw new RestClientException("Could not retrieve response status code", ex);
+				throw new ResourceAccessException("Could not retrieve response status code: " + ex.getMessage(), ex);
 			}
 		}
 
 		@Override
 		public ResponseEntity<Void> toBodilessEntity() {
 			try (this.clientResponse) {
-				applyStatusHandlers(this.clientResponse);
+				applyStatusHandlers(this.clientRequest, this.clientResponse);
 				return ResponseEntity.status(this.clientResponse.getStatusCode())
 						.headers(this.clientResponse.getHeaders())
 						.build();
 			}
 			catch (IOException ex) {
-				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
-				responseEx.initCause(ex);
-				throw responseEx;
+				throw new ResourceAccessException("Could not retrieve response status code: " + ex.getMessage(), ex);
 			}
 		}
 
@@ -583,7 +602,7 @@ final class DefaultRestClient implements RestClient {
 		private <T> void sseInternal(Consumer<ServerSentEvent<T>> eventHandler, Type eventType, Class<T> eventClass) {
 
 			try (this.clientResponse) {
-				applyStatusHandlers(this.clientResponse);
+				applyStatusHandlers(this.clientRequest, this.clientResponse);
 
 
 				MediaType contentType = getContentType();
@@ -608,9 +627,7 @@ final class DefaultRestClient implements RestClient {
 				}
 			}
 			catch (IOException ex) {
-				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
-				responseEx.initCause(ex);
-				throw responseEx;
+				throw new ResourceAccessException(ex.getMessage(), ex);
 			}
 		}
 
@@ -679,7 +696,7 @@ final class DefaultRestClient implements RestClient {
 					return theConverter.read(eventClass, inputMessage);
 				}
 			}
-			throw new RestClientException("Could not read SSE data as JSON");
+			throw new IOException("Could not read SSE data as JSON");
 		}
 
 		private static HttpInputMessage toInputMessage(StringBuilder builder) {
@@ -692,7 +709,7 @@ final class DefaultRestClient implements RestClient {
 
 			return new HttpInputMessage() {
 				@Override
-				public InputStream getBody() throws IOException {
+				public InputStream getBody() {
 					return body;
 				}
 
@@ -716,33 +733,36 @@ final class DefaultRestClient implements RestClient {
 		}
 
 
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings({"unchecked", "rawtypes"})
 		private <T> T readWithMessageConverters(Type bodyType, Class<T> bodyClass) {
-			try (this.clientResponse) {
-				applyStatusHandlers(this.clientResponse);
+			MediaType contentType = getContentType();
 
-				MediaType contentType = getContentType();
+			try (this.clientResponse) {
+				applyStatusHandlers(this.clientRequest, this.clientResponse);
 
 				for (HttpMessageConverter<?> messageConverter : DefaultRestClient.this.messageConverters) {
-					if (messageConverter instanceof GenericHttpMessageConverter) {
-						GenericHttpMessageConverter<T> theConverter = (GenericHttpMessageConverter<T>) messageConverter;
-						if (theConverter.canRead(bodyType, bodyClass, contentType)) {
-							return theConverter.read(bodyType, bodyClass, this.clientResponse);
+					if (messageConverter instanceof GenericHttpMessageConverter genericHttpMessageConverter) {
+						if (genericHttpMessageConverter.canRead(bodyType, bodyClass, contentType)) {
+							if (logger.isDebugEnabled()) {
+								logger.debug("Reading to [" + ResolvableType.forType(bodyType) + "]");
+							}
+							return (T) genericHttpMessageConverter.read(bodyType, bodyClass, this.clientResponse);
 						}
 					}
 					if (messageConverter.canRead(bodyClass, contentType)) {
-						HttpMessageConverter<T> theConverter = (HttpMessageConverter<T>) messageConverter;
-						return theConverter.read(bodyClass, this.clientResponse);
+						if (logger.isDebugEnabled()) {
+							logger.debug("Reading to [" + bodyClass.getName() + "] as \"" + contentType + "\"");
+						}
+						return (T) messageConverter.read((Class)bodyClass, this.clientResponse);
 					}
 				}
 				throw new UnknownContentTypeException(bodyType, contentType,
 						this.clientResponse.getStatusCode(), this.clientResponse.getStatusText(),
 						this.clientResponse.getHeaders(), RestClientUtils.getBody(this.clientResponse));
 			}
-			catch (IOException ex) {
-				RestClientResponseException responseEx = RestClientResponseException.create(this.clientResponse);
-				responseEx.initCause(ex);
-				throw responseEx;
+			catch (IOException | HttpMessageNotReadableException ex) {
+				throw new RestClientException("Error while extracting response for type [" +
+						ResolvableType.forType(bodyType) + "] and content type [" + contentType + "]", ex);
 			}
 		}
 
@@ -754,43 +774,15 @@ final class DefaultRestClient implements RestClient {
 			return contentType;
 		}
 
-		private void applyStatusHandlers(ClientHttpResponse response) throws IOException {
-			HttpStatusCode statusCode = response.getStatusCode();
+		private void applyStatusHandlers(HttpRequest request, ClientHttpResponse response) throws IOException {
 			for (StatusHandler handler : this.statusHandlers) {
-				if (handler.test(statusCode)) {
-					Optional<? extends RuntimeException> result = handler.apply(response);
-					if (result.isPresent()) {
-						throw result.get();
-					}
-					else {
-						return;
-					}
+				if (handler.test(response)) {
+					handler.handle(request, response);
+					return;
 				}
 			}
 		}
 
-
-		private static class StatusHandler {
-
-			private final Predicate<HttpStatusCode> predicate;
-
-			private final Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction;
-
-			public StatusHandler(Predicate<HttpStatusCode> predicate,
-					Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction) {
-
-				this.predicate = predicate;
-				this.exceptionFunction = exceptionFunction;
-			}
-
-			public boolean test(HttpStatusCode status) {
-				return this.predicate.test(status);
-			}
-
-			public Optional<? extends RuntimeException> apply(ClientHttpResponse response) {
-				return this.exceptionFunction.apply(response);
-			}
-		}
 
 	}
 }

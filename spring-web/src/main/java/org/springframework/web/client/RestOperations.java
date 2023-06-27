@@ -26,11 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.support.HttpAccessor;
-import org.springframework.http.client.support.InterceptingHttpAccessor;
 import org.springframework.lang.Nullable;
-import org.springframework.web.client.function.RestClient;
-import org.springframework.web.util.UriBuilderFactory;
 
 /**
  * Interface specifying a basic set of RESTful operations.
@@ -698,30 +694,5 @@ public interface RestOperations {
 	@Nullable
 	<T> T execute(URI url, HttpMethod method, @Nullable RequestCallback requestCallback,
 			@Nullable ResponseExtractor<T> responseExtractor) throws RestClientException;
-
-
-	/**
-	 * Returns a {@code RestClient} configured with the same configuration
-	 * as this {@code RestTemplate}.
-	 * @return a identically configured {@code RestClient}
-	 * @since 6.1
-	 */
-	default RestClient asRestClient() {
-		RestClient.Builder builder = RestClient.builder();
-		if (this instanceof HttpAccessor accessor) {
-			builder.requestFactory(accessor.getRequestFactory());
-			builder.requestInitializers(list -> list.addAll(accessor.getClientHttpRequestInitializers()));
-		}
-		if (this instanceof InterceptingHttpAccessor interceptingAccessor) {
-			builder.requestInterceptors(list -> list.addAll(interceptingAccessor.getInterceptors()));
-		}
-		if (this instanceof RestTemplate restTemplate) {
-			builder.messageConverters(list -> list.addAll(restTemplate.getMessageConverters()));
-			if (restTemplate.getUriTemplateHandler() instanceof UriBuilderFactory uriBuilderFactory) {
-				builder.uriBuilderFactory(uriBuilderFactory);
-			}
-		}
-		return builder.build();
-	}
 
 }

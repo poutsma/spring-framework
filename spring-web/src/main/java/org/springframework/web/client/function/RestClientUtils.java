@@ -17,8 +17,13 @@
 package org.springframework.web.client.function;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpInputMessage;
+import org.springframework.http.HttpMessage;
+import org.springframework.http.MediaType;
+import org.springframework.lang.Nullable;
 import org.springframework.util.FileCopyUtils;
 
 /**
@@ -36,5 +41,12 @@ abstract class RestClientUtils {
 		catch (IOException ignore) {
 		}
 		return new byte[0];
+	}
+
+	@Nullable
+	public static Charset getCharset(HttpMessage response) {
+		HttpHeaders headers = response.getHeaders();
+		MediaType contentType = headers.getContentType();
+		return (contentType != null ? contentType.getCharset() : null);
 	}
 }

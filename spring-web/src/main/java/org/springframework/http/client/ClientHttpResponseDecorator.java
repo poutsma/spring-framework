@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package org.springframework.web.client;
+package org.springframework.http.client;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.Assert;
 
 
@@ -29,13 +28,17 @@ import org.springframework.util.Assert;
  * Wrap and delegate to an existing {@link ClientHttpResponse}.
  *
  * @author Rossen Stoyanchev
- * @since 6.0
+ * @since 6.1
  */
-class ClientHttpResponseDecorator implements ClientHttpResponse {
+public class ClientHttpResponseDecorator implements ClientHttpResponse {
 
 	private final ClientHttpResponse delegate;
 
 
+	/**
+	 * Create a new {@code ClientHttpResponseDecorator} based on the given
+	 * delegate.
+	 */
 	public ClientHttpResponseDecorator(ClientHttpResponse delegate) {
 		Assert.notNull(delegate, "ClientHttpResponse delegate is required");
 		this.delegate = delegate;

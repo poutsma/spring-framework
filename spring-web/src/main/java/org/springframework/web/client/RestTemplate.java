@@ -70,10 +70,8 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeTypeUtils;
-import org.springframework.web.client.function.RestClient;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.DefaultUriBuilderFactory.EncodingMode;
-import org.springframework.web.util.UriBuilderFactory;
 import org.springframework.web.util.UriTemplateHandler;
 
 /**
@@ -804,30 +802,6 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
 			@Nullable ResponseExtractor<T> responseExtractor) throws RestClientException {
 
 		return doExecute(url, null, method, requestCallback, responseExtractor);
-	}
-
-	/**
-	 * Returns a {@code RestClient} configured with the same
-	 * {@linkplain #getRequestFactory() request factory},
-	 * {@link #getClientHttpRequestInitializers() initializers},
-	 * {@link #getInterceptors() interceptors},
-	 * {@link #getMessageConverters() converters}, and
-	 * {@link #getUriTemplateHandler() URI factory}
-	 * as this {@code RestTemplate}.
-	 * @return a identically configured {@code RestClient}
-	 * @since 6.1
-	 */
-	@Override
-	public RestClient asRestClient() {
-		RestClient.Builder builder = RestClient.builder()
-				.requestFactory(getRequestFactory())
-				.requestInitializers(initializers -> initializers.addAll(getClientHttpRequestInitializers()))
-				.requestInterceptors(interceptors -> interceptors.addAll(getInterceptors()))
-				.messageConverters(messageConverters -> messageConverters.addAll(getMessageConverters()));
-		if (getUriTemplateHandler() instanceof UriBuilderFactory uriBuilderFactory) {
-			builder.uriBuilderFactory(uriBuilderFactory);
-		}
-		return builder.build();
 	}
 
 	/**

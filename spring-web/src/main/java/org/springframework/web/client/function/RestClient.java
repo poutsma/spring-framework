@@ -23,7 +23,6 @@ import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -31,6 +30,7 @@ import java.util.function.Predicate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +43,11 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.lang.Nullable;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResponseErrorHandler;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
@@ -131,7 +136,7 @@ public interface RestClient {
 	// Static, factory methods
 
 	/**
-	 * Create a new {@code RestClient} with Reactor Netty by default.
+	 * Create a new {@code RestClient}.
 	 * @see #create(String)
 	 * @see #builder()
 	 */
@@ -150,10 +155,52 @@ public interface RestClient {
 	}
 
 	/**
+	 * Create a new {@code RestClient} based on the configuration of the
+	 * given {@code RestTemplate}. The returned builder is configured with the
+	 * template's
+	 * <ul>
+	 * <li>{@link RestTemplate#getRequestFactory() ClientHttpRequestFactory},</li>
+	 * <li>{@link RestTemplate#getMessageConverters() HttpMessageConverters},</li>
+	 * <li>{@link RestTemplate#getInterceptors() ClientHttpRequestInterceptors},</li>
+	 * <li>{@link RestTemplate#getClientHttpRequestInitializers() ClientHttpRequestInitializers},</li>
+	 * <li>{@link RestTemplate#getUriTemplateHandler() UriBuilderFactory}, and</li>
+	 * <li>{@linkplain RestTemplate#getErrorHandler() error handling}.</li>
+	 * </ul>
+	 * @param restTemplate the rest template to base the returned client's
+	 * configuration on
+	 * @return a {@code RestClient} initialized with the {@code restTemplate}'s
+	 * configuration
+	 */
+	static RestClient create(RestTemplate restTemplate) {
+		return new DefaultRestClientBuilder(restTemplate).build();
+	}
+
+	/**
 	 * Obtain a {@code RestClient} builder.
 	 */
 	static RestClient.Builder builder() {
 		return new DefaultRestClientBuilder();
+	}
+
+	/**
+	 * Obtain a {@code RestClient} builder based on the configuration of the
+	 * given {@code RestTemplate}. The returned builder is configured with the
+	 * template's
+	 * <ul>
+	 * <li>{@link RestTemplate#getRequestFactory() ClientHttpRequestFactory},</li>
+	 * <li>{@link RestTemplate#getMessageConverters() HttpMessageConverters},</li>
+	 * <li>{@link RestTemplate#getInterceptors() ClientHttpRequestInterceptors},</li>
+	 * <li>{@link RestTemplate#getClientHttpRequestInitializers() ClientHttpRequestInitializers},</li>
+	 * <li>{@link RestTemplate#getUriTemplateHandler() UriBuilderFactory}, and</li>
+	 * <li>{@linkplain RestTemplate#getErrorHandler() error handling}.</li>
+	 * </ul>
+	 * @param restTemplate the rest template to base the returned builder's
+	 * configuration on
+	 * @return a {@code RestClient} builder initialized with {@code restTemplate}'s
+	 * configuration
+	 */
+	static RestClient.Builder builder(RestTemplate restTemplate) {
+		return new DefaultRestClientBuilder(restTemplate);
 	}
 
 
@@ -236,16 +283,29 @@ public interface RestClient {
 
 		/**
 		 * Register a default
-		 * {@link ResponseSpec#onStatus(Predicate, Function) status handler} to
-		 * apply to every response. Such default handlers are applied in the
+		 * {@linkplain ResponseSpec#onStatus(Predicate, ResponseSpec.ErrorHandler) status handler}
+		 * to apply to every response. Such default handlers are applied in the
 		 * order in which they are registered, and after any others that are
 		 * registered for a specific response.
 		 * @param statusPredicate to match responses with
-		 * @param exceptionFunction to map the response to an error signal
+		 * @param errorHandler handler that typically, though not necessarily,
+		 * throws an exception
 		 * @return this builder
 		 */
 		Builder defaultStatusHandler(Predicate<HttpStatusCode> statusPredicate,
-				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction);
+						ResponseSpec.ErrorHandler errorHandler);
+
+		/**
+		 * Register a default
+		 * {@linkplain ResponseSpec#onStatus(ResponseErrorHandler) status handler}
+		 * to apply to every response. Such default handlers are applied in the
+		 * order in which they are registered, and after any others that are
+		 * registered for a specific response.
+		 * @param errorHandler handler that typically, though not necessarily,
+		 * throws an exception
+		 * @return this builder
+		 */
+		Builder defaultStatusHandler(ResponseErrorHandler errorHandler);
 
 		/**
 		 * Add the given request interceptor to the end of the interceptor chain.
@@ -448,9 +508,10 @@ public interface RestClient {
 		 *     .retrieve()
 		 *     .body(Person.class);
 		 * </pre>
-		 * <p>By default, 4xx and 5xx responses result in a
-		 * {@link RestClientResponseException}. To customize error handling, use
-		 * {@link ResponseSpec#onStatus(Predicate, Function) onStatus} handlers.
+		 * <p>By default, 4xx response code result in a
+		 * {@link HttpClientErrorException} and 5xx response codes in a
+		 * {@link HttpServerErrorException}. To customize error handling, use
+		 * {@link ResponseSpec#onStatus(Predicate, ResponseSpec.ErrorHandler) onStatus} handlers.
 		 */
 		ResponseSpec retrieve();
 
@@ -490,11 +551,12 @@ public interface RestClient {
 
 			/**
 			 * Exchange the given response into a type {@code T}.
+			 * @param clientRequest the request
 			 * @param clientResponse the response
 			 * @return the exchanged type
 			 * @throws IOException in case of I/O errors
 			 */
-			T exchange(ClientHttpResponse clientResponse) throws IOException;
+			T exchange(HttpRequest clientRequest, ClientHttpResponse clientResponse) throws IOException;
 
 		}
 
@@ -570,32 +632,39 @@ public interface RestClient {
 	 */
 	interface ResponseSpec {
 
-		/*
+		/**
 		 * Provide a function to map specific error status codes to an error
-		 * signal to be propagated downstream instead of the response.
+		 * handler.
 		 * <p>By default, if there are no matching status handlers, responses
-		 * with status codes &gt;= 400 are mapped to
-		 * {@link RestClientResponseException} which is created with
-		 * {@link ClientResponse#createException()}.
-		 * <p>To suppress the treatment of a status code as an error and process
-		 * it as a normal response, return {@code Optional.empty()} from the
-		 * function.
+		 * with status codes &gt;= 400 wil throw a
+		 * {@link RestClientResponseException}.
 		 * @param statusPredicate to match responses with
-		 * @param exceptionFunction to map the response to an error signal
+		 * @param errorHandler handler that typically, though not necessarily,
+		 * throws an exception
 		 * @return this builder
-		 * @see ClientResponse#createException()
 		 */
 		ResponseSpec onStatus(Predicate<HttpStatusCode> statusPredicate,
-				Function<ClientHttpResponse, Optional<? extends RuntimeException>> exceptionFunction);
+				ErrorHandler errorHandler);
+
+		/**
+		 * Provide a function to map specific error status codes to an error
+		 * handler.
+		 * <p>By default, if there are no matching status handlers, responses
+		 * with status codes &gt;= 400 wil throw a
+		 * {@link RestClientResponseException}.
+		 * @param errorHandler the error handler
+		 * @return this builder
+		 */
+		ResponseSpec onStatus(ResponseErrorHandler errorHandler);
 
 		/**
 		 * Extract the body as an object of the given type.
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
 		 * @return the body, or {@code null} if no response body was available
-		 * @throws RestClientException by default when receiving a
+		 * @throws RestClientResponseException by default when receiving a
 		 * response with a status code of 4xx or 5xx. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * {@link #onStatus(Predicate, ErrorHandler)} to customize error response
 		 * handling.
 		 */
 		@Nullable
@@ -606,9 +675,9 @@ public interface RestClient {
 		 * @param bodyType the type of return value
 		 * @param <T> the body type
 		 * @return the body, or {@code null} if no response body was available
-		 * @throws RestClientException by default when receiving a
+		 * @throws RestClientResponseException by default when receiving a
 		 * response with a status code of 4xx or 5xx. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * {@link #onStatus(Predicate, ErrorHandler)} to customize error response
 		 * handling.
 		 */
 		@Nullable
@@ -620,9 +689,9 @@ public interface RestClient {
 		 * @param bodyType the expected response body type
 		 * @param <T> response body type
 		 * @return the {@code ResponseEntity} with the decoded body
-		 * @throws RestClientException by default when receiving a
+		 * @throws RestClientResponseException by default when receiving a
 		 * response with a status code of 4xx or 5xx. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * {@link #onStatus(Predicate, ErrorHandler)} to customize error response
 		 * handling.
 		 */
 		<T> ResponseEntity<T> toEntity(Class<T> bodyType);
@@ -633,9 +702,9 @@ public interface RestClient {
 		 * @param bodyType the expected response body type
 		 * @param <T> response body type
 		 * @return the {@code ResponseEntity} with the decoded body
-		 * @throws RestClientException by default when receiving a
+		 * @throws RestClientResponseException by default when receiving a
 		 * response with a status code of 4xx or 5xx. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * {@link #onStatus(Predicate, ErrorHandler)} to customize error response
 		 * handling.
 		 */
 		<T> ResponseEntity<T> toEntity(ParameterizedTypeReference<T> bodyType);
@@ -643,9 +712,9 @@ public interface RestClient {
 		/**
 		 * Return a {@code ResponseEntity} without a body.
 		 * @return the {@code ResponseEntity}
-		 * @throws RestClientException by default when receiving a
+		 * @throws RestClientResponseException by default when receiving a
 		 * response with a status code of 4xx or 5xx. Use
-		 * {@link #onStatus(Predicate, Function)} to customize error response
+		 * {@link #onStatus(Predicate, ErrorHandler)} to customize error response
 		 * handling.
 		 */
 		ResponseEntity<Void> toBodilessEntity();
@@ -687,6 +756,22 @@ public interface RestClient {
 		 * @param <T> {@code String} or type that can be converted from JSON
 		 */
 		<T> void sseData(Consumer<T> eventHandler, ParameterizedTypeReference<T> eventType);
+
+
+		/**
+		 * Used in {@link #onStatus(Predicate, ErrorHandler)}.
+		 */
+		@FunctionalInterface
+		interface ErrorHandler {
+
+			/**
+			 * Handle the error in the given response.
+			 * @param response the response with the error
+			 * @throws IOException in case of I/O errors
+			 */
+			void handle(HttpRequest request, ClientHttpResponse response) throws IOException;
+
+		}
 
 	}
 
