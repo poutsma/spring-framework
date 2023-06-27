@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -38,11 +39,6 @@ import org.springframework.util.Assert;
  * @see #create(OutputStreamHandler, Executor)
  */
 final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
-
-	private static final ByteBuffer CLOSED = ByteBuffer.allocate(0);
-
-	private static final ByteBuffer CANCELED = ByteBuffer.allocate(0);
-
 
 	private final OutputStreamHandler outputStreamHandler;
 
@@ -139,10 +135,15 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 
 		private final OutputStreamHandler outputStreamHandler;
 
+
+		@Nullable
+		private volatile Throwable error;
+
 		private volatile long requested;
 		static final AtomicLongFieldUpdater<OutputStreamSubscription> REQUESTED =
 				AtomicLongFieldUpdater.newUpdater(OutputStreamSubscription.class, "requested");
 
+		@Nullable
 		private volatile Object parkedThread;
 		static final AtomicReferenceFieldUpdater<OutputStreamSubscription, Object> PARKED_THREAD =
 				AtomicReferenceFieldUpdater.newUpdater(OutputStreamSubscription.class, Object.class, "parkedThread");
@@ -158,14 +159,15 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 
 		@Override
 		public void write(int b) throws IOException {
-			long r = getCancellableRequestOrAwait();
+			checkDemandAndAwaitIfNeeded();
 
 			ByteBuffer byteBuffer = ByteBuffer.allocate(1);
 			byteBuffer.put((byte) b);
 			byteBuffer.flip();
+
 			this.actual.onNext(byteBuffer);
 
-			produceIfNeeded(r);
+			this.produced++;
 		}
 
 		@Override
@@ -175,49 +177,45 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 
 		@Override
 		public void write(byte[] b, int off, int len) throws IOException {
-			long r = getCancellableRequestOrAwait();
+			checkDemandAndAwaitIfNeeded();
 
 			ByteBuffer byteBuffer = ByteBuffer.allocate(len);
 			byteBuffer.put(b, off, len);
 			byteBuffer.flip();
+
 			this.actual.onNext(byteBuffer);
 
-			produceIfNeeded(r);
+			this.produced++;
 		}
 
-		private long getCancellableRequestOrAwait() throws IOException {
-			long r;
-			for (;;) {
-				r = this.requested;
-				if (r == Long.MIN_VALUE) {
-					throw new IOException("Subscription has been cancelled");
-				}
+		private void checkDemandAndAwaitIfNeeded() throws IOException {
+			long r = this.requested;
 
-				if (r != 0) {
-					return r;
-				}
-
-				await();
+			if (isTerminated(r) || isCancelled(r)) {
+				throw new IOException("Subscription has been terminated");
 			}
-		}
 
-		private void produceIfNeeded(long requested) throws IOException {
-			long p = this.produced + 1;
-			if (p == requested) {
+			long p = this.produced;
+			if (p == r) {
 				if (p > 0) {
-					requested = Operators.producedCancellable(REQUESTED, this, p);
+					r = tryProduce(p);
+					this.produced = 0;
 				}
 
-				if (requested == Long.MIN_VALUE) {
-					throw new IOException("Subscription has been cancelled");
+				for (;;) {
+					if (isTerminated(r) || isCancelled(r)) {
+						throw new IOException("Subscription has been terminated");
+					}
+
+					if (r != 0) {
+						return;
+					}
+
+					await();
+
+					r = this.requested;
 				}
-
-				this.produced = 0;
-
-				return;
 			}
-
-			this.produced = p;
 		}
 
 		@Override
@@ -226,13 +224,37 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 
 
 		private void invokeHandler() {
+			// assume sync write within try-with-resource block
+
 			// use BufferedOutputStream, so that written bytes are buffered
 			// before publishing as byte buffer
 			try (OutputStream outputStream = new BufferedOutputStream(this)) {
 				this.outputStreamHandler.handle(outputStream);
 			}
 			catch (IOException ex) {
+				long previousState = tryTerminate();
+				if (isCancelled(previousState)) {
+					return;
+				}
+
+				if (isTerminated(previousState)) {
+					// failure due to illegal requestN
+					this.actual.onError(this.error);
+					return;
+				}
+
 				this.actual.onError(ex);
+				return;
+			}
+
+			long previousState = tryTerminate();
+			if (isCancelled(previousState)) {
+				return;
+			}
+
+			if (isTerminated(previousState)) {
+				// failure due to illegal requestN
+				this.actual.onError(this.error);
 				return;
 			}
 
@@ -242,20 +264,38 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 
 		@Override
 		public void request(long n) {
-			if (Operators.validate(n)) {
-				if (Operators.addCapCancellable(REQUESTED, this, n) == 0) {
-					resume();
+			if (n <= 0) {
+				this.error = new IllegalArgumentException("request should be a positive number");
+				long previousState = tryTerminate();
+
+				if (isTerminated(previousState) || isCancelled(previousState)) {
+					return;
 				}
+
+				if (previousState > 0) {
+					// error should eventually be observed and propagated
+					return;
+				}
+
+				// resume parked thread so it can observe error and propagate it
+				resume();
+				return;
+			}
+
+			if (addCap(n) == 0) {
+				// resume parked thread so it can continue the work
+				resume();
 			}
 		}
 
 		@Override
 		public void cancel() {
-			long previousState = REQUESTED.getAndSet(this, Long.MIN_VALUE);
-			if (previousState == Long.MIN_VALUE || previousState > 0) {
+			long previousState = tryCancel();
+			if (isCancelled(previousState) || previousState > 0) {
 				return;
 			}
 
+			// resume parked thread so it can be unblocked and close all the resources
 			resume();
 		}
 
@@ -289,6 +329,82 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 					LockSupport.unpark((Thread)old);
 				}
 			}
+		}
+
+		private long tryCancel() {
+			for (;;) {
+				long r = requested;
+
+				if (isCancelled(r)) {
+					return r;
+				}
+
+				if (REQUESTED.compareAndSet(this, r, Long.MIN_VALUE)) {
+					return r;
+				}
+			}
+		}
+
+		private long tryTerminate() {
+			for (;;) {
+				long r = requested;
+
+				if (isCancelled(r) || isTerminated(r)) {
+					return r;
+				}
+
+				if (REQUESTED.compareAndSet(this, r, Long.MIN_VALUE | Long.MAX_VALUE)) {
+					return r;
+				}
+			}
+		}
+
+		private long tryProduce(long n) {
+			for (; ; ) {
+				long current = this.requested;
+				if (isTerminated(current) || isCancelled(current)) {
+					return current;
+				}
+				if (current == Long.MAX_VALUE) {
+					return Long.MAX_VALUE;
+				}
+				long update = current - n;
+				if (update < 0L) {
+					update = 0L;
+				}
+				if (REQUESTED.compareAndSet(this, current, update)) {
+					return update;
+				}
+			}
+		}
+
+		private long addCap(long n) {
+			for (; ; ) {
+				long r = this.requested;
+				if (isTerminated(r) || isCancelled(r) || r == Long.MAX_VALUE) {
+					return r;
+				}
+				long u = addCap(r, n);
+				if (REQUESTED.compareAndSet(this, r, u)) {
+					return r;
+				}
+			}
+		}
+
+		static boolean isTerminated(long state) {
+			return state == (Long.MIN_VALUE | Long.MAX_VALUE);
+		}
+
+		static boolean isCancelled(long state) {
+			return state == Long.MIN_VALUE;
+		}
+
+		static long addCap(long a, long b) {
+			long res = a + b;
+			if (res < 0L) {
+				return Long.MAX_VALUE;
+			}
+			return res;
 		}
 	}
 }

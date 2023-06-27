@@ -83,15 +83,14 @@ class OutputStreamPublisherTests {
 
 		Flow.Publisher<ByteBuffer> flowPublisher = OutputStreamPublisher.create(outputStream -> {
 			try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
-				writer.write("foo");
-				writer.flush();
-				writer.write("bar");
-				writer.flush();
-				assertThatIOException().isThrownBy(() -> {
-							writer.write("baz");
+				assertThatIOException()
+						.isThrownBy(() -> {
+							writer.write("foo");
+							writer.flush();
+							writer.write("bar");
 							writer.flush();
 						})
-						.withMessage("Subscription has been cancelled");
+						.withMessage("Subscription has been terminated");
 				latch.countDown();
 			}
 		}, this.executor);
@@ -122,6 +121,54 @@ class OutputStreamPublisherTests {
 		StepVerifier.create(flux)
 				.assertNext(s -> assertThat(s).isEqualTo("foo"))
 				.verifyComplete();
+
+		latch.await();
+	}
+
+	@Test
+	void negativeRequestN() throws InterruptedException {
+		CountDownLatch latch = new CountDownLatch(1);
+
+		Flow.Publisher<ByteBuffer> flowPublisher = OutputStreamPublisher.create(outputStream -> {
+			try(Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+				writer.write("foo");
+				writer.flush();
+				writer.write("foo");
+				writer.flush();
+			}
+			finally {
+				latch.countDown();
+			}
+		}, this.executor);
+		Flow.Subscription[] subscriptions = new Flow.Subscription[1];
+		Flux<CharSequence> flux = toString((a) -> flowPublisher.subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscriptions[0] = subscription;
+                a.onSubscribe(subscription);
+            }
+
+            @Override
+            public void onNext(ByteBuffer item) {
+                a.onNext(item);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                a.onError(throwable);
+            }
+
+            @Override
+            public void onComplete() {
+                a.onComplete();
+            }
+        }));
+
+		StepVerifier.create(flux, 1)
+				.assertNext(s -> assertThat(s).isEqualTo("foo"))
+				.then(() -> subscriptions[0].request(-1))
+				.expectErrorMessage("request should be a positive number")
+				.verify();
 
 		latch.await();
 	}
