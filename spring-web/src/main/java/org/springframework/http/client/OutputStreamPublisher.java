@@ -21,13 +21,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.concurrent.Exchanger;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
+import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -39,11 +39,6 @@ import org.springframework.util.Assert;
  * @see #create(OutputStreamHandler, Executor)
  */
 final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
-
-	private static final ByteBuffer CLOSED = ByteBuffer.allocate(0);
-
-	private static final ByteBuffer CANCELED = ByteBuffer.allocate(0);
-
 
 	private final OutputStreamHandler outputStreamHandler;
 
@@ -94,7 +89,9 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 	public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
 		Objects.requireNonNull(subscriber, "Subscriber must not be null");
 
-		subscriber.onSubscribe(new OutputStreamSubscription(subscriber, this.outputStreamHandler, this.executor));
+		OutputStreamSubscription subscription = new OutputStreamSubscription(subscriber, this.outputStreamHandler);
+		subscriber.onSubscribe(subscription);
+		this.executor.execute(subscription::invokeHandler);
 	}
 
 
@@ -130,199 +127,284 @@ final class OutputStreamPublisher implements Flow.Publisher<ByteBuffer> {
 	}
 
 
-	private static final class OutputStreamSubscription implements Flow.Subscription {
+	private static final class OutputStreamSubscription extends OutputStream implements Flow.Subscription {
 
-		private final Flow.Subscriber<? super ByteBuffer> subscriber;
+		static final Object READY = new Object();
+
+		private final Flow.Subscriber<? super ByteBuffer> actual;
 
 		private final OutputStreamHandler outputStreamHandler;
 
-		private final Executor executor;
 
-		private final AtomicBoolean handlerInvoked = new AtomicBoolean();
+		@Nullable
+		private volatile Throwable error;
 
-		private final AtomicLong demand = new AtomicLong();
+		private volatile long requested;
+		static final AtomicLongFieldUpdater<OutputStreamSubscription> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(OutputStreamSubscription.class, "requested");
 
-		private final Exchanger<ByteBuffer> exchanger = new Exchanger<>();
+		@Nullable
+		private volatile Object parkedThread;
+		static final AtomicReferenceFieldUpdater<OutputStreamSubscription, Object> PARKED_THREAD =
+				AtomicReferenceFieldUpdater.newUpdater(OutputStreamSubscription.class, Object.class, "parkedThread");
 
-		private volatile boolean canceled = false;
+		long produced;
 
 
-		public OutputStreamSubscription(Flow.Subscriber<? super ByteBuffer> subscriber,
-										OutputStreamHandler outputStreamHandler,
-										Executor executor) {
-			this.subscriber = subscriber;
+		public OutputStreamSubscription(Flow.Subscriber<? super ByteBuffer> actual,
+										OutputStreamHandler outputStreamHandler) {
+			this.actual = actual;
 			this.outputStreamHandler = outputStreamHandler;
-			this.executor = executor;
 		}
-
-
-		@Override
-		public void request(long n) {
-			Assert.isTrue(n > 0, "request should be a positive number");
-
-			long prev = this.demand.getAndAccumulate(n, (cur, giv) -> {
-				long sum = cur + giv;
-				return sum < 0 ? Long.MAX_VALUE : sum;
-			});
-			if (this.handlerInvoked.compareAndSet(false, true)) {
-				this.executor.execute(this::invokeHandler);
-			}
-			if (prev == 0) {
-				exchangeBuffer();
-			}
-		}
-
-		private void invokeHandler() {
-			// use BufferedOutputStream, so that written bytes are buffered
-			// before publishing as byte buffer
-			try (OutputStream outputStream = new BufferedOutputStream(
-					new ExchangerOutputStream(this.exchanger, this.subscriber))) {
-
-				this.outputStreamHandler.handle(outputStream);
-			}
-			catch (IOException ex) {
-				if (!this.canceled) {
-					this.subscriber.onError(ex);
-				}
-			}
-		}
-
-		@Override
-		public void cancel() {
-			this.canceled = true;
-		}
-
-		private void exchangeBuffer() {
-			long demand = this.demand.get();
-			try {
-				while (demand > 0 && !this.canceled) {
-					ByteBuffer byteBuffer = this.exchanger.exchange(null);
-					if (byteBuffer != CLOSED) {
-						demand = publishBuffer(byteBuffer);
-					}
-					else {
-						this.subscriber.onComplete();
-						demand = 0;
-					}
-				}
-				if (this.canceled) {
-					this.exchanger.exchange(CANCELED);
-				}
-			}
-			catch (InterruptedException ex) {
-				this.subscriber.onError(ex);
-			}
-		}
-
-		private long publishBuffer(ByteBuffer byteBuffer) {
-			this.subscriber.onNext(byteBuffer);
-			return this.demand.decrementAndGet();
-		}
-
-
-	}
-
-	private static final class ExchangerOutputStream extends OutputStream {
-
-		private final AtomicReference<State> state = new AtomicReference<>(State.OPEN);
-
-		private final Exchanger<ByteBuffer> exchanger;
-
-		private final Flow.Subscriber<? super ByteBuffer> subscriber;
-
-
-		public ExchangerOutputStream(Exchanger<ByteBuffer> exchanger, Flow.Subscriber<? super ByteBuffer> subscriber) {
-			this.exchanger = exchanger;
-			this.subscriber = subscriber;
-		}
-
 
 		@Override
 		public void write(int b) throws IOException {
-			this.state.get().write((byte) b, this);
+			checkDemandAndAwaitIfNeeded();
+
+			ByteBuffer byteBuffer = ByteBuffer.allocate(1);
+			byteBuffer.put((byte) b);
+			byteBuffer.flip();
+
+			this.actual.onNext(byteBuffer);
+
+			this.produced++;
 		}
 
 		@Override
 		public void write(byte[] b) throws IOException {
-			this.state.get().write(b, 0, b.length, this);
+			write(b, 0, b.length);
 		}
 
 		@Override
 		public void write(byte[] b, int off, int len) throws IOException {
-			this.state.get().write(b, off, len, this);
+			checkDemandAndAwaitIfNeeded();
+
+			ByteBuffer byteBuffer = ByteBuffer.allocate(len);
+			byteBuffer.put(b, off, len);
+			byteBuffer.flip();
+
+			this.actual.onNext(byteBuffer);
+
+			this.produced++;
 		}
 
-		private void exchange(ByteBuffer byteBuffer) {
-			try {
-				ByteBuffer result = this.exchanger.exchange(byteBuffer);
-				if (result == CANCELED) {
-					this.state.compareAndSet(State.OPEN, State.CANCELED);
-				}
+		private void checkDemandAndAwaitIfNeeded() throws IOException {
+			long r = this.requested;
+
+			if (isTerminated(r) || isCancelled(r)) {
+				throw new IOException("Subscription has been terminated");
 			}
-			catch (InterruptedException ex) {
-				this.subscriber.onError(ex);
+
+			long p = this.produced;
+			if (p == r) {
+				if (p > 0) {
+					r = tryProduce(p);
+					this.produced = 0;
+				}
+
+				for (;;) {
+					if (isTerminated(r) || isCancelled(r)) {
+						throw new IOException("Subscription has been terminated");
+					}
+
+					if (r != 0) {
+						return;
+					}
+
+					await();
+
+					r = this.requested;
+				}
 			}
 		}
 
 		@Override
 		public void close() {
-			if (this.state.compareAndSet(State.OPEN, State.CLOSED)) {
-				try {
-					this.exchanger.exchange(CLOSED);
+		}
+
+
+		private void invokeHandler() {
+			// assume sync write within try-with-resource block
+
+			// use BufferedOutputStream, so that written bytes are buffered
+			// before publishing as byte buffer
+			try (OutputStream outputStream = new BufferedOutputStream(this)) {
+				this.outputStreamHandler.handle(outputStream);
+			}
+			catch (IOException ex) {
+				long previousState = tryTerminate();
+				if (isCancelled(previousState)) {
+					return;
 				}
-				catch (InterruptedException ex) {
-					this.subscriber.onError(ex);
+
+				if (isTerminated(previousState)) {
+					// failure due to illegal requestN
+					this.actual.onError(this.error);
+					return;
+				}
+
+				this.actual.onError(ex);
+				return;
+			}
+
+			long previousState = tryTerminate();
+			if (isCancelled(previousState)) {
+				return;
+			}
+
+			if (isTerminated(previousState)) {
+				// failure due to illegal requestN
+				this.actual.onError(this.error);
+				return;
+			}
+
+			this.actual.onComplete();
+		}
+
+
+		@Override
+		public void request(long n) {
+			if (n <= 0) {
+				this.error = new IllegalArgumentException("request should be a positive number");
+				long previousState = tryTerminate();
+
+				if (isTerminated(previousState) || isCancelled(previousState)) {
+					return;
+				}
+
+				if (previousState > 0) {
+					// error should eventually be observed and propagated
+					return;
+				}
+
+				// resume parked thread so it can observe error and propagate it
+				resume();
+				return;
+			}
+
+			if (addCap(n) == 0) {
+				// resume parked thread so it can continue the work
+				resume();
+			}
+		}
+
+		@Override
+		public void cancel() {
+			long previousState = tryCancel();
+			if (isCancelled(previousState) || previousState > 0) {
+				return;
+			}
+
+			// resume parked thread so it can be unblocked and close all the resources
+			resume();
+		}
+
+		private void await() {
+			Thread toUnpark = Thread.currentThread();
+
+			for (;;) {
+				Object current = parkedThread;
+				if (current == READY) {
+					break;
+				}
+
+				if (current != null && current != toUnpark) {
+					throw new IllegalStateException("Only one (Virtual)Thread can await!");
+				}
+
+				if (PARKED_THREAD.compareAndSet(this, null, toUnpark)) {
+					LockSupport.park();
+					// we don't just break here because park() can wake up spuriously
+					// if we got a proper resume, get() == READY and the loop will quit above
+				}
+			}
+			// clear the resume indicator so that the next await call will park without a resume()
+			PARKED_THREAD.lazySet(this, null);
+		}
+
+		private void resume() {
+			if (parkedThread != READY) {
+				Object old = PARKED_THREAD.getAndSet(this, READY);
+				if (old != READY) {
+					LockSupport.unpark((Thread)old);
 				}
 			}
 		}
 
-		private enum State {
+		private long tryCancel() {
+			for (;;) {
+				long r = requested;
 
-			OPEN {
-				@Override
-				public void write(byte b, ExchangerOutputStream wrapper) throws IOException {
-					ByteBuffer byteBuffer = ByteBuffer.allocate(1);
-					byteBuffer.put(b);
-					byteBuffer.flip();
-					wrapper.exchange(byteBuffer);
+				if (isCancelled(r)) {
+					return r;
 				}
 
-				@Override
-				public void write(byte[] b, int off, int len, ExchangerOutputStream wrapper) throws IOException {
-					ByteBuffer byteBuffer = ByteBuffer.allocate(len);
-					byteBuffer.put(b, off, len);
-					byteBuffer.flip();
-					wrapper.exchange(byteBuffer);
+				if (REQUESTED.compareAndSet(this, r, Long.MIN_VALUE)) {
+					return r;
 				}
-			}, CLOSED {
-				@Override
-				public void write(byte b, ExchangerOutputStream wrapper) throws IOException {
-					throw new IOException("Stream closed");
-				}
+			}
+		}
 
-				@Override
-				public void write(byte[] bytes, int off, int len, ExchangerOutputStream wrapper) throws IOException {
-					throw new IOException("Stream closed");
-				}
-			}, CANCELED {
-				@Override
-				public void write(byte b, ExchangerOutputStream wrapper) throws IOException {
-					throw new IOException("Subscription has been cancelled");
+		private long tryTerminate() {
+			for (;;) {
+				long r = requested;
+
+				if (isCancelled(r) || isTerminated(r)) {
+					return r;
 				}
 
-				@Override
-				public void write(byte[] bytes, int off, int len, ExchangerOutputStream wrapper) throws IOException {
-					throw new IOException("Subscription has been cancelled");
+				if (REQUESTED.compareAndSet(this, r, Long.MIN_VALUE | Long.MAX_VALUE)) {
+					return r;
 				}
-			};
+			}
+		}
 
-			public abstract void write(byte b, ExchangerOutputStream wrapper) throws IOException;
+		private long tryProduce(long n) {
+			for (; ; ) {
+				long current = this.requested;
+				if (isTerminated(current) || isCancelled(current)) {
+					return current;
+				}
+				if (current == Long.MAX_VALUE) {
+					return Long.MAX_VALUE;
+				}
+				long update = current - n;
+				if (update < 0L) {
+					update = 0L;
+				}
+				if (REQUESTED.compareAndSet(this, current, update)) {
+					return update;
+				}
+			}
+		}
 
-			public abstract void write(byte[] bytes, int off, int len, ExchangerOutputStream wrapper) throws IOException;
+		private long addCap(long n) {
+			for (; ; ) {
+				long r = this.requested;
+				if (isTerminated(r) || isCancelled(r) || r == Long.MAX_VALUE) {
+					return r;
+				}
+				long u = addCap(r, n);
+				if (REQUESTED.compareAndSet(this, r, u)) {
+					return r;
+				}
+			}
+		}
 
+		static boolean isTerminated(long state) {
+			return state == (Long.MIN_VALUE | Long.MAX_VALUE);
+		}
+
+		static boolean isCancelled(long state) {
+			return state == Long.MIN_VALUE;
+		}
+
+		static long addCap(long a, long b) {
+			long res = a + b;
+			if (res < 0L) {
+				return Long.MAX_VALUE;
+			}
+			return res;
 		}
 	}
-
-
-
 }
