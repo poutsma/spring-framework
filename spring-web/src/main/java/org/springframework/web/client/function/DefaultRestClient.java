@@ -16,17 +16,11 @@
 
 package org.springframework.web.client.function;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +37,6 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.ResolvableType;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
@@ -56,7 +49,6 @@ import org.springframework.http.client.ClientHttpRequestInitializer;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.InterceptingClientHttpRequestFactory;
-import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.converter.GenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -561,164 +553,6 @@ final class DefaultRestClient implements RestClient {
 			}
 		}
 
-		@Override
-		public <T> void sseEvents(Consumer<ServerSentEvent<T>> eventHandler, Class<T> eventType) {
-			Assert.notNull(eventHandler, "EventHandler must not be null");
-			Assert.notNull(eventType, "EventType must not be null");
-
-			sseInternal(eventHandler, eventType, eventType);
-		}
-
-		@Override
-		public <T> void sseEvents(Consumer<ServerSentEvent<T>> eventHandler, ParameterizedTypeReference<T> eventType) {
-			Assert.notNull(eventHandler, "EventHandler must not be null");
-			Assert.notNull(eventType, "EventType must not be null");
-
-			Type type = eventType.getType();
-			Class<T> eventClass = bodyClass(type);
-
-			sseInternal(eventHandler, type, eventClass);
-		}
-
-		@Override
-		public <T> void sseData(Consumer<T> eventHandler, Class<T> eventType) {
-			Assert.notNull(eventHandler, "Handler must not be null");
-			Assert.notNull(eventType, "EventType must not be null");
-
-			sseInternal(sse -> eventHandler.accept(sse.data()), eventType, eventType);
-		}
-
-		@Override
-		public <T> void sseData(Consumer<T> eventHandler, ParameterizedTypeReference<T> eventType) {
-			Assert.notNull(eventHandler, "Handler must not be null");
-			Assert.notNull(eventType, "EventType must not be null");
-
-			Type type = eventType.getType();
-			Class<T> eventClass = bodyClass(type);
-
-			sseInternal(sse -> eventHandler.accept(sse.data()), type, eventClass);
-		}
-
-		private <T> void sseInternal(Consumer<ServerSentEvent<T>> eventHandler, Type eventType, Class<T> eventClass) {
-
-			try (this.clientResponse) {
-				applyStatusHandlers(this.clientRequest, this.clientResponse);
-
-
-				MediaType contentType = getContentType();
-				if (!MediaType.TEXT_EVENT_STREAM.includes(contentType)) {
-					throw new IllegalStateException("Can not consume Content-Type \"" + contentType +
-							"\" as Server Sent Events");
-				}
-
-				BufferedReader reader = new BufferedReader(new InputStreamReader(this.clientResponse.getBody(),
-						StandardCharsets.UTF_8));
-				List<String> lines = new ArrayList<>();
-				String line;
-				while ((line = reader.readLine()) != null) {
-					if (!line.isEmpty()) {
-						lines.add(line);
-					}
-					else {
-						ServerSentEvent<T> event = buildEvent(lines, eventType, eventClass);
-						eventHandler.accept(event);
-						lines.clear();
-					}
-				}
-			}
-			catch (IOException ex) {
-				throw new ResourceAccessException(ex.getMessage(), ex);
-			}
-		}
-
-		@SuppressWarnings("unchecked")
-		private <T> ServerSentEvent<T> buildEvent(List<String> lines, Type eventType, Class<T> eventClass) throws IOException {
-			// TODO: do not use http.codec package
-			ServerSentEvent.Builder<T> sseBuilder = ServerSentEvent.builder();
-			StringBuilder data = null;
-			StringBuilder comment = null;
-
-			for (String line : lines) {
-				if (line.startsWith("data:")) {
-					int length = line.length();
-					if (length > 5) {
-						int index = (line.charAt(5) != ' ' ? 5 : 6);
-						if (length > index) {
-							data = (data != null ? data : new StringBuilder());
-							data.append(line, index, line.length());
-							data.append('\n');
-						}
-					}
-				}
-				else {
-					if (line.startsWith("id:")) {
-						sseBuilder.id(line.substring(3).trim());
-					}
-					else if (line.startsWith("event:")) {
-						sseBuilder.event(line.substring(6).trim());
-					}
-					else if (line.startsWith("retry:")) {
-						sseBuilder.retry(Duration.ofMillis(Long.parseLong(line.substring(6).trim())));
-					}
-					else if (line.startsWith(":")) {
-						comment = (comment != null ? comment : new StringBuilder());
-						comment.append(line.substring(1).trim()).append('\n');
-					}
-				}
-			}
-
-			Object readData = (data != null ? readSseData(data, eventType, eventClass) : null);
-
-			if (comment != null) {
-				sseBuilder.comment(comment.substring(0, comment.length() - 1));
-			}
-			if (readData != null) {
-				sseBuilder.data((T) readData);
-			}
-			return sseBuilder.build();
-		}
-
-		@SuppressWarnings("unchecked")
-		private <T> Object readSseData(StringBuilder data, Type eventType, Class<T> eventClass) throws IOException {
-			if (String.class.equals(eventClass)) {
-				return data.substring(0, data.length() - 1);
-			}
-			HttpInputMessage inputMessage = toInputMessage(data);
-			for (HttpMessageConverter<?> messageConverter : DefaultRestClient.this.messageConverters) {
-				if (messageConverter instanceof GenericHttpMessageConverter) {
-					GenericHttpMessageConverter<T> theConverter = (GenericHttpMessageConverter<T>) messageConverter;
-					if (theConverter.canRead(eventType, eventClass, MediaType.APPLICATION_JSON)) {
-						return theConverter.read(eventType, eventClass, inputMessage);
-					}
-				}
-				if (messageConverter.canRead(eventClass, MediaType.APPLICATION_JSON)) {
-					HttpMessageConverter<T> theConverter = (HttpMessageConverter<T>) messageConverter;
-					return theConverter.read(eventClass, inputMessage);
-				}
-			}
-			throw new IOException("Could not read SSE data as JSON");
-		}
-
-		private static HttpInputMessage toInputMessage(StringBuilder builder) {
-			byte[] bytes = builder.toString().getBytes(StandardCharsets.UTF_8);
-			InputStream body = new ByteArrayInputStream(bytes);
-
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentLength(bytes.length);
-			headers.setContentType(MediaType.APPLICATION_JSON);
-
-			return new HttpInputMessage() {
-				@Override
-				public InputStream getBody() {
-					return body;
-				}
-
-				@Override
-				public HttpHeaders getHeaders() {
-					return headers;
-				}
-			};
-		}
 
 		@SuppressWarnings("unchecked")
 		private static <T> Class<T> bodyClass(Type type) {

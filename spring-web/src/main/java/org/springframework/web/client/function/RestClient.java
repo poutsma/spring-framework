@@ -40,7 +40,6 @@ import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInitializer;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.web.client.HttpClientErrorException;
@@ -718,44 +717,6 @@ public interface RestClient {
 		 * handling.
 		 */
 		ResponseEntity<Void> toBodilessEntity();
-
-		/**
-		 * Handle server-sent events with the given {@link ServerSentEvent} handler.
-		 * The event type can be a string, or an object that can be converted from JSON.
-		 * @param eventHandler the {@code ServerSentEvent} handler
-		 * @param eventType the even type
-		 * @param <T> {@code String} or type that can be converted from JSON
-		 */
-		// TODO: do not use http.codec.ServerSentEvent here
-		<T> void sseEvents(Consumer<ServerSentEvent<T>> eventHandler, Class<T> eventType);
-
-		/**
-		 * Handle server-sent events with the given {@link ServerSentEvent} handler.
-		 * The event type can be a string, or an object that can be converted from JSON.
-		 * @param eventHandler the {@code ServerSentEvent} handler
-		 * @param eventType the even type
-		 * @param <T> {@code String} or type that can be converted from JSON
-		 */
-		// TODO: do not use http.codec.ServerSentEvent here
-		<T> void sseEvents(Consumer<ServerSentEvent<T>> eventHandler, ParameterizedTypeReference<T> eventType);
-
-		/**
-		 * Handle data from server-sent events with the given event handler.
-		 * The event type can be a string, or an object that can be converted from JSON.
-		 * @param eventHandler the event handler
-		 * @param eventType the even type
-		 * @param <T> {@code String} or type that can be converted from JSON
-		 */
-		<T> void sseData(Consumer<T> eventHandler, Class<T> eventType);
-
-		/**
-		 * Handle data from server-sent events with the given event handler.
-		 * The event type can be a string, or an object that can be converted from JSON.
-		 * @param eventHandler the event handler
-		 * @param eventType the even type
-		 * @param <T> {@code String} or type that can be converted from JSON
-		 */
-		<T> void sseData(Consumer<T> eventHandler, ParameterizedTypeReference<T> eventType);
 
 
 		/**
