@@ -36,6 +36,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
@@ -74,9 +75,8 @@ class ReactorNetty2ClientHttpResponse implements ClientHttpResponse {
 	 */
 	public ReactorNetty2ClientHttpResponse(HttpClientResponse response, Connection connection) {
 		this.response = response;
-		MultiValueMap<String, String> adapter = new Netty5HeadersAdapter(response.responseHeaders());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(adapter);
 		this.inbound = connection.inbound();
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.netty5(response.responseHeaders()));
 		this.bufferFactory = new Netty5DataBufferFactory(connection.outbound().alloc());
 	}
 

@@ -36,6 +36,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
@@ -65,7 +66,7 @@ class UndertowServerHttpRequest extends AbstractServerHttpRequest {
 			throws URISyntaxException {
 
 		super(HttpMethod.valueOf(exchange.getRequestMethod().toString()), initUri(exchange), "",
-				new UndertowHeadersAdapter(exchange.getRequestHeaders()));
+				HeadersAdapterUtils.undertow(exchange.getRequestHeaders()));
 		this.exchange = exchange;
 		this.body = new RequestBodyPublisher(exchange, bufferFactory);
 		this.body.registerListeners(exchange);

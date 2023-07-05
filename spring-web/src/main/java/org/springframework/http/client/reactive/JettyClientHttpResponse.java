@@ -29,7 +29,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
-import org.springframework.http.client.JettyHeadersAdapter;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
@@ -59,8 +59,7 @@ class JettyClientHttpResponse implements ClientHttpResponse {
 		this.reactiveResponse = reactiveResponse;
 		this.content = Flux.from(content);
 
-		MultiValueMap<String, String> headers = new JettyHeadersAdapter(reactiveResponse.getHeaders());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.jetty(reactiveResponse.getHeaders()));
 	}
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.http.server.reactive;
+package org.springframework.http.support;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -43,12 +43,12 @@ import static org.junit.jupiter.api.Named.named;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
- * Unit tests for {@code HeadersAdapters} {@code MultiValueMap} implementations.
+ * Unit tests for {@code HeadersAdapterUtils} {@code MultiValueMap} implementations.
  *
  * @author Brian Clozel
  * @author Sam Brannen
  */
-class HeadersAdaptersTests {
+class HeadersAdaptersUtilsTests {
 
 	@ParameterizedHeadersTest
 	void getWithUnknownHeaderShouldReturnNull(MultiValueMap<String, String> headers) {
@@ -134,11 +134,11 @@ class HeadersAdaptersTests {
 	static Stream<Arguments> headers() {
 		return Stream.of(
 				arguments(named("Map", CollectionUtils.toMultiValueMap(new LinkedCaseInsensitiveMap<>(8, Locale.ENGLISH)))),
-				arguments(named("Netty", new NettyHeadersAdapter(new DefaultHttpHeaders()))),
-				arguments(named("Netty", new Netty5HeadersAdapter(io.netty5.handler.codec.http.headers.HttpHeaders.newHeaders()))),
-				arguments(named("Tomcat", new TomcatHeadersAdapter(new MimeHeaders()))),
-				arguments(named("Undertow", new UndertowHeadersAdapter(new HeaderMap()))),
-				arguments(named("Jetty", new JettyHeadersAdapter(HttpFields.build())))
+				arguments(named("Netty 4", HeadersAdapterUtils.netty4(new DefaultHttpHeaders()))),
+				arguments(named("Netty 5", HeadersAdapterUtils.netty5(io.netty5.handler.codec.http.headers.HttpHeaders.newHeaders()))),
+				arguments(named("Tomcat", HeadersAdapterUtils.tomcat(new MimeHeaders()))),
+				arguments(named("Undertow", HeadersAdapterUtils.undertow(new HeaderMap()))),
+				arguments(named("Jetty", HeadersAdapterUtils.jetty(HttpFields.build())))
 		);
 	}
 

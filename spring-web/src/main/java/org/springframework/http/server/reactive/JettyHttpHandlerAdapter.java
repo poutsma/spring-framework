@@ -34,6 +34,7 @@ import org.eclipse.jetty.server.Response;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.MultiValueMap;
@@ -105,7 +106,7 @@ public class JettyHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 
 		private static MultiValueMap<String, String> createHeaders(HttpServletRequest servletRequest) {
 			Request request = getRequest(servletRequest);
-			return new JettyHeadersAdapter(HttpFields.build(request.getHttpFields()));
+			return HeadersAdapterUtils.jetty(HttpFields.build(request.getHttpFields()));
 		}
 
 		private static Request getRequest(HttpServletRequest request) {
@@ -135,7 +136,7 @@ public class JettyHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 
 		private static HttpHeaders createHeaders(HttpServletResponse servletResponse) {
 			Response response = getResponse(servletResponse);
-			return new HttpHeaders(new JettyHeadersAdapter(response.getHttpFields()));
+			return new HttpHeaders(HeadersAdapterUtils.jetty(response.getHttpFields()));
 		}
 
 		private static Response getResponse(HttpServletResponse response) {

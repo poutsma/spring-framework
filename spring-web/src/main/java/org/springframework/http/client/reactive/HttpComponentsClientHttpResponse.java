@@ -31,6 +31,7 @@ import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -62,8 +63,7 @@ class HttpComponentsClientHttpResponse implements ClientHttpResponse {
 		this.message = message;
 		this.context = context;
 
-		MultiValueMap<String, String> adapter = new HttpComponentsHeadersAdapter(message.getHead());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(adapter);
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.httpComponents(message.getHead()));
 	}
 
 

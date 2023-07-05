@@ -37,7 +37,7 @@ import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JettyHeadersAdapter;
+import org.springframework.http.support.HeadersAdapterUtils;
 
 /**
  * {@link ClientHttpRequest} implementation for the Jetty ReactiveStreams HTTP client.
@@ -147,7 +147,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 
 	@Override
 	protected HttpHeaders initReadOnlyHeaders() {
-		return HttpHeaders.readOnlyHttpHeaders(new JettyHeadersAdapter(this.jettyRequest.getHeaders()));
+		return HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.jetty(this.jettyRequest.getHeaders()));
 	}
 
 	public ReactiveRequest toReactiveRequest() {

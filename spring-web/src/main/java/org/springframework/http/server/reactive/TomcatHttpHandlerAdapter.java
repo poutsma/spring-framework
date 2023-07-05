@@ -37,6 +37,7 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.ReflectionUtils;
@@ -107,7 +108,7 @@ public class TomcatHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 					ReflectionUtils.getField(COYOTE_REQUEST_FIELD, requestFacade);
 			Assert.state(connectorRequest != null, "No Tomcat connector request");
 			Request tomcatRequest = connectorRequest.getCoyoteRequest();
-			return new TomcatHeadersAdapter(tomcatRequest.getMimeHeaders());
+			return HeadersAdapterUtils.tomcat(tomcatRequest.getMimeHeaders());
 		}
 
 		private static RequestFacade getRequestFacade(HttpServletRequest request) {
@@ -185,8 +186,7 @@ public class TomcatHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 					ReflectionUtils.getField(COYOTE_RESPONSE_FIELD, responseFacade);
 			Assert.state(connectorResponse != null, "No Tomcat connector response");
 			Response tomcatResponse = connectorResponse.getCoyoteResponse();
-			TomcatHeadersAdapter headers = new TomcatHeadersAdapter(tomcatResponse.getMimeHeaders());
-			return new HttpHeaders(headers);
+			return new HttpHeaders(HeadersAdapterUtils.tomcat(tomcatResponse.getMimeHeaders()));
 		}
 
 		private static ResponseFacade getResponseFacade(HttpServletResponse response) {

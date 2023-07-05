@@ -23,10 +23,10 @@ import org.eclipse.jetty.client.api.Response;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.util.MultiValueMap;
+import org.springframework.http.support.HeadersAdapterUtils;
 
 /**
- * {@link ClientHttpResponse} implementation based on based on Jetty's
+ * {@link ClientHttpResponse} implementation based on Jetty's
  * {@link org.eclipse.jetty.client.HttpClient}.
  *
  * @author Arjen Poutsma
@@ -45,8 +45,7 @@ class JettyClientHttpResponse implements ClientHttpResponse {
 		this.response = response;
 		this.body = inputStream;
 
-		MultiValueMap<String, String> headers = new JettyHeadersAdapter(response.getHeaders());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.jetty(response.getHeaders()));
 	}
 
 

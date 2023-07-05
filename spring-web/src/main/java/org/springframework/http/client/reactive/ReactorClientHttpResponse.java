@@ -37,6 +37,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.LinkedMultiValueMap;
@@ -74,8 +75,7 @@ class ReactorClientHttpResponse implements ClientHttpResponse {
 	 */
 	public ReactorClientHttpResponse(HttpClientResponse response, Connection connection) {
 		this.response = response;
-		MultiValueMap<String, String> adapter = new NettyHeadersAdapter(response.responseHeaders());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(adapter);
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.netty4(response.responseHeaders()));
 		this.inbound = connection.inbound();
 		this.bufferFactory = new NettyDataBufferFactory(connection.outbound().alloc());
 	}
@@ -87,8 +87,7 @@ class ReactorClientHttpResponse implements ClientHttpResponse {
 	@Deprecated
 	public ReactorClientHttpResponse(HttpClientResponse response, NettyInbound inbound, ByteBufAllocator alloc) {
 		this.response = response;
-		MultiValueMap<String, String> adapter = new NettyHeadersAdapter(response.responseHeaders());
-		this.headers = HttpHeaders.readOnlyHttpHeaders(adapter);
+		this.headers = HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.netty4(response.responseHeaders()));
 		this.inbound = inbound;
 		this.bufferFactory = new NettyDataBufferFactory(alloc);
 	}

@@ -38,6 +38,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -70,8 +71,7 @@ class UndertowServerHttpResponse extends AbstractListenerServerHttpResponse impl
 
 	private static HttpHeaders createHeaders(HttpServerExchange exchange) {
 		Assert.notNull(exchange, "HttpServerExchange must not be null");
-		UndertowHeadersAdapter headersMap = new UndertowHeadersAdapter(exchange.getResponseHeaders());
-		return new HttpHeaders(headersMap);
+		return new HttpHeaders(HeadersAdapterUtils.undertow(exchange.getResponseHeaders()));
 	}
 
 

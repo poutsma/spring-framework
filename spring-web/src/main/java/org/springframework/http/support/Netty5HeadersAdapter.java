@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.http.server.reactive;
+package org.springframework.http.support;
 
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -34,8 +34,6 @@ import org.springframework.util.MultiValueMap;
 
 /**
  * {@code MultiValueMap} implementation for wrapping Netty HTTP headers.
- *
- * <p>This class is based on {@link NettyHeadersAdapter}.
  *
  * @author Violeta Georgieva
  * @since 6.0

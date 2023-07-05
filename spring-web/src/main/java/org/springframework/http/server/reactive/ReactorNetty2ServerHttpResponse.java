@@ -37,6 +37,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.support.HeadersAdapterUtils;
 import org.springframework.util.Assert;
 
 /**
@@ -56,7 +57,7 @@ class ReactorNetty2ServerHttpResponse extends AbstractServerHttpResponse impleme
 
 
 	public ReactorNetty2ServerHttpResponse(HttpServerResponse response, DataBufferFactory bufferFactory) {
-		super(bufferFactory, new HttpHeaders(new Netty5HeadersAdapter(response.responseHeaders())));
+		super(bufferFactory, new HttpHeaders(HeadersAdapterUtils.netty5(response.responseHeaders())));
 		Assert.notNull(response, "HttpServerResponse must not be null");
 		this.response = response;
 	}

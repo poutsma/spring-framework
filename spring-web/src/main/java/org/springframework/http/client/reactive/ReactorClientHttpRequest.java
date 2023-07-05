@@ -33,6 +33,7 @@ import org.springframework.core.io.buffer.NettyDataBufferFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ZeroCopyHttpOutputMessage;
+import org.springframework.http.support.HeadersAdapterUtils;
 
 /**
  * {@link ClientHttpRequest} implementation for the Reactor-Netty HTTP client.
@@ -136,7 +137,7 @@ class ReactorClientHttpRequest extends AbstractClientHttpRequest implements Zero
 
 	@Override
 	protected HttpHeaders initReadOnlyHeaders() {
-		return HttpHeaders.readOnlyHttpHeaders(new NettyHeadersAdapter(this.request.requestHeaders()));
+		return HttpHeaders.readOnlyHttpHeaders(HeadersAdapterUtils.netty4(this.request.requestHeaders()));
 	}
 
 }

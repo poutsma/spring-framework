@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.http.client.reactive;
+package org.springframework.http.support;
 
 import java.util.AbstractSet;
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ import org.springframework.util.MultiValueMap;
  * @author Rossen Stoyanchev
  * @since 5.3
  */
-class HttpComponentsHeadersAdapter implements MultiValueMap<String, String> {
+final class HttpComponentsHeadersAdapter implements MultiValueMap<String, String> {
 
 	private final HttpMessage message;
 
