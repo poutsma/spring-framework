@@ -40,8 +40,6 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 
 	private Duration readTimeout = Duration.ofSeconds(10);
 
-	private int requestBufferCapacity = 1024;
-
 
 	public ReactorNettyClientRequestFactory() {
 		this(HttpClient.create().compress(true));
@@ -55,6 +53,8 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	 * Set the underlying connect timeout in milliseconds.
 	 * A value of 0 specifies an infinite timeout.
 	 * <p>Default is 30 seconds.
+	 * @see HttpClient#option(ChannelOption, Object)
+	 * @see ChannelOption#CONNECT_TIMEOUT_MILLIS
 	 */
 	public void setConnectTimeout(int connectTimeout) {
 		Assert.isTrue(connectTimeout >= 0, "Timeout must be a non-negative value");
@@ -64,10 +64,13 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	/**
 	 * Set the underlying connect timeout in milliseconds.
 	 * A value of 0 specifies an infinite timeout.
-	 * <p>Default is 5 seconds.
+	 * <p>Default is 30 seconds.
+	 * @see HttpClient#option(ChannelOption, Object)
+	 * @see ChannelOption#CONNECT_TIMEOUT_MILLIS
 	 */
 	public void setConnectTimeout(Duration connectTimeout) {
 		Assert.notNull(connectTimeout, "ConnectTimeout must not be null");
+		Assert.isTrue(!connectTimeout.isNegative(), "Timeout must be a non-negative value");
 		this.httpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)connectTimeout.toMillis());
 	}
 
@@ -86,23 +89,33 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	 */
 	public void setReadTimeout(Duration readTimeout) {
 		Assert.notNull(readTimeout, "ReadTimeout must not be null");
+		Assert.isTrue(!readTimeout.isNegative(), "Timeout must be a non-negative value");
 		this.readTimeout = readTimeout;
 	}
 
+	/**
+	 * Set the timeout for the HTTP exchange in milliseconds.
+	 * <p>Default is 30 seconds.
+	 */
+	public void setExchangeTimeout(long exchangeTimeout) {
+		Assert.isTrue(exchangeTimeout > 0, "Timeout must be a positive value");
+		this.exchangeTimeout = Duration.ofMillis(exchangeTimeout);
+	}
 
 	/**
-	 * Set the buffer capacity used when writing the request body.
-	 * <p>Default is 1024.
+	 * Set the timeout for the HTTP exchange.
+	 * <p>Default is 30 seconds.
 	 */
-	public void setRequestBufferCapacity(int requestBufferCapacity) {
-		Assert.isTrue(requestBufferCapacity > 0, "RequestBufferCapacity must be larger than 0");
-		this.requestBufferCapacity = requestBufferCapacity;
+	public void setExchangeTimeout(Duration exchangeTimeout) {
+		Assert.notNull(exchangeTimeout, "ExchangeTimeout must not be null");
+		Assert.isTrue(!exchangeTimeout.isNegative(), "Timeout must be a non-negative value");
+		this.exchangeTimeout = exchangeTimeout;
 	}
+
 
 
 	@Override
 	public ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout,
-				this.requestBufferCapacity);
+		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout);
 	}
 }

@@ -20,13 +20,18 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
+import org.reactivestreams.FlowAdapters;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
@@ -46,22 +51,21 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 	private final URI uri;
 
-	private final Duration connectTimeout;
+	private final Duration exchangeTimeout;
 
 	private final Duration readTimeout;
 
-	private final int bufferCapacity;
+	private final Executor executor = new SimpleAsyncTaskExecutor();
 
 
-	public ReactorNettyClientRequest(HttpClient httpClient, URI uri, HttpMethod method, Duration connectTimeout,
-			Duration readTimeout, int bufferCapacity) {
+	public ReactorNettyClientRequest(HttpClient httpClient, URI uri, HttpMethod method, Duration exchangeTimeout,
+			Duration readTimeout) {
 
 		this.httpClient = httpClient;
 		this.method = method;
 		this.uri = uri;
-		this.connectTimeout = connectTimeout;
+		this.exchangeTimeout = exchangeTimeout;
 		this.readTimeout = readTimeout;
-		this.bufferCapacity = bufferCapacity;
 	}
 
 
@@ -97,7 +101,7 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 					.responseConnection((reactorResponse, connection) ->
 							Mono.just(new ReactorNettyClientResponse(reactorResponse, connection, this.readTimeout)))
 					.next()
-					.block(this.connectTimeout);
+					.block(this.exchangeTimeout);
 		}
 		catch (RuntimeException ex) { // Exceptions.ReactiveException is package private
 			Throwable cause = ex.getCause();
@@ -115,14 +119,38 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 	}
 
 
-	private Mono<ByteBuf> bodyToPublisher(Body body, ByteBufAllocator allocator) {
-		ByteBuf buf = allocator.buffer(this.bufferCapacity);
-		try (ByteBufOutputStream outputStream = new ByteBufOutputStream(buf)) {
-			body.writeTo(StreamUtils.nonClosing(outputStream));
-			return Mono.just(buf);
+	private Publisher<ByteBuf> bodyToPublisher(Body body, ByteBufAllocator allocator) {
+		Flow.Publisher<ByteBuf> flow = OutputStreamPublisher.create(
+				outputStream -> body.writeTo(StreamUtils.nonClosing(outputStream)),
+				new ByteBufMapper(allocator),
+				this.executor);
+		return FlowAdapters.toPublisher(flow);
+	}
+
+
+	private static final class ByteBufMapper implements OutputStreamPublisher.ByteMapper<ByteBuf> {
+
+		private final ByteBufAllocator allocator;
+
+
+		public ByteBufMapper(ByteBufAllocator allocator) {
+			this.allocator = allocator;
 		}
-		catch (IOException ex) {
-			return Mono.error(ex);
+
+
+		@Override
+		public ByteBuf map(int b) {
+			ByteBuf byteBuf = this.allocator.buffer(1);
+			byteBuf.writeByte(b);
+			return byteBuf;
+		}
+
+		@Override
+		public ByteBuf map(byte[] b, int off, int len) {
+			System.out.println("Allocating " + len);
+			ByteBuf byteBuf = this.allocator.buffer(len);
+			byteBuf.writeBytes(b, off, len);
+			return byteBuf;
 		}
 	}
 }
