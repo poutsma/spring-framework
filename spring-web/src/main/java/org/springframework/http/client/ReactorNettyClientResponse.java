@@ -29,7 +29,10 @@ import org.springframework.http.support.Netty4HeadersAdapter;
 import org.springframework.lang.Nullable;
 
 /**
+ * {@link ClientHttpResponse} implementation for the Reactor-Netty HTTP client.
+ *
  * @author Arjen Poutsma
+ * @since 6.1
  */
 final class ReactorNettyClientResponse implements ClientHttpResponse {
 

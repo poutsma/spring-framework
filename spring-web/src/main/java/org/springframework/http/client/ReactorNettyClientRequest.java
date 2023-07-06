@@ -37,6 +37,7 @@ import org.springframework.util.StreamUtils;
 /**
  * {@link ClientHttpRequest} implementation for the Reactor-Netty HTTP client.
  * Created via the {@link ReactorNettyClientRequestFactory}.
+ *
  * @author Arjen Poutsma
  * @since 6.1
  */
