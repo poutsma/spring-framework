@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 
+import io.netty.channel.ChannelOption;
 import reactor.netty.http.client.HttpClient;
 
 import org.springframework.http.HttpMethod;
@@ -35,7 +36,7 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 
 	private final HttpClient httpClient;
 
-	private Duration connectTimeout = Duration.ofSeconds(5);
+	private Duration exchangeTimeout = Duration.ofSeconds(5);
 
 	private Duration readTimeout = Duration.ofSeconds(10);
 
@@ -53,11 +54,11 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	/**
 	 * Set the underlying connect timeout in milliseconds.
 	 * A value of 0 specifies an infinite timeout.
-	 * <p>Default is 5 seconds.
+	 * <p>Default is 30 seconds.
 	 */
-	public void setConnectTimeout(long connectTimeout) {
+	public void setConnectTimeout(int connectTimeout) {
 		Assert.isTrue(connectTimeout >= 0, "Timeout must be a non-negative value");
-		this.connectTimeout = Duration.ofMillis(connectTimeout);
+		this.httpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout);
 	}
 
 	/**
@@ -67,7 +68,7 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	 */
 	public void setConnectTimeout(Duration connectTimeout) {
 		Assert.notNull(connectTimeout, "ConnectTimeout must not be null");
-		this.connectTimeout = connectTimeout;
+		this.httpClient.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int)connectTimeout.toMillis());
 	}
 
 	/**
@@ -101,7 +102,7 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 
 	@Override
 	public ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.connectTimeout, this.readTimeout,
+		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout,
 				this.requestBufferCapacity);
 	}
 }
