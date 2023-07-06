@@ -19,10 +19,12 @@ package org.springframework.http.client;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
+import java.util.concurrent.Executor;
 
 import io.netty.channel.ChannelOption;
 import reactor.netty.http.client.HttpClient;
 
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.Assert;
 
@@ -36,17 +38,44 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 
 	private final HttpClient httpClient;
 
+
 	private Duration exchangeTimeout = Duration.ofSeconds(5);
 
 	private Duration readTimeout = Duration.ofSeconds(10);
 
+	private Executor executor;
 
+
+	/**
+	 * Create a new instance of the {@code ReactorNettyClientRequestFactory}
+	 * with a default {@link HttpClient} that has compression enabled.
+	 */
 	public ReactorNettyClientRequestFactory() {
 		this(HttpClient.create().compress(true));
 	}
 
+	/**
+	 * Create a new instance of the {@code ReactorNettyClientRequestFactory}
+	 * based on the given {@link HttpClient}.
+	 * @param httpClient the client to base on
+	 */
 	public ReactorNettyClientRequestFactory(HttpClient httpClient) {
+		this(httpClient, new SimpleAsyncTaskExecutor());
+	}
+
+	/**
+	 * Create a new instance of the {@code ReactorNettyClientRequestFactory}
+	 * based on the given {@link HttpClient} and {@code Executor}. The executor
+	 * is used to bridge blocking {@code OutputStream} write operations to a
+	 * reactive stream.
+	 * @param httpClient the client to base on
+	 * @param executor the executor to execute blocking write calls
+	 */
+	public ReactorNettyClientRequestFactory(HttpClient httpClient, Executor executor) {
+		Assert.notNull(httpClient, "HttpClient must not be null");
+		Assert.notNull(executor, "Executor must not be null");
 		this.httpClient = httpClient;
+		this.executor = executor;
 	}
 
 	/**
@@ -116,6 +145,6 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 
 	@Override
 	public ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout);
+		return new ReactorNettyClientRequest(this.httpClient, this.executor, uri, httpMethod, this.exchangeTimeout, this.readTimeout);
 	}
 }

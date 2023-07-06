@@ -47,6 +47,8 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 	private final HttpClient httpClient;
 
+	private final Executor executor;
+
 	private final HttpMethod method;
 
 	private final URI uri;
@@ -55,13 +57,12 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 	private final Duration readTimeout;
 
-	private final Executor executor = new SimpleAsyncTaskExecutor();
 
-
-	public ReactorNettyClientRequest(HttpClient httpClient, URI uri, HttpMethod method, Duration exchangeTimeout,
-			Duration readTimeout) {
+	public ReactorNettyClientRequest(HttpClient httpClient, Executor executor, URI uri, HttpMethod method,
+			Duration exchangeTimeout, Duration readTimeout) {
 
 		this.httpClient = httpClient;
+		this.executor = executor;
 		this.method = method;
 		this.uri = uri;
 		this.exchangeTimeout = exchangeTimeout;
@@ -120,11 +121,10 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 
 	private Publisher<ByteBuf> bodyToPublisher(Body body, ByteBufAllocator allocator) {
-		Flow.Publisher<ByteBuf> flow = OutputStreamPublisher.create(
+		return FlowAdapters.toPublisher(OutputStreamPublisher.create(
 				outputStream -> body.writeTo(StreamUtils.nonClosing(outputStream)),
 				new ByteBufMapper(allocator),
-				this.executor);
-		return FlowAdapters.toPublisher(flow);
+				this.executor));
 	}
 
 
@@ -147,7 +147,6 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 		@Override
 		public ByteBuf map(byte[] b, int off, int len) {
-			System.out.println("Allocating " + len);
 			ByteBuf byteBuf = this.allocator.buffer(len);
 			byteBuf.writeBytes(b, off, len);
 			return byteBuf;
