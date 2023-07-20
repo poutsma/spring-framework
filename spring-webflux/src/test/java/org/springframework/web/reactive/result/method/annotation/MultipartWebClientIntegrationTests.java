@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.adapter.WebHttpHandlerBuilder;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.AbstractHttpHandlerIntegrationTests;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
-import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyHttpServer;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.UndertowHttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -137,7 +136,6 @@ class MultipartWebClientIntegrationTests extends AbstractHttpHandlerIntegrationT
 
 	@ParameterizedHttpServerTest
 	void filePartsFlux(HttpServer httpServer) throws Exception {
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: Jetty 12 fails");
 		startServer(httpServer);
 
 		Mono<String> result = webClient
@@ -154,7 +152,6 @@ class MultipartWebClientIntegrationTests extends AbstractHttpHandlerIntegrationT
 
 	@ParameterizedHttpServerTest
 	void filePartsMono(HttpServer httpServer) throws Exception {
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: Jetty 12 fails");
 		startServer(httpServer);
 
 		Mono<String> result = webClient

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,15 +45,16 @@ public class JettyHttpServer extends AbstractHttpServer {
 		ServletHolder servletHolder = new ServletHolder(servlet);
 		servletHolder.setAsyncSupported(true);
 
-		this.contextHandler = new ServletContextHandler(this.jettyServer, "", false, false);
+		this.contextHandler = new ServletContextHandler("", false, false);
 		this.contextHandler.addServlet(servletHolder, "/");
 		this.contextHandler.addServletContainerInitializer(new JettyWebSocketServletContainerInitializer());
-		this.contextHandler.start();
 
 		ServerConnector connector = new ServerConnector(this.jettyServer);
 		connector.setHost(getHost());
 		connector.setPort(getPort());
 		this.jettyServer.addConnector(connector);
+		this.jettyServer.setHandler(this.contextHandler);
+		this.contextHandler.start();
 	}
 
 	private ServletHttpHandlerAdapter createServletAdapter() {

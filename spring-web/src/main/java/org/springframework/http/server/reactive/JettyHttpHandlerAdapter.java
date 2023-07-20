@@ -26,7 +26,6 @@ import org.eclipse.jetty.ee10.servlet.HttpOutput;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
-import org.springframework.http.HttpStatus;
 
 /**
  * {@link ServletHttpHandlerAdapter} extension that uses Jetty APIs for writing
@@ -62,8 +61,6 @@ public class JettyHttpHandlerAdapter extends ServletHttpHandlerAdapter {
 				throws IOException {
 
 			super(response, asyncContext, bufferFactory, bufferSize, request);
-			// Jetty 12 TODO: https://github.com/eclipse/jetty.project/issues/9955
-			setStatusCode(HttpStatus.OK);
 		}
 
 		@Override
