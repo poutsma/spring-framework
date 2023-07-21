@@ -71,6 +71,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.HttpComponentsClientHttpConnector;
 import org.springframework.http.client.reactive.JdkClientHttpConnector;
+import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorNetty2ClientHttpConnector;
 import org.springframework.web.reactive.function.BodyExtractors;
@@ -104,7 +105,7 @@ class WebClientIntegrationTests {
 				named("Reactor Netty", new ReactorClientHttpConnector()),
 				named("Reactor Netty 2", new ReactorNetty2ClientHttpConnector()),
 				named("JDK", new JdkClientHttpConnector()),
-//				named("Jetty", new JettyClientHttpConnector()),
+				named("Jetty", new JettyClientHttpConnector()),
 				named("HttpComponents", new HttpComponentsClientHttpConnector())
 		);
 	}
