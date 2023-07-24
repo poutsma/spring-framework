@@ -18,18 +18,18 @@ package org.springframework.http.client.reactive;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 
 import org.eclipse.jetty.client.Request;
 import org.eclipse.jetty.http.HttpCookie;
-import org.eclipse.jetty.reactive.client.ContentChunk;
+import org.eclipse.jetty.io.Content;
 import org.eclipse.jetty.reactive.client.ReactiveRequest;
-import org.eclipse.jetty.util.Callback;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.MonoSink;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -92,7 +92,7 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 	public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
 		return Mono.<Void>create(sink -> {
 			ReactiveRequest.Content content = Flux.from(body)
-					.map(buffer -> toContentChunk(buffer, sink))
+					.concatMapIterable(this::toContentChunks)
 					.as(chunks -> ReactiveRequest.Content.fromPublisher(chunks, getContentType()));
 			this.builder.content(content);
 			sink.success();
@@ -111,20 +111,22 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 		return contentType != null ? contentType.toString() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
 	}
 
-	private ContentChunk toContentChunk(DataBuffer dataBuffer, MonoSink<Void> sink) {
-		ByteBuffer byteBuffer = ByteBuffer.allocate(dataBuffer.readableByteCount());
-		dataBuffer.toByteBuffer(byteBuffer);
-		return new ContentChunk(byteBuffer, new Callback() {
-			@Override
-			public void succeeded() {
-				DataBufferUtils.release(dataBuffer);
-			}
-			@Override
-			public void failed(Throwable t) {
-				DataBufferUtils.release(dataBuffer);
-				sink.error(t);
-			}
-		});
+	private List<Content.Chunk> toContentChunks(DataBuffer dataBuffer) {
+
+		List<Content.Chunk> result = new ArrayList<>(2);
+		DataBuffer.ByteBufferIterator iterator = dataBuffer.readableByteBuffers();
+		while (iterator.hasNext()) {
+			ByteBuffer byteBuffer = iterator.next();
+			boolean last = !iterator.hasNext();
+			Content.Chunk chunk = Content.Chunk.from(byteBuffer, last, () -> {
+				if (last) {
+					iterator.close();
+					DataBufferUtils.release(dataBuffer);
+				}
+			});
+			result.add(chunk);
+		}
+		return result;
 	}
 
 	@Override

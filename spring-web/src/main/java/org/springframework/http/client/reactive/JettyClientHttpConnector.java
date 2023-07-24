@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2021 the original author or authors.
+ * Copyright 2002-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,22 @@
 package org.springframework.http.client.reactive;
 
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.Request;
-import org.eclipse.jetty.reactive.client.ContentChunk;
+import org.eclipse.jetty.io.Content;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
+import org.springframework.core.io.buffer.DefaultDataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.core.io.buffer.PooledDataBuffer;
 import org.springframework.http.HttpMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -133,7 +137,7 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 				}));
 	}
 
-	private DataBuffer toDataBuffer(ContentChunk chunk) {
+	private DataBuffer toDataBuffer(Content.Chunk chunk) {
 
 		// Originally we copy due to do:
 		// https://github.com/eclipse/jetty.project/issues/2429
@@ -142,10 +146,56 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 		// PooledDataBuffer that adapts "release()" to "succeeded()", and also
 		// evaluate if the concern here is addressed.
 
-		DataBuffer buffer = this.bufferFactory.allocateBuffer(chunk.buffer.capacity());
-		buffer.write(chunk.buffer);
-		chunk.callback.succeeded();
-		return buffer;
+		ByteBuffer byteBuffer = chunk.getByteBuffer();
+		return new JettyDataBuffer(byteBuffer, chunk);
+	}
+
+
+	private static final class JettyDataBuffer extends DefaultDataBuffer implements PooledDataBuffer {
+
+		private final Content.Chunk chunk;
+
+		private final AtomicInteger refCount = new AtomicInteger(1);
+
+		public JettyDataBuffer(ByteBuffer byteBuffer, Content.Chunk chunk) {
+			super(DefaultDataBufferFactory.sharedInstance, byteBuffer);
+			this.chunk = chunk;
+			writePosition(byteBuffer.remaining());
+		}
+
+
+		@Override
+		public boolean isAllocated() {
+			return this.refCount.get() > 0;
+		}
+
+		@Override
+		public PooledDataBuffer retain() {
+			this.chunk.retain();
+			this.refCount.incrementAndGet();
+			return this;
+		}
+
+		@Override
+		public boolean release() {
+			boolean result = this.chunk.release();
+			if (result) {
+				this.refCount.decrementAndGet();
+			}
+			return result;
+		}
+
+		@Override
+		public PooledDataBuffer touch(Object hint) {
+			return this;
+		}
+
+		@Override
+		public int readableByteCount() {
+			int result = super.readableByteCount();
+			System.out.println("result = " + result);
+			return result;
+		}
 	}
 
 }

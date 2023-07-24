@@ -58,7 +58,7 @@ public class DefaultDataBuffer implements DataBuffer {
 	private int writePosition;
 
 
-	private DefaultDataBuffer(DefaultDataBufferFactory dataBufferFactory, ByteBuffer byteBuffer) {
+	protected DefaultDataBuffer(DefaultDataBufferFactory dataBufferFactory, ByteBuffer byteBuffer) {
 		Assert.notNull(dataBufferFactory, "DefaultDataBufferFactory must not be null");
 		Assert.notNull(byteBuffer, "ByteBuffer must not be null");
 		this.dataBufferFactory = dataBufferFactory;
