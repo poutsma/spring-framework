@@ -93,6 +93,8 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 		return Mono.<Void>create(sink -> {
 			ReactiveRequest.Content content = Flux.from(body)
 					.concatMapIterable(this::toContentChunks)
+					.concatWith(Mono.just(Content.Chunk.EOF))
+					.doOnError(sink::error)
 					.as(chunks -> ReactiveRequest.Content.fromPublisher(chunks, getContentType()));
 			this.builder.content(content);
 			sink.success();
@@ -113,12 +115,12 @@ class JettyClientHttpRequest extends AbstractClientHttpRequest {
 
 	private List<Content.Chunk> toContentChunks(DataBuffer dataBuffer) {
 
-		List<Content.Chunk> result = new ArrayList<>(2);
+		List<Content.Chunk> result = new ArrayList<>(1);
 		DataBuffer.ByteBufferIterator iterator = dataBuffer.readableByteBuffers();
 		while (iterator.hasNext()) {
 			ByteBuffer byteBuffer = iterator.next();
 			boolean last = !iterator.hasNext();
-			Content.Chunk chunk = Content.Chunk.from(byteBuffer, last, () -> {
+			Content.Chunk chunk = Content.Chunk.from(byteBuffer, false, () -> {
 				if (last) {
 					iterator.close();
 					DataBufferUtils.release(dataBuffer);
