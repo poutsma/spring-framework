@@ -187,13 +187,9 @@ public class JettyClientHttpConnector implements ClientHttpConnector {
 		@Override
 		public boolean release() {
 			if (this.delegate instanceof PooledDataBuffer pooledDelegate) {
-				if (!pooledDelegate.release()) {
-					return false;
-				}
+				pooledDelegate.release();
 			}
-			if (!this.chunk.release()) {
-				return false;
-			}
+			this.chunk.release();
 			int refCount = this.refCount.updateAndGet(c -> {
 				if (c != 0) {
 					return c - 1;
