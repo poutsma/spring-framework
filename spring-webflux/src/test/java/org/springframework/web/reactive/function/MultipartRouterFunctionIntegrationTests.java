@@ -49,7 +49,6 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
-import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyHttpServer;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.UndertowHttpServer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -164,7 +163,6 @@ class MultipartRouterFunctionIntegrationTests extends AbstractRouterFunctionInte
 
 	@ParameterizedHttpServerTest
 	void proxy(HttpServer httpServer) throws Exception {
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: Jetty 12 fails proxying requests");
 		assumeFalse(httpServer instanceof UndertowHttpServer, "Undertow currently fails proxying requests");
 
 		startServer(httpServer);

@@ -57,11 +57,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.web.testfixture.http.server.reactive.bootstrap.HttpServer;
-import org.springframework.web.testfixture.http.server.reactive.bootstrap.JettyHttpServer;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.springframework.http.MediaType.APPLICATION_XML;
 
 /**
@@ -364,8 +362,6 @@ class RequestMappingMessageConversionIntegrationTests extends AbstractRequestMap
 	@ParameterizedHttpServerTest
 	void personCreateWithPublisherXml(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: flaky test");
-
 
 		People people = new People(new Person("Robert"), new Person("Marie"));
 		ResponseEntity<Void> response = performPost("/person-create/publisher", APPLICATION_XML, people, null, Void.class);
@@ -409,7 +405,6 @@ class RequestMappingMessageConversionIntegrationTests extends AbstractRequestMap
 
 	@ParameterizedHttpServerTest
 	void personCreateWithFluxXml(HttpServer httpServer) throws Exception {
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: flaky test");
 		startServer(httpServer);
 
 		People people = new People(new Person("Robert"), new Person("Marie"));
@@ -432,7 +427,6 @@ class RequestMappingMessageConversionIntegrationTests extends AbstractRequestMap
 
 	@ParameterizedHttpServerTest
 	void personCreateWithObservableXml(HttpServer httpServer) throws Exception {
-		assumeFalse(httpServer instanceof JettyHttpServer, "Jetty 12 TODO: flaky test");
 		startServer(httpServer);
 
 		People people = new People(new Person("Robert"), new Person("Marie"));
