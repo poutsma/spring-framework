@@ -25,19 +25,15 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 
-import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
-import io.micrometer.observation.contextpropagation.ObservationThreadLocalAccessor;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 import reactor.util.context.Context;
 
 import org.springframework.core.ParameterizedTypeReference;
@@ -439,43 +435,44 @@ final class DefaultWebClient implements WebClient {
 		@Override
 		public Mono<ClientResponse> exchange() {
 			ClientRequest.Builder requestBuilder = initRequestBuilder();
-			ClientRequestObservationContext observationContext = new ClientRequestObservationContext(requestBuilder);
-			return Mono.deferContextual(contextView -> {
-				Observation observation = ClientHttpObservationDocumentation.HTTP_REACTIVE_CLIENT_EXCHANGES.observation(observationConvention,
-						DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, observationRegistry);
-				observation
-						.parentObservation(contextView.getOrDefault(ObservationThreadLocalAccessor.KEY, null))
-						.start();
-				ExchangeFilterFunction filterFunction = new ObservationFilterFunction(observationContext);
-				if (filterFunctions != null) {
-					filterFunction = filterFunctions.andThen(filterFunction);
-				}
+//			ClientRequestObservationContext observationContext = new ClientRequestObservationContext(requestBuilder);
+//			return Mono.deferContextual(contextView -> {
+//				Observation observation = ClientHttpObservationDocumentation.HTTP_REACTIVE_CLIENT_EXCHANGES.observation(observationConvention,
+//						DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, observationRegistry);
+//				observation
+//						.parentObservation(contextView.getOrDefault(ObservationThreadLocalAccessor.KEY, null))
+//						.start();
+//				ExchangeFilterFunction filterFunction = new ObservationFilterFunction(observationContext);
+//				if (filterFunctions != null) {
+//					filterFunction = filterFunctions.andThen(filterFunction);
+//				}
+//				ExchangeFilterFunction filterFunction = new ObservationFilterFunction(observationContext);
 				ClientRequest request = requestBuilder
-						.attribute(ClientRequestObservationContext.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observationContext)
+//						.attribute(ClientRequestObservationContext.CURRENT_OBSERVATION_CONTEXT_ATTRIBUTE, observationContext)
 						.build();
-				observationContext.setUriTemplate((String) request.attribute(URI_TEMPLATE_ATTRIBUTE).orElse(null));
-				observationContext.setRequest(request);
-				Mono<ClientResponse> responseMono = filterFunction.apply(exchangeFunction)
-						.exchange(request)
+//				observationContext.setUriTemplate((String) request.attribute(URI_TEMPLATE_ATTRIBUTE).orElse(null));
+//				observationContext.setRequest(request);
+				Mono<ClientResponse> responseMono = /*filterFunction.apply(exchangeFunction)*/
+						exchangeFunction.exchange(request)
 						.checkpoint("Request to " +
 								WebClientUtils.getRequestDescription(request.method(), request.url()) +
 								" [DefaultWebClient]")
 						.switchIfEmpty(NO_HTTP_CLIENT_RESPONSE_ERROR);
-				if (this.contextModifier != null) {
-					responseMono = responseMono.contextWrite(this.contextModifier);
-				}
-				final AtomicBoolean responseReceived = new AtomicBoolean();
-				return responseMono
-						.doOnNext(response -> responseReceived.set(true))
-						.doOnError(observationContext::setError)
-						.doFinally(signalType -> {
-							if (signalType == SignalType.CANCEL && !responseReceived.get()) {
-								observationContext.setAborted(true);
-							}
-							observation.stop();
-						})
-						.contextWrite(context -> context.put(ObservationThreadLocalAccessor.KEY, observation));
-			});
+//				if (this.contextModifier != null) {
+//					responseMono = responseMono.contextWrite(this.contextModifier);
+//				}
+//				final AtomicBoolean responseReceived = new AtomicBoolean();
+				return responseMono;
+//						.doOnNext(response -> responseReceived.set(true))
+//						.doOnError(observationContext::setError)
+//						.doFinally(signalType -> {
+//							if (signalType == SignalType.CANCEL && !responseReceived.get()) {
+//								observationContext.setAborted(true);
+//							}
+//							observation.stop();
+//						})
+//						.contextWrite(context -> context.put(ObservationThreadLocalAccessor.KEY, observation));
+//			});
 		}
 
 		private ClientRequest.Builder initRequestBuilder() {

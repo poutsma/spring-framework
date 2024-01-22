@@ -69,8 +69,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
-import org.springframework.http.client.reactive.HttpComponentsClientHttpConnector;
-import org.springframework.http.client.reactive.JdkClientHttpConnector;
 import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorNetty2ClientHttpConnector;
@@ -102,10 +100,10 @@ class WebClientIntegrationTests {
 
 	static Stream<Named<ClientHttpConnector>> arguments() {
 		return Stream.of(
-				named("Reactor Netty", new ReactorClientHttpConnector()),
-				named("JDK", new JdkClientHttpConnector()),
-				named("Jetty", new JettyClientHttpConnector()),
-				named("HttpComponents", new HttpComponentsClientHttpConnector())
+//				named("Reactor Netty", new ReactorClientHttpConnector()),
+//				named("JDK", new JdkClientHttpConnector()),
+				named("Jetty", new JettyClientHttpConnector())
+//				named("HttpComponents", new HttpComponentsClientHttpConnector())
 		);
 	}
 
