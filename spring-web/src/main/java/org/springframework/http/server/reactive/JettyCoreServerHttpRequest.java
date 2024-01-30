@@ -84,6 +84,13 @@ class JettyCoreServerHttpRequest extends AbstractServerHttpRequest {
 		return null;
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> T getNativeRequest()
+	{
+		return (T) request;
+	}
+
 	@Override
 	protected String initId() {
 		return this.request.getId();
