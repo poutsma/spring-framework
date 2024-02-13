@@ -51,6 +51,14 @@ public class JettyWebSocketClient implements WebSocketClient, Lifecycle {
 		this.client = client;
 	}
 
+	public void start() throws Exception {
+		this.client.start();
+	}
+
+	public void stop() throws Exception {
+		this.client.stop();
+	}
+
 	@Override
 	public void start() {
 		LifeCycle.start(this.client);
