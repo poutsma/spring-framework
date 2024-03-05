@@ -35,6 +35,6 @@ class UriComponentsBuilderParserTests {
 	void parse() {
 		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("http://example.com");
 		UriComponents result = parser.parse().build();
-		System.out.println("result = " + result);
+		System.out.println("result = " + result.getScheme());
 	}
 }

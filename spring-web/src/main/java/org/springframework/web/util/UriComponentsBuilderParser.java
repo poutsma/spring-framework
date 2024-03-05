@@ -43,6 +43,7 @@ final class UriComponentsBuilderParser {
 
 	@Nullable
 	private String scheme;
+
 	@Nullable
 	private String username;
 
@@ -90,20 +91,15 @@ final class UriComponentsBuilderParser {
 	public UriComponentsBuilder parse() {
 		this.pos = 0;
 		this.atSignSeen = false;
+		this.passwordTokenSeen = false;
 
 		this.scheme = null;
+		this.username = null;
+		this.password = null;
 
 		while (this.pos < this.inputLength) {
 			char ch = this.input[this.pos];
-			switch (this.state) {
-				case SCHEME_START -> schemeStart(ch);
-				case SCHEME -> scheme(ch);
-				case NO_SCHEME -> throwParseException("Missing scheme.");
-				case PATH_OR_AUTHORITY -> pathOrAuthority(ch);
-				case SPECIAL_AUTHORITY_SLASHES -> specialAuthoritySlashes(ch);
-				case SPECIAL_AUTHORITY_IGNORE_SLASHES -> specialAuthorityIgnoreSlashes(ch);
-				case AUTHORITY -> authority(ch);
-			}
+			this.state.handle(ch, this);
 			this.pos++;
 		}
 		UriComponentsBuilder result = new UriComponentsBuilder();
@@ -113,134 +109,7 @@ final class UriComponentsBuilderParser {
 		return result;
 	}
 
-	private void schemeStart(char ch) {
-		if (isAsciiAlpha(ch)) {
-			this.buffer.append(Character.toLowerCase(ch));
-			this.state = State.SCHEME;
-		}
-		else {
-			this.state = State.NO_SCHEME;
-			this.pos--;
-		}
-	}
-
-	private void scheme(char ch) {
-		if (isAsciiAlphaNumeric(ch) || (ch == '+' || ch == '-' || ch == '.')) {
-			this.buffer.append(Character.toLowerCase(ch));
-		}
-		else if (ch == ':') {
-			this.scheme = this.buffer.toString();
-			this.buffer.setLength(0);
-			if (this.scheme.equals("file")) {
-				if (this.pos >= this.inputLength - 2 ||
-						this.input[this.pos + 1] != '/' ||
-						this.input[this.pos + 2] != '/') {
-					throwParseException("\"file\" scheme not followed by \"//\".");
-				}
-				else {
-					this.state = State.FILE;
-				}
-			}
-			else if (isSpecialScheme(this.scheme)) {
-				this.state = State.SPECIAL_AUTHORITY_SLASHES;
-			}
-			else if (this.pos < this.inputLength - 1 && this.input[this.pos + 1] == '/') {
-				this.state = State.PATH_OR_AUTHORITY;
-				this.pos++;
-			}
-			else {
-				this.state = State.OPAQUE_PATH;
-			}
-		}
-		else {
-			this.buffer.setLength(0);
-			this.state = State.NO_SCHEME;
-			this.pos = 0;
-		}
-	}
-
-	private void pathOrAuthority(char ch) {
-		if (ch == '/') {
-			this.state = State.AUTHORITY;
-		}
-		else {
-			this.state = State.PATH;
-			this.pos--;
-		}
-	}
-
-	private void specialAuthoritySlashes(char ch) {
-		if (ch == '/' && this.pos < this.inputLength - 1 && this.input[this.pos + 1] == '/') {
-			this.state = State.SPECIAL_AUTHORITY_IGNORE_SLASHES;
-			this.pos++;
-		}
-		else {
-			throwParseException("Scheme \"" + this.scheme + "\" not followed by \"//\".");
-		}
-	}
-
-	private void specialAuthorityIgnoreSlashes(char ch) {
-		if (ch != '/' && ch != '\\') {
-			this.state = State.AUTHORITY;
-			this.pos--;
-		}
-		else {
-			throwParseException("Scheme \"" + this.scheme + "\" not followed by \"//\".");
-		}
-	}
-
-	private void authority(char ch) {
-		if (ch == '@') {
-			if (this.atSignSeen) {
-				this.buffer.insert(0, "%40");
-			}
-
-			this.atSignSeen = true;
-
-			int bufferLen = this.buffer.length();
-			StringBuilder username = new StringBuilder(bufferLen);
-			StringBuilder password = new StringBuilder(bufferLen);
-
-			for (int i = 0; i < bufferLen; i++) {
-				char authCh = this.buffer.charAt(i);
-				if (authCh == ':' && !this.passwordTokenSeen) {
-					this.passwordTokenSeen = true;
-					continue;
-				}
-				String encoded = HierarchicalUriComponents.encodeUriComponent(Character.toString(authCh),
-						StandardCharsets.UTF_8, HierarchicalUriComponents.Type.USER_INFO);
-				if (this.passwordTokenSeen) {
-					password.append(authCh);
-				}
-				else {
-					username.append(authCh);
-				}
-			}
-			this.username = username.toString();
-			this.password = password.toString();
-			this.buffer.setLength(0);
-		}
-		else if (ch == '/' || ch == '?' || ch == '#' ||
-				(isSpecialScheme(this.scheme) && ch == '\\')) {
-			if (this.atSignSeen && this.buffer.isEmpty()) {
-				throwParseException("Missing host.");
-			}
-			else {
-				this.pos -= this.buffer.length();
-				this.buffer.setLength(0);
-				this.state = State.HOST;
-			}
-		}
-		else {
-			this.buffer.append(ch);
-		}
-	}
-
-
-
-
-
-
+	
 	private void throwParseException(@Nullable String additionalInfo) {
 		StringBuilder message = new StringBuilder("Invalid URL [");
 		message.append(this.input);
@@ -271,7 +140,7 @@ final class UriComponentsBuilderParser {
 	}
 
 
-	private boolean isSpecialScheme(@Nullable String scheme) {
+	private static boolean isSpecialScheme(@Nullable String scheme) {
 		return "ftp".equals(scheme) ||
 				"file".equals(scheme) ||
 				"http".equals(scheme) ||
@@ -281,17 +150,162 @@ final class UriComponentsBuilderParser {
 	}
 
 	private enum State {
-		SCHEME_START,
-		SCHEME,
-		NO_SCHEME,
-		PATH_OR_AUTHORITY,
-		SPECIAL_AUTHORITY_SLASHES,
-		SPECIAL_AUTHORITY_IGNORE_SLASHES,
-		AUTHORITY,
-		HOST,
-		FILE,
-		OPAQUE_PATH,
-		PATH,
+
+		SCHEME_START {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (isAsciiAlpha(ch)) {
+					p.buffer.append(Character.toLowerCase(ch));
+					p.state = State.SCHEME;
+				}
+				else {
+					p.state = State.NO_SCHEME;
+					p.pos--;
+				}
+			}
+		},
+		SCHEME {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (isAsciiAlphaNumeric(ch) || (ch == '+' || ch == '-' || ch == '.')) {
+					p.buffer.append(Character.toLowerCase(ch));
+				}
+				else if (ch == ':') {
+					p.scheme = p.buffer.toString();
+					p.buffer.setLength(0);
+					if (p.scheme.equals("file")) {
+						if (p.pos >= p.inputLength - 2 ||
+								p.input[p.pos + 1] != '/' ||
+								p.input[p.pos + 2] != '/') {
+							p.throwParseException("\"file\" scheme not followed by \"//\".");
+						}
+						else {
+							p.state = State.FILE;
+						}
+					}
+					else if (isSpecialScheme(p.scheme)) {
+						p.state = State.SPECIAL_AUTHORITY_SLASHES;
+					}
+					else if (p.pos < p.inputLength - 1 && p.input[p.pos + 1] == '/') {
+						p.state = State.PATH_OR_AUTHORITY;
+						p.pos++;
+					}
+					else {
+						p.state = State.OPAQUE_PATH;
+					}
+				}
+				else {
+					p.buffer.setLength(0);
+					p.state = State.NO_SCHEME;
+					p.pos = 0;
+				}
+
+			}
+		},
+		NO_SCHEME {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				p.throwParseException("Missing scheme.");
+			}
+		},
+		PATH_OR_AUTHORITY {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (ch == '/') {
+					p.state = State.AUTHORITY;
+				}
+				else {
+					p.state = State.PATH;
+					p.pos--;
+				}
+			}
+		},
+		SPECIAL_AUTHORITY_SLASHES {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (ch == '/' && p.pos < p.inputLength - 1 && p.input[p.pos + 1] == '/') {
+					p.state = State.SPECIAL_AUTHORITY_IGNORE_SLASHES;
+					p.pos++;
+				}
+				else {
+					p.throwParseException("Scheme \"" + p.scheme + "\" not followed by \"//\".");
+				}
+			}
+		},
+		SPECIAL_AUTHORITY_IGNORE_SLASHES {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (ch != '/' && ch != '\\') {
+					p.state = State.AUTHORITY;
+					p.pos--;
+				}
+				else {
+					p.throwParseException("Scheme \"" + p.scheme + "\" not followed by \"//\".");
+				}
+			}
+		},
+		AUTHORITY {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser p) {
+				if (ch == '@') {
+					if (p.atSignSeen) {
+						p.buffer.insert(0, "%40");
+					}
+
+					p.atSignSeen = true;
+
+					int bufferLen = p.buffer.length();
+					StringBuilder username = new StringBuilder(bufferLen);
+					StringBuilder password = new StringBuilder(bufferLen);
+
+					for (int i = 0; i < bufferLen; i++) {
+						char authCh = p.buffer.charAt(i);
+						if (authCh == ':' && !p.passwordTokenSeen) {
+							p.passwordTokenSeen = true;
+							continue;
+						}
+						String encoded = HierarchicalUriComponents.encodeUriComponent(Character.toString(authCh),
+								StandardCharsets.UTF_8, HierarchicalUriComponents.Type.USER_INFO);
+						if (p.passwordTokenSeen) {
+							password.append(encoded);
+						}
+						else {
+							username.append(encoded);
+						}
+					}
+					p.username = username.toString();
+					p.password = password.toString();
+					p.buffer.setLength(0);
+				}
+			}
+		},
+		HOST {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser parser) {
+				throw new UnsupportedOperationException();
+			}
+		},
+		FILE {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser parser) {
+				throw new UnsupportedOperationException();
+			}
+		},
+		OPAQUE_PATH {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser parser) {
+				throw new UnsupportedOperationException();
+			}
+		},
+		PATH {
+			@Override
+			public void handle(char ch, UriComponentsBuilderParser parser) {
+				throw new UnsupportedOperationException();
+			}
+		};
+
+		public abstract void handle(char ch, UriComponentsBuilderParser parser);
+
 
 	}
 }
