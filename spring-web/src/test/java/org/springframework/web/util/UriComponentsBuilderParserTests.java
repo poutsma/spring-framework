@@ -33,8 +33,18 @@ class UriComponentsBuilderParserTests {
 
 	@Test
 	void parse() {
-		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("http://example.com");
+		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("http://[1abc:2abc:3abc::5ABC:6abc%eth0]:8080/resource" , System.out::println);
+//		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("http://[1080::8:800:200c:417a]/index.html" , System.out::println);
+//		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("https://192.168/foo/bar" , System.out::println);
+//		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("https://arjen:foobar@java.sun.com:80" +
+//						"/javase/6/docs/api/java/util/BitSet.html?foo=bar#and(java.util.BitSet)", System.out::println);
+//		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("mailto:java-net@java.sun.com#baz", System.out::println);
 		UriComponents result = parser.parse().build();
-		System.out.println("result = " + result.getScheme());
+		System.out.printf("scheme:   '%s'%n", result.getScheme());
+		System.out.printf("host:     '%s'%n", result.getHost());
+		System.out.printf("port:     '%d'%n", result.getPort());
+		System.out.printf("path:     '%s'%n", result.getPath());
+		System.out.printf("query:    '%s'%n", result.getQuery());
+		System.out.printf("fragment: '%s'%n", result.getFragment());
 	}
 }
