@@ -103,6 +103,8 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 
 	private static final Object[] EMPTY_VALUES = new Object[0];
 
+	private static final UrlParser.UrlRecord EMPTY_URL_RECORD = new UrlParser.UrlRecord();
+
 
 	@Nullable
 	private String scheme;
@@ -217,6 +219,44 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 	 */
 	public static UriComponentsBuilder fromUriString(String uri) {
 		Assert.notNull(uri, "URI must not be null");
+
+		UriComponentsBuilder builder = new UriComponentsBuilder();
+		if (!uri.isEmpty()) {
+			UrlParser.UrlRecord urlRecord = UrlParser.parse(uri, EMPTY_URL_RECORD, StandardCharsets.UTF_8, null);
+			if (!urlRecord.scheme().isEmpty()) {
+				builder.scheme(urlRecord.scheme());
+			}
+			if (urlRecord.includesCredentials()) {
+				StringBuilder userInfo = new StringBuilder(urlRecord.username());
+				if (!urlRecord.password().isEmpty()) {
+					userInfo.append(':');
+					userInfo.append(urlRecord.password());
+				}
+				builder.userInfo(userInfo.toString());
+			}
+			if (urlRecord.host() != null && !(urlRecord.host() instanceof UrlParser.EmptyHost)) {
+				builder.host(urlRecord.host().toString());
+			}
+			if (urlRecord.port() != null) {
+				builder.port(urlRecord.port());
+			}
+			if (urlRecord.path().isOpaque()) {
+				builder.schemeSpecificPart(urlRecord.path().toString());
+			}
+			else {
+				if (!urlRecord.path().isEmpty()) {
+					builder.path(urlRecord.path().toString());
+				}
+				if (StringUtils.hasLength(urlRecord.query())) {
+					builder.query(urlRecord.query());
+				}
+			}
+			if (StringUtils.hasLength(urlRecord.fragment())) {
+				builder.fragment(urlRecord.fragment());
+			}
+		}
+		return builder;
+/*
 		Matcher matcher = URI_PATTERN.matcher(uri);
 		if (matcher.matches()) {
 			UriComponentsBuilder builder = new UriComponentsBuilder();
@@ -259,7 +299,7 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 		}
 		else {
 			throw new IllegalArgumentException("[" + uri + "] is not a valid URI");
-		}
+		}*/
 	}
 
 	/**
@@ -278,6 +318,34 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 	 */
 	public static UriComponentsBuilder fromHttpUrl(String httpUrl) {
 		Assert.notNull(httpUrl, "HTTP URL must not be null");
+		UriComponentsBuilder builder = new UriComponentsBuilder();
+		if (!httpUrl.isEmpty()) {
+			UrlParser.UrlRecord urlRecord = UrlParser.parse(httpUrl, null, StandardCharsets.UTF_8, null);
+			builder.scheme(urlRecord.scheme());
+			if (urlRecord.includesCredentials()) {
+				StringBuilder userInfo = new StringBuilder(urlRecord.username());
+				if (!urlRecord.password().isEmpty()) {
+					userInfo.append(':');
+					userInfo.append(urlRecord.password());
+				}
+				builder.userInfo(userInfo.toString());
+			}
+			if (urlRecord.host() != null && !(urlRecord.host() instanceof UrlParser.EmptyHost)) {
+				builder.host(urlRecord.host().toString());
+			}
+			if (urlRecord.port() != null) {
+				builder.port(urlRecord.port());
+			}
+			builder.path(urlRecord.path().toString());
+			if (urlRecord.query() != null) {
+				builder.query(urlRecord.query());
+			}
+			if (urlRecord.fragment() != null) {
+				builder.fragment(urlRecord.fragment());
+			}
+		}
+		return builder;
+/*
 		Matcher matcher = HTTP_URL_PATTERN.matcher(httpUrl);
 		if (matcher.matches()) {
 			UriComponentsBuilder builder = new UriComponentsBuilder();
@@ -302,6 +370,7 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 		else {
 			throw new IllegalArgumentException("[" + httpUrl + "] is not a valid HTTP URL");
 		}
+*/
 	}
 
 	private static void checkSchemeAndHost(String uri, @Nullable String scheme, @Nullable String host) {

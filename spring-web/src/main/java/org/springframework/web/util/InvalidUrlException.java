@@ -24,6 +24,9 @@ public class InvalidUrlException extends IllegalArgumentException {
 
 	private static final long serialVersionUID = 7409308391039105562L;
 
+	public InvalidUrlException() {
+	}
+
 	public InvalidUrlException(String s) {
 		super(s);
 	}

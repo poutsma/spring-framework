@@ -17,6 +17,7 @@
 package org.springframework.web.util;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,17 +26,21 @@ import org.junit.jupiter.api.Test;
  */
 class UrlParserTests {
 
+	private static final UrlParser.UrlRecord EMPTY_URL_RECORD = new UrlParser.UrlRecord();
+
 	@Test
 	void parse() {
 		//file://localhost/etc/fstab
 		//file:///etc/fstab
 //		UrlParser parser = new UrlParser("file:///c:\\WINDOWS\\clock.avi" , System.out::println);
-//		UrlParser parser = new UrlParser("http://[1abc:2abc:3abc::5ABC:6abc%eth0]:8080/resource" , System.out::println);
-//		UrlParser parser = new UrlParser("http://[1080::8:800:200c:417a]/index.html" , System.out::println);
-//		UrlParser parser = new UrlParser("https://01.102/foo/bar" , System.out::println);
-//		UriComponentsBuilderParser parser = new UriComponentsBuilderParser("https://arjen:foobar@java.sun.com:80" +
+//		UrlParser.UrlRecord result = UrlParser.parse("http://[1abc:2abc:3abc::5ABC:6abc]:8080/resource" , System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("http://[1080::8:800:200c:417a]/index.html" , System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("https://192.168.1.1/foo/bar", System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("https://01.102/foo/bar", System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("https://arjen:foobar@java.sun.com:80" +
 //						"/javase/6/docs/api/java/util/BitSet.html?foo=bar#and(java.util.BitSet)", System.out::println);
-		UrlParser.UrlRecord result = UrlParser.parse("mailto:java-net@java.sun.com#baz", System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("mailto:java-net@java.sun.com#baz", System.out::println);
+		UrlParser.UrlRecord result = UrlParser.parse("docs/guide/collections/designfaq.html#28", EMPTY_URL_RECORD, StandardCharsets.UTF_8, System.out::println);
 		System.out.printf("scheme:   '%s'%n", result.scheme());
 		System.out.printf("host:     '%s'%n", result.host());
 		System.out.printf("port:     '%d'%n", result.port());
@@ -45,6 +50,7 @@ class UrlParserTests {
 		URI uri = URI.create("mailto:java-net@java.sun.com#baz");
 		System.out.println("URI");
 		System.out.printf("scheme:   '%s'%n", uri.getScheme());
+		System.out.printf("ssp:      '%s'%n", uri.getSchemeSpecificPart());
 		System.out.printf("host:     '%s'%n", uri.getHost());
 		System.out.printf("port:     '%d'%n", uri.getPort());
 		System.out.printf("path:     '%s'%n", uri.getPath());
