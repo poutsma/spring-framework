@@ -46,6 +46,7 @@ final class UrlParser {
 	@Nullable
 	private final UrlRecord base;
 
+	@Nullable
 	private Charset encoding;
 
 	@Nullable
@@ -65,7 +66,7 @@ final class UrlParser {
 	private boolean insideBrackets;
 
 
-	private UrlParser(String input, @Nullable UrlRecord base, Charset encoding, @Nullable Consumer<String> validationErrorHandler) {
+	private UrlParser(String input, @Nullable UrlRecord base, @Nullable Charset encoding, @Nullable Consumer<String> validationErrorHandler) {
 		this.input = new StringBuilder(input);
 		this.base = base;
 		this.encoding = encoding;
@@ -74,10 +75,9 @@ final class UrlParser {
 	}
 
 
-	public static UrlRecord parse(String input, @Nullable UrlRecord base, Charset encoding, @Nullable Consumer<String> validationErrorHandler)
+	public static UrlRecord parse(String input, @Nullable UrlRecord base, @Nullable Charset encoding, @Nullable Consumer<String> validationErrorHandler)
 		throws InvalidUrlException {
 		Assert.notNull(input, "Input must not be null");
-		Assert.notNull(encoding, "Encoding must not be null");
 
 		UrlParser parser = new UrlParser(input, base, encoding, validationErrorHandler);
 
@@ -299,6 +299,19 @@ final class UrlParser {
 		}
 		else {
 			return EOF;
+		}
+	}
+
+	private String percentEncode(int c, HierarchicalUriComponents.Type type) {
+		return percentEncode(Character.toString(c), type);
+	}
+
+	private String percentEncode(String source, HierarchicalUriComponents.Type type) {
+		if (this.encoding != null) {
+			return HierarchicalUriComponents.encodeUriComponent(source, this.encoding, type);
+		}
+		else {
+			return source;
 		}
 	}
 
@@ -655,8 +668,7 @@ final class UrlParser {
 							continue;
 						}
 						// Let encodedCodePoints be the result of running UTF-8 percent-encode codePoint using the userinfo percent-encode set.
-						String encodedCodePoints = HierarchicalUriComponents.encodeUriComponent(
-								Character.toString(codePoint), p.encoding, HierarchicalUriComponents.Type.USER_INFO);
+						String encodedCodePoints = p.percentEncode(codePoint,HierarchicalUriComponents.Type.USER_INFO);
 						// If passwordTokenSeen is true, then append encodedCodePoints to url’s password.
 						if (p.passwordTokenSeen) {
 							password.append(encodedCodePoints);
@@ -1029,8 +1041,7 @@ final class UrlParser {
 						}
 					}
 					// UTF-8 percent-encode c using the path percent-encode set and append the result to buffer.
-					String encoded = HierarchicalUriComponents.encodeUriComponent(Character.toString((char) c),
-							p.encoding, HierarchicalUriComponents.Type.PATH_SEGMENT);
+					String encoded = p.percentEncode(c, HierarchicalUriComponents.Type.PATH_SEGMENT);
 					p.buffer.append(encoded);
 				}
 			}
@@ -1065,8 +1076,7 @@ final class UrlParser {
 					}
 					// If c is not the EOF code point, UTF-8 percent-encode c using the C0 control percent-encode set and append the result to url’s path.
 					if (c != EOF) {
-						String encoded = HierarchicalUriComponents.encodeUriComponent(Character.toString((char) c),
-								p.encoding, HierarchicalUriComponents.Type.C0);
+						String encoded = p.percentEncode(c, HierarchicalUriComponents.Type.C0);
 						url.path.append(encoded);
 					}
 				}
@@ -1079,7 +1089,7 @@ final class UrlParser {
 				// - url is not special
 				// - url’s scheme is "ws" or "wss"
 				//  then set encoding to UTF-8.
-				if (!p.encoding.equals(StandardCharsets.UTF_8) &&
+				if (!StandardCharsets.UTF_8.equals(p.encoding) &&
 						(!url.isSpecial() || "ws".equals(url.scheme) || "wss".equals(url.scheme))) {
 					p.encoding = StandardCharsets.UTF_8;
 				}
@@ -1089,8 +1099,7 @@ final class UrlParser {
 				if (c == '#' || c == EOF) {
 					// Let queryPercentEncodeSet be the special-query percent-encode set if url is special; otherwise the query percent-encode set.
 					// Percent-encode after encoding, with encoding, buffer, and queryPercentEncodeSet, and append the result to url’s query.
-					String encoded = HierarchicalUriComponents.encodeUriComponent(p.buffer.toString(),
-							p.encoding, HierarchicalUriComponents.Type.QUERY);
+					String encoded = p.percentEncode(p.buffer.toString(), HierarchicalUriComponents.Type.QUERY);
 					Assert.state(url.query != null, "Url's query should not be null");
 					url.query += encoded;
 					// Set buffer to the empty string.
@@ -1140,8 +1149,7 @@ final class UrlParser {
 						}
 					}
 					// UTF-8 percent-encode c using the fragment percent-encode set and append the result to url’s fragment.
-					String encoded = HierarchicalUriComponents.encodeUriComponent(Character.toString((char) c),
-							p.encoding, HierarchicalUriComponents.Type.FRAGMENT);
+					String encoded = p.percentEncode(c, HierarchicalUriComponents.Type.FRAGMENT);
 					Assert.state(url.fragment != null, "Url's fragment should not be null");
 					url.fragment += encoded;
 				}
