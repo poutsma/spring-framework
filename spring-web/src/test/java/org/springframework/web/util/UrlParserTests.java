@@ -16,7 +16,6 @@
 
 package org.springframework.web.util;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
@@ -40,13 +39,15 @@ class UrlParserTests {
 //		UrlParser.UrlRecord result = UrlParser.parse("https://arjen:foobar@java.sun.com:80" +
 //						"/javase/6/docs/api/java/util/BitSet.html?foo=bar#and(java.util.BitSet)", System.out::println);
 //		UrlParser.UrlRecord result = UrlParser.parse("mailto:java-net@java.sun.com#baz", System.out::println);
-		UrlParser.UrlRecord result = UrlParser.parse("docs/guide/collections/designfaq.html#28", EMPTY_URL_RECORD, StandardCharsets.UTF_8, System.out::println);
+//		UrlParser.UrlRecord result = UrlParser.parse("docs/guide/collections/designfaq.html#28", EMPTY_URL_RECORD, StandardCharsets.UTF_8, System.out::println);
+		UrlParser.UrlRecord result = UrlParser.parse("http://example.com", EMPTY_URL_RECORD, StandardCharsets.UTF_8, System.out::println);
 		System.out.printf("scheme:   '%s'%n", result.scheme());
 		System.out.printf("host:     '%s'%n", result.host());
 		System.out.printf("port:     '%d'%n", result.port());
 		System.out.printf("path:     '%s'%n", result.path());
 		System.out.printf("query:    '%s'%n", result.query());
 		System.out.printf("fragment: '%s'%n", result.fragment());
+/*
 		URI uri = URI.create("mailto:java-net@java.sun.com#baz");
 		System.out.println("URI");
 		System.out.printf("scheme:   '%s'%n", uri.getScheme());
@@ -56,5 +57,6 @@ class UrlParserTests {
 		System.out.printf("path:     '%s'%n", uri.getPath());
 		System.out.printf("query:    '%s'%n", uri.getQuery());
 		System.out.printf("fragment: '%s'%n", uri.getFragment());
+*/
 	}
 }

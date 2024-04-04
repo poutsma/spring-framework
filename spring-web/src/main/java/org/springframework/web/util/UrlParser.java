@@ -59,6 +59,8 @@ final class UrlParser {
 	@Nullable
 	private State state;
 
+	@Nullable State previousState;
+
 	private boolean atSignSeen;
 
 	private boolean passwordTokenSeen;
@@ -144,6 +146,12 @@ final class UrlParser {
 				break;
 			}
 		}
+	}
+
+	private void setState(State newState) {
+		System.out.println("Changing state from " + this.state + " to " + newState + " (prev: " + this.previousState + ")");
+	 	this.previousState = this.state;
+		this.state = newState;
 	}
 
 	private static List<String> tokenize(String str, String delimiters) {
@@ -400,11 +408,18 @@ final class UrlParser {
 				// If c is an ASCII alpha, append c, lowercased, to buffer, and set state to scheme state.
 				if (isAsciiAlpha(c)) {
 					p.append(Character.toLowerCase((char) c));
-					p.state = SCHEME;
+					p.setState(SCHEME);
+				}
+				// Addition: if c is '{', then append c to buffer, set previous state to scheme state, and state to url template state.
+				//
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.previousState = SCHEME;
+					p.state = URL_TEMPLATE;
 				}
 				// Otherwise, set state to no scheme state and decrease pointer by 1.
 				else {
-					p.state = NO_SCHEME;
+					p.setState(NO_SCHEME);
 					p.pointer--;
 				}
 			}
@@ -415,6 +430,11 @@ final class UrlParser {
 				// If c is an ASCII alphanumeric, U+002B (+), U+002D (-), or U+002E (.), append c, lowercased, to buffer.
 				if (isAsciiAlphaNumeric(c) || (c == '+' || c == '-' || c == '.')) {
 					p.append(Character.toLowerCase((char) c));
+				}
+				// Addition: if c is '{', then append c to buffer, set state to url template state.
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.setState(URL_TEMPLATE);
 				}
 				// Otherwise, if c is U+003A (:), then:
 				else if (c == ':') {
@@ -429,34 +449,34 @@ final class UrlParser {
 							p.validationError("\"file\" scheme not followed by \"//\".");
 						}
 						// Set state to file state.
-						p.state = FILE;
+						p.setState(FILE);
 					}
 					// Otherwise, if url is special, base is non-null, and base’s scheme is url’s scheme:
 					else if (url.isSpecial() && p.base != null && p.base.scheme().equals(url.scheme)) {
 						// Assert: base is special (and therefore does not have an opaque path).
 						Assert.state(!p.base.path().isOpaque(), "Opaque path not expected");
 						// Set state to special relative or authority state.
-						p.state = SPECIAL_RELATIVE_OR_AUTHORITY;
+						p.setState(SPECIAL_RELATIVE_OR_AUTHORITY);
 					}
 					// Otherwise, if url is special, set state to special authority slashes state.
 					else if (url.isSpecial()) {
-						p.state = SPECIAL_AUTHORITY_SLASHES;
+						p.setState(SPECIAL_AUTHORITY_SLASHES);
 					}
 					// Otherwise, if remaining starts with an U+002F (/), set state to path or authority state and increase pointer by 1.
 					else if (p.remaining(0) == '/') {
-						p.state = PATH_OR_AUTHORITY;
+						p.setState(PATH_OR_AUTHORITY);
 						p.pointer++;
 					}
 					// Otherwise, set url’s path to the empty string and set state to opaque path state.
 					else {
 						url.path = new PathSegment("");
-						p.state = OPAQUE_PATH;
+						p.setState(OPAQUE_PATH);
 					}
 				}
 				// Otherwise, set buffer to the empty string, state to no scheme state, and start over (from the first code point in input).
 				else {
 					p.emptyBuffer();
-					p.state = NO_SCHEME;
+					p.setState(NO_SCHEME);
 					p.pointer = -1;
 				}
 
@@ -478,16 +498,16 @@ final class UrlParser {
 					url.path = p.base.path();
 					url.query = p.base.query;
 					url.fragment = "";
-					p.state = FRAGMENT;
+					p.setState(FRAGMENT);
 				}
 				// Otherwise, if base’s scheme is not "file", set state to relative state and decrease pointer by 1.
 				else if (!"file".equals(p.base.scheme())) {
-					p.state = RELATIVE;
+					p.setState(RELATIVE);
 					p.pointer--;
 				}
 				// Otherwise, set state to file state and decrease pointer by 1.
 				else {
-					p.state = FILE;
+					p.setState(FILE);
 					p.pointer--;
 				}
 			}
@@ -497,7 +517,7 @@ final class UrlParser {
 			public void handle(int c, UrlRecord url, UrlParser p) {
 				// If c is U+002F (/) and remaining starts with U+002F (/), then set state to special authority ignore slashes state and increase pointer by 1.
 				if (c == '/' && p.remaining(1) == '/') {
-					p.state = SPECIAL_AUTHORITY_IGNORE_SLASHES;
+					p.setState(SPECIAL_AUTHORITY_IGNORE_SLASHES);
 					p.pointer++;
 				}
 				// Otherwise, special-scheme-missing-following-solidus validation error, set state to relative state and decrease pointer by 1.
@@ -505,7 +525,7 @@ final class UrlParser {
 					if (p.validate()) {
 						p.validationError("The input’s scheme is not followed by \"//\".");
 					}
-					p.state = RELATIVE;
+					p.setState(RELATIVE);
 					p.pointer--;
 				}
 			}
@@ -515,11 +535,11 @@ final class UrlParser {
 			public void handle(int c, UrlRecord url, UrlParser p) {
 				// If c is U+002F (/), then set state to authority state.
 				if (c == '/') {
-					p.state = AUTHORITY;
+					p.setState(AUTHORITY);
 				}
 				// Otherwise, set state to path state, and decrease pointer by 1.
 				else {
-					p.state = PATH;
+					p.setState(PATH);
 					p.pointer--;
 				}
 			}
@@ -533,14 +553,14 @@ final class UrlParser {
 				url.scheme = p.base.scheme;
 				// If c is U+002F (/), then set state to relative slash state.
 				if (c == '/') {
-					p.state = RELATIVE_SLASH;
+					p.setState(RELATIVE_SLASH);
 				}
 				// Otherwise, if url is special and c is U+005C (\), invalid-reverse-solidus validation error, set state to relative slash state.
 				else if (url.isSpecial() && c == '\\') {
 					if (p.validate()) {
 						p.validationError("URL uses \\ instead of /.");
 					}
-					p.state = RELATIVE_SLASH;
+					p.setState(RELATIVE_SLASH);
 				}
 				// Otherwise
 				else {
@@ -555,12 +575,12 @@ final class UrlParser {
 					// If c is U+003F (?), then set url’s query to the empty string, and state to query state.
 					if (c == '?') {
 						url.query = "";
-						p.state = QUERY;
+						p.setState(QUERY);
 					}
 					// Otherwise, if c is U+0023 (#), set url’s fragment to the empty string and state to fragment state.
 					else if (c == '#') {
 						url.fragment = "";
-						p.state = FRAGMENT;
+						p.setState(FRAGMENT);
 					}
 					// Otherwise, if c is not the EOF code point:
 					else if (c != EOF) {
@@ -569,7 +589,7 @@ final class UrlParser {
 						// Shorten url’s path.
 						url.shortenPath();
 						// Set state to path state and decrease pointer by 1.
-						p.state = PATH;
+						p.setState(PATH);
 						p.pointer--;
 					}
 				}
@@ -585,11 +605,11 @@ final class UrlParser {
 						p.validationError("URL uses \\ instead of /.");
 					}
 					// Set state to special authority ignore slashes state.
-					p.state = SPECIAL_AUTHORITY_IGNORE_SLASHES;
+					p.setState(SPECIAL_AUTHORITY_IGNORE_SLASHES);
 				}
 				// Otherwise, if c is U+002F (/), then set state to authority state.
 				else if (c == '/') {
-					p.state = AUTHORITY;
+					p.setState(AUTHORITY);
 				}
 				// Otherwise, set url’s username to base’s username, url’s password to base’s password, url’s host
 				// to base’s host, url’s port to base’s port, state to path state, and then, decrease pointer by 1.
@@ -599,7 +619,7 @@ final class UrlParser {
 					url.password = p.base.password();
 					url.host = p.base.host();
 					url.port = p.base.port();
-					p.state = PATH;
+					p.setState(PATH);
 					p.pointer--;
 				}
 
@@ -610,7 +630,7 @@ final class UrlParser {
 			public void handle(int c, UrlRecord url, UrlParser p) {
 				// If c is U+002F (/) and remaining starts with U+002F (/), then set state to special authority ignore slashes state and increase pointer by 1.
 				if (c == '/' && p.remaining(0) == '/') {
-					p.state = SPECIAL_AUTHORITY_IGNORE_SLASHES;
+					p.setState(SPECIAL_AUTHORITY_IGNORE_SLASHES);
 					p.pointer++;
 				}
 				// Otherwise, special-scheme-missing-following-solidus validation error, set state to special authority ignore slashes state and decrease pointer by 1.
@@ -618,7 +638,7 @@ final class UrlParser {
 					if (p.validate()) {
 						p.validationError("Scheme \"" + url.scheme + "\" not followed by \"//\".");
 					}
-					p.state = SPECIAL_AUTHORITY_IGNORE_SLASHES;
+					p.setState(SPECIAL_AUTHORITY_IGNORE_SLASHES);
 					p.pointer--;
 				}
 			}
@@ -628,7 +648,7 @@ final class UrlParser {
 			public void handle(int c, UrlRecord url, UrlParser p) {
 				// If c is neither U+002F (/) nor U+005C (\), then set state to authority state and decrease pointer by 1.
 				if (c != '/' && c != '\\') {
-					p.state = AUTHORITY;
+					p.setState(AUTHORITY);
 					p.pointer--;
 				}
 				// Otherwise, special-scheme-missing-following-solidus validation error.
@@ -695,7 +715,7 @@ final class UrlParser {
 					// Decrease pointer by buffer’s code point length + 1, set buffer to the empty string, and set state to host state.
 					p.pointer -= p.buffer.length() + 1;
 					p.emptyBuffer();
-					p.state = HOST;
+					p.setState(HOST);
 				}
 				// Otherwise, append c to buffer.
 				else {
@@ -717,7 +737,7 @@ final class UrlParser {
 					// Set url’s host to host, buffer to the empty string, and state to port state.
 					url.host = host;
 					p.emptyBuffer();
-					p.state = PORT;
+					p.setState(PORT);
 				}
 				// Otherwise, if one of the following is true:
 				// - c is the EOF code point, U+002F (/), U+003F (?), or U+0023 (#)
@@ -735,7 +755,7 @@ final class UrlParser {
 					// Set url’s host to host, buffer to the empty string, and state to path start state.
 					url.host = host;
 					p.emptyBuffer();
-					p.state = PATH_START;
+					p.setState(PATH_START);
 				}
 				// Otherwise:
 				else {
@@ -759,6 +779,11 @@ final class UrlParser {
 				if (isAsciiDigit(c)) {
 					p.append(c);
 				}
+				// Addition: if c is '{', then append c to buffer, set state to url template state.
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.setState(URL_TEMPLATE);
+				}
 				// Otherwise, if one of the following is true:
 				// - c is the EOF code point, U+002F (/), U+003F (?), or U+0023 (#)
 				// - url is special and c is U+005C (\)
@@ -766,30 +791,44 @@ final class UrlParser {
 						(url.isSpecial() && c == '\\')) {
 					// If buffer is not the empty string, then:
 					if (!p.buffer.isEmpty()) {
-						try {
-							// Let port be the mathematical integer value that is represented by buffer in radix-10 using ASCII digits for digits with values 0 through 9.
-							int port = Integer.parseInt(p.buffer, 0, p.buffer.length(), 10);
-							// If port is greater than 2^16 − 1, port-out-of-range validation error, return failure.
-							if (port > MAX_PORT) {
-								p.failure("Port \"" + port + "\" is out of range");
+						boolean isNumber = true;
+						for (int i=0; i < p.buffer.length(); i++) {
+							if (!isAsciiDigit(p.buffer.charAt(i))) {
+								isNumber = false;
+								break;
 							}
-							int defaultPort = defaultPort(url.scheme);
-							// Set url’s port to null, if port is url’s scheme’s default port; otherwise to port.
-							if (defaultPort == -1 || port == defaultPort) {
-								url.port = null;
-							}
-							else {
-								url.port = port;
-							}
-							// Set buffer to the empty string.
-							p.emptyBuffer();
 						}
-						catch (NumberFormatException ex) {
-							p.failure(ex.getMessage());
+						// Addition: if buffer contains only ASCII digits, then
+						if (isNumber) {
+							try {
+								// Let port be the mathematical integer value that is represented by buffer in radix-10 using ASCII digits for digits with values 0 through 9.
+								int port = Integer.parseInt(p.buffer, 0, p.buffer.length(), 10);
+								// If port is greater than 2^16 − 1, port-out-of-range validation error, return failure.
+								if (port > MAX_PORT) {
+									p.failure("Port \"" + port + "\" is out of range");
+								}
+								int defaultPort = defaultPort(url.scheme);
+								// Set url’s port to null, if port is url’s scheme’s default port; otherwise to port.
+								if (defaultPort == -1 || port == defaultPort) {
+									url.port = null;
+								}
+								else {
+									url.port = Integer.toString(port);
+								}
+							}
+							catch (NumberFormatException ex) {
+								p.failure(ex.getMessage());
+							}
 						}
+						// Addition: otherwise, set url's port to buffer
+						else {
+							url.port = p.buffer.toString();
+						}
+						// Set buffer to the empty string.
+						p.emptyBuffer();
 					}
 					// Set state to path start state and decrease pointer by 1.
-					p.state = PATH_START;
+					p.setState(PATH_START);
 					p.pointer--;
 				}
 				// Otherwise, port-invalid validation error, return failure.
@@ -812,7 +851,7 @@ final class UrlParser {
 						p.validationError("URL uses \\ instead of /.");
 					}
 					// Set state to file slash state.
-					p.state = FILE_SLASH;
+					p.setState(FILE_SLASH);
 				}
 				// Otherwise, if base is non-null and base’s scheme is "file":
 				else if (p.base != null && p.base.scheme().equals("file")) {
@@ -823,12 +862,12 @@ final class UrlParser {
 					// If c is U+003F (?), then set url’s query to the empty string and state to query state.
 					if (c == '?') {
 						url.query = "";
-						p.state = QUERY;
+						p.setState(QUERY);
 					}
 					// Otherwise, if c is U+0023 (#), set url’s fragment to the empty string and state to fragment state.
 					else if (c == '#') {
 						url.fragment = "";
-						p.state = FRAGMENT;
+						p.setState(FRAGMENT);
 					}
 					// Otherwise, if c is not the EOF code point:
 					else if (c != EOF) {
@@ -850,13 +889,13 @@ final class UrlParser {
 							url.path = new PathSegments();
 						}
 						// Set state to path state and decrease pointer by 1.
-						p.state = PATH;
+						p.setState(PATH);
 						p.pointer--;
 					}
 				}
 				// Otherwise, set state to path state, and decrease pointer by 1.
 				else {
-					p.state = PATH;
+					p.setState(PATH);
 					p.pointer--;
 				}
 			}
@@ -871,7 +910,7 @@ final class UrlParser {
 						p.validationError("URL uses \\ instead of /.");
 					}
 					// Set state to file host state.
-					p.state = FILE_HOST;
+					p.setState(FILE_HOST);
 				}
 				// Otherwise:
 				else {
@@ -888,7 +927,8 @@ final class UrlParser {
 							url.path.append(basePath.get(0));
 						}
 					}
-					p.state = PATH;
+					// Set state to path state, and decrease pointer by 1.
+					p.setState(PATH);
 					p.pointer--;
 				}
 			}
@@ -902,14 +942,14 @@ final class UrlParser {
 					// If buffer is a Windows drive letter, file-invalid-Windows-drive-letter-host validation error, set state to path state.
 					if (isWindowsDriveLetter(p.buffer, false)) {
 						p.validationError("A file: URL’s host is a Windows drive letter.");
-						p.state = PATH;
+						p.setState(PATH);
 					}
 					// Otherwise, if buffer is the empty string, then:
 					else if (p.buffer.isEmpty()) {
 						// Set url’s host to the empty string.
 						url.host = EmptyHost.INSTANCE;
 						// Set state to path start state.
-						p.state = PATH_START;
+						p.setState(PATH_START);
 					}
 					// Otherwise, basicUrlParser these steps:
 					else {
@@ -923,7 +963,7 @@ final class UrlParser {
 						url.host = host;
 						// Set buffer to the empty string and state to path start state.
 						p.emptyBuffer();
-						p.state = PATH_START;
+						p.setState(PATH_START);
 					}
 				}
 				// Otherwise, append c to buffer.
@@ -942,7 +982,7 @@ final class UrlParser {
 						p.validationError("URL uses \"\\\" instead of \"/\"");
 					}
 					// Set state to path state.
-					p.state = PATH;
+					p.setState(PATH);
 					// If c is neither U+002F (/) nor U+005C (\), then decrease pointer by 1.
 					if (c != '/' && c != '\\') {
 						p.pointer--;
@@ -951,17 +991,17 @@ final class UrlParser {
 				// Otherwise, if c is U+003F (?), set url’s query to the empty string and state to query state.
 				else if (c == '?') {
 					url.query = "";
-					p.state = QUERY;
+					p.setState(QUERY);
 				}
 				// Otherwise, if c is U+0023 (#), set url’s fragment to the empty string and state to fragment state.
 				else if (c =='#') {
 					url.fragment = "";
-					p.state = FRAGMENT;
+					p.setState(FRAGMENT);
 				}
 				// Otherwise, if c is not the EOF code point:
 				else if (c != EOF) {
 					// Set state to path state.
-					p.state = PATH;
+					p.setState(PATH);
 					// If c is not U+002F (/), then decrease pointer by 1.
 					if (c != '/') {
 						p.pointer--;
@@ -1017,13 +1057,18 @@ final class UrlParser {
 					// If c is U+003F (?), then set url’s query to the empty string and state to query state.
 					if (c == '?') {
 						url.query = "";
-						p.state = QUERY;
+						p.setState(QUERY);
 					}
 					// If c is U+0023 (#), then set url’s fragment to the empty string and state to fragment state.
 					if (c == '#') {
 						url.fragment = "";
-						p.state = FRAGMENT;
+						p.setState(FRAGMENT);
 					}
+				}
+				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.setState(URL_TEMPLATE);
 				}
 				// Otherwise, basicUrlParser these steps:
 				else {
@@ -1049,15 +1094,25 @@ final class UrlParser {
 		OPAQUE_PATH {
 			@Override
 			public void handle(int c, UrlRecord url, UrlParser p) {
+				// Addition: if previous state is URL Template and the buffer is empty, append buffer to url's path and empty the buffer
+				if (p.previousState == URL_TEMPLATE && !p.buffer.isEmpty()) {
+					url.path.append(p.buffer.toString());
+					p.emptyBuffer();
+				}
 				// If c is U+003F (?), then set url’s query to the empty string and state to query state.
 				if (c == '?') {
 					url.query = "";
-					p.state = QUERY;
+					p.setState(QUERY);
 				}
 				// Otherwise, if c is U+0023 (#), then set url’s fragment to the empty string and state to fragment state.
 				else if (c == '#') {
 					url.fragment = "";
-					p.state = FRAGMENT;
+					p.setState(FRAGMENT);
+				}
+				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.setState(URL_TEMPLATE);
 				}
 				// Otherwise:
 				else {
@@ -1089,7 +1144,8 @@ final class UrlParser {
 				// - url is not special
 				// - url’s scheme is "ws" or "wss"
 				//  then set encoding to UTF-8.
-				if (!StandardCharsets.UTF_8.equals(p.encoding) &&
+				if (p.encoding != null &&
+						!StandardCharsets.UTF_8.equals(p.encoding) &&
 						(!url.isSpecial() || "ws".equals(url.scheme) || "wss".equals(url.scheme))) {
 					p.encoding = StandardCharsets.UTF_8;
 				}
@@ -1107,8 +1163,13 @@ final class UrlParser {
 					// If c is U+0023 (#), then set url’s fragment to the empty string and state to fragment state.
 					if (c == '#') {
 						url.fragment = "";
-						p.state = FRAGMENT;
+						p.setState(FRAGMENT);
 					}
+				}
+				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				else if (p.previousState != URL_TEMPLATE && c == '{') {
+					p.append(c);
+					p.setState(URL_TEMPLATE);
 				}
 				// Otherwise, if c is not the EOF code point:
 				else if (c != EOF) {
@@ -1154,6 +1215,24 @@ final class UrlParser {
 					url.fragment += encoded;
 				}
 			}
+		},
+		URL_TEMPLATE {
+			@Override
+			public void handle(int c, UrlRecord url, UrlParser p) {
+				Assert.state(p.previousState != null, "No previous state set");
+				if (c == '}') {
+					p.append(c);
+					p.setState(p.previousState);
+				}
+				else if (c == EOF) {
+					p.pointer -= p.buffer.length() + 1;
+					p.emptyBuffer();
+					p.setState(p.previousState);
+				}
+				else {
+					p.append(c);
+				}
+			}
 		};
 
 		public abstract void handle(int c, UrlRecord url, UrlParser p);
@@ -1179,7 +1258,7 @@ final class UrlParser {
 		private Host host = null;
 
 		@Nullable
-		private Integer port = null;
+		private String port = null;
 
 		private Path path = new PathSegments();
 
@@ -1252,11 +1331,11 @@ final class UrlParser {
 		}
 
 		/**
-		 * A URL’s port is either null or a 16-bit unsigned integer that identifies a networking port. It is
-		 * initially {@code null}.
+		 * A URL’s port is either null, a string representing a 16-bit unsigned integer  that identifies a networking
+		 * port, or a string containing a uri template . It is initially {@code null}.
 		 */
 		@Nullable
-		public Integer port() {
+		public String port() {
 			return this.port;
 		}
 

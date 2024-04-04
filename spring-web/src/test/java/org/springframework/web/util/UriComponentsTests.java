@@ -27,6 +27,7 @@ import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.springframework.web.util.UriComponentsBuilder.fromHttpUrl;
@@ -159,9 +160,11 @@ class UriComponentsTests {
 
 	@Test  // gh-28521
 	void invalidPort() {
-		assertExceptionsForInvalidPort(fromUriString("https://example.com:XXX/bar").build());
+		assertThatExceptionOfType(InvalidUrlException.class)
+				.isThrownBy(() -> fromUriString("https://example.com:XXX/bar"));
 		assertExceptionsForInvalidPort(fromUriString("https://example.com/bar").port("XXX").build());
-		assertExceptionsForInvalidPort(fromHttpUrl("https://example.com:XXX/bar").build());
+		assertThatExceptionOfType(InvalidUrlException.class)
+				.isThrownBy(() -> fromHttpUrl("https://example.com:XXX/bar"));
 		assertExceptionsForInvalidPort(fromHttpUrl("https://example.com/bar").port("XXX").build());
 	}
 
