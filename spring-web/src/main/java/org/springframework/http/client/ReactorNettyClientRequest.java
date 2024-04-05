@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import io.netty.buffer.ByteBufAllocator;
 import org.reactivestreams.FlowAdapters;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.netty.NettyOutbound;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientRequest;
@@ -56,15 +57,18 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 
 	private final Duration readTimeout;
 
+	private final Scheduler scheduler;
+
 
 	public ReactorNettyClientRequest(HttpClient httpClient, URI uri, HttpMethod method,
-			Duration exchangeTimeout, Duration readTimeout) {
+			Duration exchangeTimeout, Duration readTimeout, Scheduler scheduler) {
 
 		this.httpClient = httpClient;
 		this.method = method;
 		this.uri = uri;
 		this.exchangeTimeout = exchangeTimeout;
 		this.readTimeout = readTimeout;
+		this.scheduler = scheduler;
 	}
 
 
@@ -90,8 +94,10 @@ final class ReactorNettyClientRequest extends AbstractStreamingClientHttpRequest
 			ReactorNettyClientResponse result = requestSender.send((reactorRequest, nettyOutbound) ->
 					send(headers, body, reactorRequest, nettyOutbound))
 					.responseConnection((reactorResponse, connection) ->
-							Mono.just(new ReactorNettyClientResponse(reactorResponse, connection, this.readTimeout)))
+							Mono.just(new ReactorNettyClientResponse(reactorResponse, connection, this.readTimeout,
+									this.scheduler)))
 					.next()
+					.subscribeOn(this.scheduler)
 					.block(this.exchangeTimeout);
 
 			if (result == null) {

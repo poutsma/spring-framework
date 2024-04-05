@@ -24,6 +24,8 @@ import java.util.function.Function;
 import io.netty.channel.ChannelOption;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.resources.LoopResources;
@@ -65,6 +67,8 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 	private volatile boolean running = true;
 
 	private final Object lifecycleMonitor = new Object();
+
+	private Scheduler scheduler = Schedulers.boundedElastic();
 
 
 	/**
@@ -192,10 +196,19 @@ public class ReactorNettyClientRequestFactory implements ClientHttpRequestFactor
 		this.exchangeTimeout = exchangeTimeout;
 	}
 
+	/**
+	 * Set the scheduler to use for offloading the main Reactor event loop.
+	 * <p>Default is {@link Schedulers#boundedElastic()}.
+	 */
+	public void setScheduler(Scheduler scheduler) {
+		Assert.notNull(scheduler, "Scheduler must not be null");
+		this.scheduler = scheduler;
+	}
 
 	@Override
 	public ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout);
+		return new ReactorNettyClientRequest(this.httpClient, uri, httpMethod, this.exchangeTimeout, this.readTimeout,
+				this.scheduler);
 	}
 
 	@Override

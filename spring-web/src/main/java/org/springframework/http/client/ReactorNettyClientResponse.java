@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 
+import reactor.core.scheduler.Scheduler;
 import reactor.netty.Connection;
 import reactor.netty.http.client.HttpClientResponse;
 
@@ -27,6 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.support.Netty4HeadersAdapter;
 import org.springframework.lang.Nullable;
+import org.springframework.util.StreamUtils;
 
 /**
  * {@link ClientHttpResponse} implementation for the Reactor-Netty HTTP client.
@@ -44,15 +46,18 @@ final class ReactorNettyClientResponse implements ClientHttpResponse {
 
 	private final Duration readTimeout;
 
+	private final Scheduler scheduler;
+
 	@Nullable
 	private volatile InputStream body;
 
 
-	public ReactorNettyClientResponse(HttpClientResponse response, Connection connection, Duration readTimeout) {
+	public ReactorNettyClientResponse(HttpClientResponse response, Connection connection, Duration readTimeout, Scheduler scheduler) {
 		this.response = response;
 		this.connection = connection;
 		this.readTimeout = readTimeout;
 		this.headers = HttpHeaders.readOnlyHttpHeaders(new Netty4HeadersAdapter(response.responseHeaders()));
+		this.scheduler = scheduler;
 	}
 
 
@@ -79,7 +84,11 @@ final class ReactorNettyClientResponse implements ClientHttpResponse {
 		}
 
 		body = this.connection.inbound().receive()
-				.aggregate().asInputStream().block(this.readTimeout);
+				.aggregate()
+				.asInputStream()
+				.subscribeOn(this.scheduler)
+				.block(this.readTimeout);
+
 		if (body == null) {
 			throw new IOException("Could not receive body");
 		}
@@ -89,7 +98,13 @@ final class ReactorNettyClientResponse implements ClientHttpResponse {
 
 	@Override
 	public void close() {
-		this.connection.dispose();
+		try{
+			InputStream body = getBody();
+			StreamUtils.drain(body);
+			body.close();
+		}
+		catch (IOException ignored) {
+		}
 	}
 
 }
