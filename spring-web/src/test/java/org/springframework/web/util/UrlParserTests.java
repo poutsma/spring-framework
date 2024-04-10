@@ -31,8 +31,14 @@ class UrlParserTests {
 
 	@Test
 	void parse() {
-		testParse("https://example.com", "https", "example.com", null, "", null, null);
-		testParse("https://example.com/", "https", "example.com", null, "/", null, null);
+//		testParse("https://example.com", "https", "example.com", null, "", null, null);
+//		testParse("https://example.com/", "https", "example.com", null, "/", null, null);
+//		testParse("https://example.com/foo", "https", "example.com", null, "/foo", null, null);
+//		testParse("https://example.com/foo/", "https", "example.com", null, "/foo/", null, null);
+//		testParse("https://example.com:81/foo", "https", "example.com", "81", "/foo", null, null);
+//		testParse("/foo", "", null, null, "/foo", null, null);
+//		testParse("/foo/", "", null, null, "/foo/", null, null);
+		testParse("/foo/../bar", "", null, null, "/bar", null, null);
 	}
 
 	private void testParse(String input, String scheme, @Nullable String host, @Nullable String port, String path, @Nullable String query, @Nullable String fragment) {

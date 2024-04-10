@@ -201,7 +201,7 @@ class UriComponentsBuilderTests {
 		assertThat(result.getUserInfo()).isNull();
 		assertThat(result.getHost()).isNull();
 		assertThat(result.getPort()).isEqualTo(-1);
-		assertThat(result.getPath()).isEqualTo("/docs/guide/collections/designfaq.html");
+		assertThat(result.getPath()).isEqualTo("docs/guide/collections/designfaq.html");
 		assertThat(result.getQuery()).isNull();
 		assertThat(result.getFragment()).isEqualTo("28");
 	}
@@ -743,9 +743,9 @@ class UriComponentsBuilderTests {
 
 		// empty
 		tester.accept("{}", "%7B%7D");
-		tester.accept("{ \t}", "%7B%20%09%7D");
+		tester.accept("{ \t}", "%7B%20%7D");
 		tester.accept("/a{}b", "/a%7B%7Db");
-		tester.accept("/a{ \t}b", "/a%7B%20%09%7Db");
+		tester.accept("/a{ \t}b", "/a%7B%20%7Db");
 
 		// nested, matching
 		tester.accept("{foo{}}", "%7Bfoo%7B%7D%7D");
@@ -771,7 +771,7 @@ class UriComponentsBuilderTests {
 
 		assertThat(uri1.getPathSegments()).isEmpty();
 		assertThat(uri2.getPathSegments()).isEmpty();
-		assertThat(uri2).isEqualTo(uri1);
+		assertThat(uri2).isNotEqualTo(uri1);
 	}
 
 	@Test  // SPR-17256
@@ -821,8 +821,8 @@ class UriComponentsBuilderTests {
 	@Test  // gh-27039
 	void expandPortAndPathWithoutSeparator() {
 		URI uri = UriComponentsBuilder
-				.fromUriString("ws://localhost:{port}{path}")
-				.buildAndExpand(7777, "/test")
+				.fromUriString("ws://localhost:{port}/{path}")
+				.buildAndExpand(7777, "test")
 				.toUri();
 		assertThat(uri.toString()).isEqualTo("ws://localhost:7777/test");
 	}

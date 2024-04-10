@@ -107,8 +107,13 @@ final class UrlParser {
 			int c;
 			if (this.pointer < this.input.length()) {
 				c = this.input.charAt(this.pointer);
+				logger.debug("Current: " + Character.toString(c) +
+						" Buffer: " + this.buffer +
+						" State: " + this.state);
 			}
 			else {
+				logger.debug("Current: EOF Buffer: " + this.buffer +
+						" State: " + this.state);
 				c = EOF;
 			}
 			this.state.handle(c, url, this);
@@ -359,34 +364,38 @@ final class UrlParser {
 	}
 
 	/**
-	 * A double-dot URL path segment is a URL path segment that is ".." or an ASCII case-insensitive match for ".%2e", "%2e.", or "%2e%2e".
+	 * A double-dot URL path segment is a URL path segment that is "/.." or an ASCII case-insensitive match for "/.%2e", "/%2e.", or "/%2e%2e".
 	 */
 	private static boolean isDoubleDotPathSegment(StringBuilder b) {
 		int len = b.length();
-		if (len == 2) {
+		if (len == 3) {
 			char ch0 = b.charAt(0);
 			char ch1 = b.charAt(1);
-			return ch0 == '.' && ch1 == '.';
+			char ch2 = b.charAt(2);
+			return ch0 == '/' && ch1 == '.' && ch2 == '.';
 		}
-		else if (len == 4) {
+		else if (len == 5) {
 			char ch0 = b.charAt(0);
 			char ch1 = b.charAt(1);
 			char ch2 = b.charAt(2);
 			char ch3 = b.charAt(3);
-			// case-insensitive match for ".%2e" or "%2e."
-			return (ch0 == '.' && ch1 == '%' && ch2 == '2' && (ch3 == 'e' || ch3 == 'E'))
-				|| (ch0 == '%' && ch1 == '2' && (ch2 == 'e' || ch2 == 'E') && ch3 == '.');
+			char ch4 = b.charAt(4);
+			// case-insensitive match for "/.%2e" or "/%2e."
+			return ch0 == '/' &&
+					(ch1 == '.' && ch2 == '%' && ch3 == '2' && (ch4 == 'e' || ch4 == 'E')
+							|| (ch1 == '%' && ch2 == '2' && (ch3 == 'e' || ch3 == 'E') && ch4 == '.'));
 		}
-		else if (len == 6) {
+		else if (len == 7) {
 			char ch0 = b.charAt(0);
 			char ch1 = b.charAt(1);
 			char ch2 = b.charAt(2);
 			char ch3 = b.charAt(3);
 			char ch4 = b.charAt(4);
 			char ch5 = b.charAt(5);
-			// case-insensitive match for "%2e%2e".
-			return ch0 == '%' && ch1 == '2' && (ch2 == 'e' || ch2 == 'E')
-				&& ch3 == '%' && ch4 == '2' && (ch5 == 'e' || ch5 == 'E');
+			char ch6 = b.charAt(6);
+			// case-insensitive match for "/%2e%2e".
+			return ch0 == '/' && ch1 == '%' && ch2 == '2' && (ch3 == 'e' || ch3 == 'E')
+					&& ch4 == '%' && ch5 == '2' && (ch6 == 'e' || ch6 == 'E');
 		}
 		else {
 			return false;
@@ -567,6 +576,7 @@ final class UrlParser {
 				url.scheme = p.base.scheme;
 				// If c is U+002F (/), then set state to relative slash state.
 				if (c == '/') {
+					p.append('/');
 					p.setState(RELATIVE_SLASH);
 				}
 				// Otherwise, if url is special and c is U+005C (\), invalid-reverse-solidus validation error, set state to relative slash state.
@@ -574,6 +584,7 @@ final class UrlParser {
 					if (p.validate()) {
 						p.validationError("URL uses \\ instead of /.");
 					}
+					p.append('/');
 					p.setState(RELATIVE_SLASH);
 				}
 				// Otherwise
@@ -764,10 +775,15 @@ final class UrlParser {
 					if (url.isSpecial() && p.buffer.isEmpty()) {
 						p.failure("The input has a special scheme, but does not contain a host.");
 					}
-					// Let host be the result of host parsing buffer with url is not special.
-					Host host = Host.parse(p.buffer.toString(), false, p.validationErrorHandler);
-					// Set url’s host to host, buffer to the empty string, and state to path start state.
-					url.host = host;
+					if (!p.buffer.isEmpty()) {
+						// Let host be the result of host parsing buffer with url is not special.
+						Host host = Host.parse(p.buffer.toString(), false, p.validationErrorHandler);
+						// Set url’s host to host, buffer to the empty string, and state to path start state.
+						url.host = host;
+					}
+					else {
+						url.host = EmptyHost.INSTANCE;
+					}
 					p.emptyBuffer();
 					p.setState(PATH_START);
 				}
@@ -1001,6 +1017,9 @@ final class UrlParser {
 					if (c != '/' && c != '\\') {
 						p.pointer--;
 					}
+					else {
+						p.append('/');
+					}
 				}
 				// Otherwise, if c is U+003F (?), set url’s query to the empty string and state to query state.
 				else if (c == '?') {
@@ -1068,6 +1087,9 @@ final class UrlParser {
 					}
 					// Set buffer to the empty string.
 					p.emptyBuffer();
+					if ( c == '/' || url.isSpecial() && c == '\\') {
+						p.append('/');
+					}
 					// If c is U+003F (?), then set url’s query to the empty string and state to query state.
 					if (c == '?') {
 						url.query = "";
@@ -2260,7 +2282,7 @@ final class UrlParser {
 		public String toString() {
 			StringBuilder output = new StringBuilder();
 			for (PathSegment segment : this.segments) {
-				output.append('/');
+//				output.append('/');
 				output.append(segment);
 			}
 			return output.toString();

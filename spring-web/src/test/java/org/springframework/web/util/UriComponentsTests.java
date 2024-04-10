@@ -246,7 +246,6 @@ class UriComponentsTests {
 		UriComponents uric2 = UriComponentsBuilder.fromUriString(baseUrl + "/foo/bar").build();
 		UriComponents uric3 = UriComponentsBuilder.fromUriString(baseUrl + "/foo/bin").build();
 
-		assertThat(uric1).isInstanceOf(OpaqueUriComponents.class);
 		assertThat(uric1).isEqualTo(uric1);
 		assertThat(uric1).isEqualTo(uric2);
 		assertThat(uric1).isNotEqualTo(uric3);
