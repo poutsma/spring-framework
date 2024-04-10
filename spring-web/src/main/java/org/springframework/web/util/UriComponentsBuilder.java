@@ -244,9 +244,9 @@ public class UriComponentsBuilder implements UriBuilder, Cloneable {
 				builder.schemeSpecificPart(urlRecord.path().toString());
 			}
 			else {
-				if (!urlRecord.path().isEmpty()) {
+//				if (!urlRecord.path().isEmpty()) {
 					builder.path(urlRecord.path().toString());
-				}
+//				}
 				if (StringUtils.hasLength(urlRecord.query())) {
 					builder.query(urlRecord.query());
 				}

@@ -27,6 +27,9 @@ import java.util.Objects;
 import java.util.StringTokenizer;
 import java.util.function.Consumer;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
@@ -39,6 +42,8 @@ final class UrlParser {
 	private static final int EOF = -1;
 
 	private static final int MAX_PORT = 65535;
+
+	private static final Log logger = LogFactory.getLog(UrlParser.class);
 
 
 	private final StringBuilder input;
@@ -149,7 +154,16 @@ final class UrlParser {
 	}
 
 	private void setState(State newState) {
-		System.out.println("Changing state from " + this.state + " to " + newState + " (prev: " + this.previousState + ")");
+		if (logger.isDebugEnabled()) {
+			String  c;
+			if (this.pointer < this.input.length()) {
+				c = Character.toString(this.input.charAt(this.pointer));
+			}
+			else {
+				c = "EOF";
+			}
+			logger.debug("Changing state from " + this.state + " to " + newState + " (cur: " + c + " prev: " + this.previousState + ")");
+		}
 	 	this.previousState = this.state;
 		this.state = newState;
 	}
@@ -2184,6 +2198,7 @@ final class UrlParser {
 
 		@Override
 		public void append(String segment) {
+			logger.debug("Adding \"" + segment + "\"");
 			this.segments.add(new PathSegment(segment));
 		}
 

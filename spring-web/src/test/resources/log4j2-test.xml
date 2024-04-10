@@ -11,6 +11,7 @@
 		<Logger name="org.springframework.binding" level="warn" />
 		<Logger name="org.springframework.http" level="warn" />
 		<Logger name="org.springframework.remoting" level="warn" />
+		<Logger name="org.springframework.web.util" level="debug" />
 		<Root level="error">
 			<AppenderRef ref="Console" />
 		</Root>
