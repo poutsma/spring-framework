@@ -30,4 +30,8 @@ public class InvalidUrlException extends IllegalArgumentException {
 	public InvalidUrlException(String s) {
 		super(s);
 	}
+
+	public InvalidUrlException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

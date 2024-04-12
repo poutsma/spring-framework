@@ -34,8 +34,15 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
+ * Implementation of the URL parser from the Living URL standard.
+ *
+ * <p>All comments in this class refer to parts of the
+ * <a href="https://url.spec.whatwg.org/#url-parsing">parsing algorithm</a>.
+ * Three additions
+ *
  * @author Arjen Poutsma
  * @since 6.2
+ * @see <a href="https://url.spec.whatwg.org/#url-parsing">URL parsing</a>
  */
 final class UrlParser {
 
@@ -82,18 +89,42 @@ final class UrlParser {
 	}
 
 
-	public static UrlRecord parse(String input, @Nullable UrlRecord base, @Nullable Charset encoding, @Nullable Consumer<String> validationErrorHandler)
-		throws InvalidUrlException {
+	/**
+	 * Parse the given input into a URL record.
+	 * @param input the scalar value string
+	 * @param base the optional base URL to resolve relative URLs against. If
+	 * {@code null}, relative URLs cannot be parsed.
+	 * @param encoding the optional encoding to use. If {@code null}, no
+	 * encoding is performed.
+	 * @param validationErrorHandler optional consumer for non-fatal URL
+	 * validation messages
+	 * @return a URL record, as defined in the
+	 * <a href="https://url.spec.whatwg.org/#concept-url">living URL
+	 * specification</a>
+	 * @throws InvalidUrlException if the {@code input} does not contain a
+	 * parsable URL
+	 */
+	public static UrlRecord parse(String input, @Nullable UrlRecord base,
+			@Nullable Charset encoding, @Nullable Consumer<String> validationErrorHandler)
+			throws InvalidUrlException {
+
 		Assert.notNull(input, "Input must not be null");
 
 		UrlParser parser = new UrlParser(input, base, encoding, validationErrorHandler);
-
 		return parser.basicUrlParser(null, null);
 	}
 
-
+	/**
+	 * The basic URL parser takes a scalar value string input, with an optional
+	 * null or base URL base (default null), an optional encoding
+	 * {@code encoding}
+	 * (default UTF-8), an optional URL {@code url}, and an optional state
+	 * override {@code state override}.
+	 */
 	private UrlRecord basicUrlParser(@Nullable UrlRecord url, @Nullable State stateOverride) {
+		// If url is not given:
 		if (url == null) {
+			// Set url to a new URL.
 			url = new UrlRecord();
 		}
 		sanitizeInput();
@@ -107,14 +138,13 @@ final class UrlParser {
 			int c;
 			if (this.pointer < this.input.length()) {
 				c = this.input.charAt(this.pointer);
-				logger.debug("Current: " + Character.toString(c) +
-						" Buffer: " + this.buffer +
-						" State: " + this.state);
 			}
 			else {
-				logger.debug("Current: EOF Buffer: " + this.buffer +
-						" State: " + this.state);
 				c = EOF;
+			}
+			if (logger.isTraceEnabled()) {
+				String cStr = c != EOF ? Character.toString(c) : "EOF";
+				logger.trace("c: " + cStr + " Buffer: " + this.buffer + " State: " + this.state);
 			}
 			this.state.handle(c, url, this);
 			this.pointer++;
@@ -433,7 +463,7 @@ final class UrlParser {
 					p.append(Character.toLowerCase((char) c));
 					p.setState(SCHEME);
 				}
-				// Addition: if c is '{', then append c to buffer, set previous state to scheme state, and state to url template state.
+				// EXTRA: if c is '{', then append c to buffer, set previous state to scheme state, and state to url template state.
 				//
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
@@ -454,7 +484,7 @@ final class UrlParser {
 				if (isAsciiAlphaNumeric(c) || (c == '+' || c == '-' || c == '.')) {
 					p.append(Character.toLowerCase((char) c));
 				}
-				// Addition: if c is '{', then append c to buffer, set state to url template state.
+				// EXTRA: if c is '{', then append c to buffer, set state to url template state.
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
 					p.setState(URL_TEMPLATE);
@@ -809,7 +839,7 @@ final class UrlParser {
 				if (isAsciiDigit(c)) {
 					p.append(c);
 				}
-				// Addition: if c is '{', then append c to buffer, set state to url template state.
+				// EXTRA: if c is '{', then append c to buffer, set state to url template state.
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
 					p.setState(URL_TEMPLATE);
@@ -828,7 +858,7 @@ final class UrlParser {
 								break;
 							}
 						}
-						// Addition: if buffer contains only ASCII digits, then
+						// EXTRA: if buffer contains only ASCII digits, then
 						if (isNumber) {
 							try {
 								// Let port be the mathematical integer value that is represented by buffer in radix-10 using ASCII digits for digits with values 0 through 9.
@@ -850,7 +880,7 @@ final class UrlParser {
 								p.failure(ex.getMessage());
 							}
 						}
-						// Addition: otherwise, set url's port to buffer
+						// EXTRA: otherwise, set url's port to buffer
 						else {
 							url.port = p.buffer.toString();
 						}
@@ -1101,7 +1131,7 @@ final class UrlParser {
 						p.setState(FRAGMENT);
 					}
 				}
-				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				// EXTRA: Otherwise, if c is '{', then append c to buffer, set state to url template state.
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
 					p.setState(URL_TEMPLATE);
@@ -1130,7 +1160,7 @@ final class UrlParser {
 		OPAQUE_PATH {
 			@Override
 			public void handle(int c, UrlRecord url, UrlParser p) {
-				// Addition: if previous state is URL Template and the buffer is empty, append buffer to url's path and empty the buffer
+				// EXTRA: if previous state is URL Template and the buffer is empty, append buffer to url's path and empty the buffer
 				if (p.previousState == URL_TEMPLATE && !p.buffer.isEmpty()) {
 					url.path.append(p.buffer.toString());
 					p.emptyBuffer();
@@ -1145,7 +1175,7 @@ final class UrlParser {
 					url.fragment = "";
 					p.setState(FRAGMENT);
 				}
-				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				// EXTRA: Otherwise, if c is '{', then append c to buffer, set state to url template state.
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
 					p.setState(URL_TEMPLATE);
@@ -1202,7 +1232,7 @@ final class UrlParser {
 						p.setState(FRAGMENT);
 					}
 				}
-				// Addition: Otherwise, if c is '{', then append c to buffer, set state to url template state.
+				// EXTRA: Otherwise, if c is '{', then append c to buffer, set state to url template state.
 				else if (p.previousState != URL_TEMPLATE && c == '{') {
 					p.append(c);
 					p.setState(URL_TEMPLATE);
@@ -1812,7 +1842,7 @@ final class UrlParser {
 				return new ParseIpv4NumberResult(output, validationError);
 			}
 			catch (NumberFormatException ex) {
-				throw new InvalidUrlException(ex.getMessage());
+				throw new InvalidUrlException("Could not parse \"" + input + "\" as integer: " + ex.getMessage(), ex);
 			}
 		}
 
