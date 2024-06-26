@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,13 +86,4 @@ public interface ServerHttpResponse extends ReactiveHttpOutputMessage {
 	 */
 	void addCookie(ResponseCookie cookie);
 
-	/**
-	 * Return the underlying server response.
-	 * <p><strong>Note:</strong> This is exposed mainly for internal framework
-	 * use such as WebSocket upgrades in the spring-webflux module.
-	 */
-	@Nullable
-	default <T> T getNativeResponse() {
-		return null;
-	}
 }

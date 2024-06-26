@@ -74,8 +74,7 @@ class ErrorHandlerIntegrationTests extends AbstractHttpHandlerIntegrationTests {
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 	}
 
-	@ParameterizedHttpServerTest
-		// SPR-15560
+	@ParameterizedHttpServerTest  // SPR-15560
 	void emptyPathSegments(HttpServer httpServer) throws Exception {
 		startServer(httpServer);
 

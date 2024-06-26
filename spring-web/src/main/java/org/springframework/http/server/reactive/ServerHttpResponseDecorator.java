@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,10 +123,6 @@ public class ServerHttpResponseDecorator implements ServerHttpResponse {
 		return getDelegate().setComplete();
 	}
 
-	@Override
-	public <T> T getNativeResponse() {
-		return getDelegate().getNativeResponse();
-	}
 
 	/**
 	 * Return the native response of the underlying server API, if possible,
@@ -137,13 +133,16 @@ public class ServerHttpResponseDecorator implements ServerHttpResponse {
 	 * @since 5.3.3
 	 */
 	public static <T> T getNativeResponse(ServerHttpResponse response) {
-		T nativeResponse = response.getNativeResponse();
-		if (nativeResponse == null) {
+		if (response instanceof AbstractServerHttpResponse abstractServerHttpResponse) {
+			return abstractServerHttpResponse.getNativeResponse();
+		}
+		else if (response instanceof ServerHttpResponseDecorator serverHttpResponseDecorator) {
+			return getNativeResponse(serverHttpResponseDecorator.getDelegate());
+		}
+		else {
 			throw new IllegalArgumentException(
 					"Can't find native response in " + response.getClass().getName());
 		}
-
-		return nativeResponse;
 	}
 
 

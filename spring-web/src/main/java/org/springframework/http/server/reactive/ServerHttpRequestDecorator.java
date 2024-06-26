@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2022 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -115,11 +115,6 @@ public class ServerHttpRequestDecorator implements ServerHttpRequest {
 	}
 
 	@Override
-	public <T> T getNativeRequest() {
-		return this.delegate.getNativeRequest();
-	}
-
-	@Override
 	public Flux<DataBuffer> getBody() {
 		return getDelegate().getBody();
 	}
@@ -134,13 +129,16 @@ public class ServerHttpRequestDecorator implements ServerHttpRequest {
 	 * @since 5.3.3
 	 */
 	public static <T> T getNativeRequest(ServerHttpRequest request) {
-		T nativeRequest = request.getNativeRequest();
-		if (nativeRequest == null) {
+		if (request instanceof AbstractServerHttpRequest abstractServerHttpRequest) {
+			return abstractServerHttpRequest.getNativeRequest();
+		}
+		else if (request instanceof ServerHttpRequestDecorator serverHttpRequestDecorator) {
+			return getNativeRequest(serverHttpRequestDecorator.getDelegate());
+		}
+		else {
 			throw new IllegalArgumentException(
 					"Can't find native request in " + request.getClass().getName());
 		}
-
-		return nativeRequest;
 	}
 
 

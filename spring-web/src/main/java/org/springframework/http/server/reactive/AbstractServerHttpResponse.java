@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -154,6 +154,14 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 			getCookies().add(cookie.getName(), cookie);
 		}
 	}
+
+	/**
+	 * Return the underlying server response.
+	 * <p><strong>Note:</strong> This is exposed mainly for internal framework
+	 * use such as WebSocket upgrades in the spring-webflux module.
+	 */
+	public abstract <T> T getNativeResponse();
+
 
 	@Override
 	public void beforeCommit(Supplier<? extends Mono<Void>> action) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2023 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,35 +120,36 @@ class JettyCoreServerHttpResponse extends AbstractServerHttpResponse implements 
 	}
 
 	private Mono<Void> sendDataBuffer(DataBuffer dataBuffer) {
-		@SuppressWarnings("resource")
-		DataBuffer.ByteBufferIterator byteBufferIterator = dataBuffer.readableByteBuffers();
-		Callback.Completable callback = new Callback.Completable();
-		new IteratingCallback() {
-			@Override
-			protected Action process() {
-				if (!byteBufferIterator.hasNext()) {
-					return Action.SUCCEEDED;
+		return Mono.defer(() -> {
+			DataBuffer.ByteBufferIterator byteBufferIterator = dataBuffer.readableByteBuffers();
+			Callback.Completable callback = new Callback.Completable();
+			new IteratingCallback() {
+				@Override
+				protected Action process() {
+					if (!byteBufferIterator.hasNext()) {
+						return Action.SUCCEEDED;
+					}
+					response.write(false, byteBufferIterator.next(), this);
+					return Action.SCHEDULED;
 				}
-				response.write(false, byteBufferIterator.next(), this);
-				return Action.SCHEDULED;
-			}
 
-			@Override
-			protected void onCompleteSuccess() {
-				byteBufferIterator.close();
-				DataBufferUtils.release(dataBuffer);
-				callback.complete(null);
-			}
+				@Override
+				protected void onCompleteSuccess() {
+					byteBufferIterator.close();
+					DataBufferUtils.release(dataBuffer);
+					callback.complete(null);
+				}
 
-			@Override
-			protected void onCompleteFailure(Throwable cause) {
-				byteBufferIterator.close();
-				DataBufferUtils.release(dataBuffer);
-				callback.failed(cause);
-			}
-		}.iterate();
+				@Override
+				protected void onCompleteFailure(Throwable cause) {
+					byteBufferIterator.close();
+					DataBufferUtils.release(dataBuffer);
+					callback.failed(cause);
+				}
+			}.iterate();
 
-		return Mono.fromFuture(callback);
+			return Mono.fromFuture(callback);
+		});
 	}
 
 	@SuppressWarnings("unchecked")

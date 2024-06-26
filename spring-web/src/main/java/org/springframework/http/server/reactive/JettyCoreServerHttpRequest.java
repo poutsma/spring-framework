@@ -118,10 +118,4 @@ class JettyCoreServerHttpRequest extends AbstractServerHttpRequest {
 				.map(this.dataBufferFactory::wrap);
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public <T> T getNativeRequest() {
-		return (T) this.request;
-	}
-
 }
