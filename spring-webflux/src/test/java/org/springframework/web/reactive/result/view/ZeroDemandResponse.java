@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,10 +116,6 @@ public class ZeroDemandResponse implements ServerHttpResponse {
 		throw new UnsupportedOperationException();
 	}
 
-	@Override
-	public <T> T getNativeResponse() {
-		return null;
-	}
 
 	private static class ZeroDemandSubscriber extends BaseSubscriber<DataBuffer> {
 
