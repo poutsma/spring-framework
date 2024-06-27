@@ -86,9 +86,8 @@ class JettyCoreServerHttpRequest extends AbstractServerHttpRequest {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> T getNativeRequest()
-	{
-		return (T) request;
+	public <T> T getNativeRequest() {
+		return (T) this.request;
 	}
 
 	@Override
