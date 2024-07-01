@@ -16,6 +16,27 @@
 
 package org.springframework.web.client;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.ResolvableType;
+import org.springframework.http.*;
+import org.springframework.http.client.*;
+import org.springframework.http.client.observation.ClientHttpObservationDocumentation;
+import org.springframework.http.client.observation.ClientRequestObservationContext;
+import org.springframework.http.client.observation.ClientRequestObservationConvention;
+import org.springframework.http.client.observation.DefaultClientRequestObservationConvention;
+import org.springframework.http.converter.GenericHttpMessageConverter;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.util.UriBuilder;
+import org.springframework.web.util.UriBuilderFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -32,39 +53,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationRegistry;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.ResolvableType;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.StreamingHttpOutputMessage;
-import org.springframework.http.client.ClientHttpRequest;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpRequestInitializer;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.InterceptingClientHttpRequestFactory;
-import org.springframework.http.client.observation.ClientHttpObservationDocumentation;
-import org.springframework.http.client.observation.ClientRequestObservationContext;
-import org.springframework.http.client.observation.ClientRequestObservationConvention;
-import org.springframework.http.client.observation.DefaultClientRequestObservationConvention;
-import org.springframework.http.converter.GenericHttpMessageConverter;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
-import org.springframework.web.util.UriBuilder;
-import org.springframework.web.util.UriBuilderFactory;
 
 /**
  * The default implementation of {@link RestClient},
@@ -331,7 +319,13 @@ final class DefaultRestClient implements RestClient {
 
 		@Override
 		public RequestBodySpec uri(URI uri) {
-			this.uri = uri;
+			if (uri.isAbsolute()) {
+				this.uri = uri;
+			}
+			else {
+				URI baseUri = DefaultRestClient.this.uriBuilderFactory.expand("");
+				this.uri = baseUri.resolve(uri);
+			}
 			return this;
 		}
 

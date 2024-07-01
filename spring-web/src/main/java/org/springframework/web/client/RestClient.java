@@ -16,6 +16,17 @@
 
 package org.springframework.web.client;
 
+import io.micrometer.observation.ObservationRegistry;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
+import org.springframework.http.client.*;
+import org.springframework.http.client.observation.ClientRequestObservationConvention;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.lang.Nullable;
+import org.springframework.web.util.DefaultUriBuilderFactory;
+import org.springframework.web.util.UriBuilder;
+import org.springframework.web.util.UriBuilderFactory;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
@@ -26,28 +37,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import io.micrometer.observation.ObservationRegistry;
-
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpRequest;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.StreamingHttpOutputMessage;
-import org.springframework.http.client.ClientHttpRequest;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpRequestInitializer;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.observation.ClientRequestObservationConvention;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.lang.Nullable;
-import org.springframework.web.util.DefaultUriBuilderFactory;
-import org.springframework.web.util.UriBuilder;
-import org.springframework.web.util.UriBuilderFactory;
 
 /**
  * Client to perform HTTP requests, exposing a fluent, synchronous API over
@@ -155,6 +144,17 @@ public interface RestClient {
 	}
 
 	/**
+	 * Variant of {@link #create()} that accepts a default base {@code URI}. For more
+	 * details see {@link Builder#baseUrl(URI) Builder.baseUrl(URI)}.
+	 * @param baseUrl the base URI for all requests
+	 * @see #builder()
+	 * @since 6.2
+	 */
+	static RestClient create(URI baseUrl) {
+		return new DefaultRestClientBuilder().baseUrl(baseUrl).build();
+	}
+
+	/**
 	 * Create a new {@code RestClient} based on the configuration of the given
 	 * {@code RestTemplate}.
 	 * <p>The returned builder is configured with the following attributes of
@@ -229,6 +229,26 @@ public interface RestClient {
 		 * @see #uriBuilderFactory(UriBuilderFactory)
 		 */
 		Builder baseUrl(String baseUrl);
+
+		/**
+		 * Configure a base {@code URI} for requests. Effectively a shortcut for:
+		 * <pre class="code">
+		 * URI baseUrl = URI.create("https://abc.go.com/v1");
+		 * DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory(baseUrl.toString());
+		 * RestClient client = RestClient.builder().uriBuilderFactory(factory).build();
+		 * </pre>
+		 * <p>The {@code DefaultUriBuilderFactory} is used to prepare the URL
+		 * for every request with the given base URL, unless the URL request
+		 * for a given URL is absolute in which case the base URL is ignored.
+		 * <p><strong>Note:</strong> this method is mutually exclusive with
+		 * {@link #uriBuilderFactory(UriBuilderFactory)}. If both are used, the
+		 * {@code baseUrl} value provided here will be ignored.
+		 * @return this builder
+		 * @see DefaultUriBuilderFactory#DefaultUriBuilderFactory(String)
+		 * @see #uriBuilderFactory(UriBuilderFactory)
+		 * @since 6.2
+		 */
+		Builder baseUrl(URI baseUrl);
 
 		/**
 		 * Configure default URL variable values to use when expanding URI

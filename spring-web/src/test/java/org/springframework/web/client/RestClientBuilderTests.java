@@ -16,11 +16,7 @@
 
 package org.springframework.web.client;
 
-import java.lang.reflect.Field;
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
-
 import org.springframework.http.client.ClientHttpRequestInitializer;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.JettyClientHttpRequestFactory;
@@ -29,6 +25,10 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+
+import java.lang.reflect.Field;
+import java.net.URI;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -88,6 +88,18 @@ public class RestClientBuilderTests {
 		DefaultRestClientBuilder defaultBuilder = (DefaultRestClientBuilder) builder;
 
 		assertThat(fieldValue("uriBuilderFactory", defaultBuilder)).isNull();
+	}
+
+	@Test
+	void defaultUri() {
+		URI baseUrl = URI.create("https://example.org");
+		RestClient.Builder builder = RestClient.builder();
+		builder.baseUrl(baseUrl);
+
+		assertThat(builder).isInstanceOf(DefaultRestClientBuilder.class);
+		DefaultRestClientBuilder defaultBuilder = (DefaultRestClientBuilder) builder;
+
+		assertThat(fieldValue("baseUrl", defaultBuilder)).isEqualTo(baseUrl.toString());
 	}
 
 	@Nullable

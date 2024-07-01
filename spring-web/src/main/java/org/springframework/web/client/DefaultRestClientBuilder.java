@@ -16,26 +16,10 @@
 
 package org.springframework.web.client;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 import io.micrometer.observation.ObservationRegistry;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpRequestInitializer;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.http.client.InterceptingClientHttpRequestFactory;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.http.client.JettyClientHttpRequestFactory;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.*;
 import org.springframework.http.client.observation.ClientRequestObservationConvention;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -56,6 +40,11 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilderFactory;
 import org.springframework.web.util.UriTemplateHandler;
+
+import java.net.URI;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Default implementation of {@link RestClient.Builder}.
@@ -242,6 +231,12 @@ final class DefaultRestClientBuilder implements RestClient.Builder {
 	@Override
 	public RestClient.Builder baseUrl(String baseUrl) {
 		this.baseUrl = baseUrl;
+		return this;
+	}
+
+	@Override
+	public RestClient.Builder baseUrl(URI baseUrl) {
+		this.baseUrl = baseUrl.toString();
 		return this;
 	}
 
